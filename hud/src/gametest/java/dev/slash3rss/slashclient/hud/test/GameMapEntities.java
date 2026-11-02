@@ -12,15 +12,17 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * Each kind switched off goes away; then the full map shows the same with the player's nick.
  */
 public class GameMapEntities implements FabricClientGameTest {
-	/** How the test's mobs are drawn: their faces, a dot for the silverfish (none of its own). */
-	private static final String FACES = "cow:head,creeper:head,pig:head,sheep:head,silverfish:dot,spider:head,zombie:head,";
+	/** How the test's mobs are drawn: their faces (every mob but the ender dragon has one). */
+	private static final String FACES = "cow:head,creeper:head,pig:head,sheep:head,silverfish:head,spider:head,zombie:head,";
 	/** Every mob with a face, for the picture of them all. */
 	private static final String[] ALL = { "zombie", "husk", "drowned", "skeleton", "stray", "wither_skeleton", "bogged", "creeper", "spider",
 		"cave_spider", "enderman", "slime", "magma_cube", "blaze", "phantom", "guardian", "elder_guardian", "warden",
 		"witch", "pillager", "vindicator", "evoker", "illusioner", "piglin", "zombified_piglin", "piglin_brute", "hoglin", "zoglin", "vex",
 		"villager", "wandering_trader", "zombie_villager", "iron_golem", "snow_golem", "cow", "mooshroom", "pig", "sheep",
 		"chicken", "horse", "donkey", "mule", "wolf", "cat", "ocelot", "fox", "rabbit", "bee", "axolotl", "turtle",
-		"frog", "llama", "goat", "polar_bear", "panda", "squid", "glow_squid", "ghast" };
+		"frog", "llama", "goat", "polar_bear", "panda", "squid", "glow_squid", "ghast", "giant", "allay", "armadillo", "bat", "breeze", "camel",
+		"cod", "salmon", "tropical_fish", "pufferfish", "tadpole", "dolphin", "silverfish", "endermite", "creaking", "copper_golem", "happy_ghast",
+		"parrot", "nautilus", "zombie_nautilus", "ravager", "shulker", "sniffer", "strider", "sulfur_cube", "camel_husk" };
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -46,7 +48,7 @@ public class GameMapEntities implements FabricClientGameTest {
 			server.runCommand(String.format(mob, "cow", -7, y + 1, 9));
 			server.runCommand(String.format(mob, "pig", 5, y + 1, 10));
 			server.runCommand(String.format(mob, "sheep", 12, y + 1, 4));
-			// a zombie under a roof (the sun would burn it) and a silverfish: no face of its own, a dot
+			// a zombie under a roof (the sun would burn it) and a silverfish
 			server.runCommand(String.format("setblock %d %d %d stone", 3, y + 3, 6));
 			server.runCommand(String.format(mob, "zombie", 3, y + 1, 6));
 			server.runCommand(String.format(mob, "silverfish", -12, y + 1, 7));
@@ -64,7 +66,7 @@ public class GameMapEntities implements FabricClientGameTest {
 			String shown = context.computeOnClient(mc -> MapSortTestHooks.entitiesOnMinimap());
 			System.out.println("SlashClient test: minimap entities " + shown);
 			if (!shown.equals("1,4,3:Gracz_Testowy,")) throw new AssertionError("Players and mobs on the minimap: " + shown);
-			// the mobs we know get their faces, cut from the texture they are drawn with; the silverfish a dot
+			// the mobs we know get their faces, cut from the texture they are drawn with
 			String marks = context.computeOnClient(mc -> MapSortTestHooks.markers(false));
 			System.out.println("SlashClient test: minimap markers " + marks + " textures " + context.computeOnClient(mc -> MapSortTestHooks.faceTextures(false)));
 			if (!marks.equals(FACES)) throw new AssertionError("Mob faces on the minimap: " + marks);
@@ -110,12 +112,14 @@ public class GameMapEntities implements FabricClientGameTest {
 			server.runCommand(String.format("tp @a 0 %d -3 180 40", y + 1));
 			context.waitTicks(5);
 			StringBuilder expected = new StringBuilder();
-			java.util.List<String> sorted = new java.util.ArrayList<>(java.util.List.of(ALL));
+			// only the mobs this version of the game has
+			String[] all = java.util.Arrays.stream(ALL).filter(id -> net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.containsKey(net.minecraft.resources.Identifier.withDefaultNamespace(id))).toArray(String[]::new);
+			java.util.List<String> sorted = new java.util.ArrayList<>(java.util.List.of(all));
 			sorted.sort(null);
 			for (String id : sorted) expected.append(id).append(":head,");
-			for (int i = 0; i < ALL.length; i++) {
-				String extra = ALL[i].equals("slime") || ALL[i].equals("magma_cube") ? ",Size:1" : "";
-				server.runCommand(String.format("summon %s %d %d %d {NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b%s}", ALL[i], -12 + (i % 9) * 3, y + 1, -12 + (i / 9) * 3, extra));
+			for (int i = 0; i < all.length; i++) {
+				String extra = all[i].equals("slime") || all[i].equals("magma_cube") ? ",Size:1" : "";
+				server.runCommand(String.format("summon %s %d %d %d {NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b%s}", all[i], -12 + (i % 9) * 3, y + 1, -12 + (i / 9) * 3, extra));
 			}
 			context.waitTicks(40);
 			context.runOnClient(mc -> TestHooks.minimap(true, "square", false, 3f, 160));

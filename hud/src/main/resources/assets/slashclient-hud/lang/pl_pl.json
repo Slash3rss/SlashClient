@@ -680,6 +680,7 @@
 	"key.slashclient-hud.spray": "Spray",
 	"key.slashclient-hud.dungeonZoomIn": "Mapa dungeonu: przybliż",
 	"key.slashclient-hud.dungeonZoomOut": "Mapa dungeonu: oddal",
+	"key.slashclient-hud.dungeonStyle": "Mapa dungeonu: widok szczegółowy / prosty",
 	"key.slashclient-hud.dungeonMap": "Mapa na cały ekran (świat lub dungeon)",
 	"slashclient-hud.dungeon.whole": "Cały dungeon",
 	"slashclient-hud.dungeon.fullHelp": "Przeciągnij: przesuń · Kółko: przybliż/oddal · PPM: cała mapa · Tab: widok · M/Esc: zamknij",

@@ -280,10 +280,10 @@ public final class MapSortTestHooks {
 				g.fill(0, 0, width, height, 0xFF404850);
 				java.util.TreeMap<String, net.minecraft.world.entity.Entity> one = new java.util.TreeMap<>();
 				for (var e : mc.level.entitiesForRendering()) if (MobHeads.listed(e.getType())) one.putIfAbsent(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath(), e);
-				int i = 0, size = 20, cols = Math.max(1, width / (size + 22));
+				int i = 0, size = 16, cols = Math.max(1, width / (size + 18));
 				for (var entry : one.entrySet()) {
 					MobHeads.Head head = MobHeads.head(entry.getValue());
-					int x = 10 + (i % cols) * (size + 22), y = 6 + (i / cols) * (size + 12);
+					int x = 10 + (i % cols) * (size + 18), y = 6 + (i / cols) * (size + 10);
 					if (head != null) MobHeads.draw(g, head, x, y, size, size);
 					var pose = g.pose();
 					pose.pushMatrix();

@@ -88,7 +88,7 @@ public final class MobHeads {
 
 	static {
 		// humanoids: the head and, for the zombies, the hat layer over it
-		put(tex(64, 64).box(0, 0, -4, -8, -4, 8, 8, 8).box(32, 0, -4, -8, -4.5f, 8, 8, 8).done(), "zombie", "husk", "drowned");
+		put(tex(64, 64).box(0, 0, -4, -8, -4, 8, 8, 8).box(32, 0, -4, -8, -4.5f, 8, 8, 8).done(), "zombie", "husk", "drowned", "giant");
 		put(tex(64, 32).box(0, 0, -4, -8, -4, 8, 8, 8).done(), "skeleton", "stray", "wither_skeleton", "bogged", "parched");
 		put(tex(64, 32).box(0, 0, -4, -8, -4, 8, 8, 8).done(), "creeper", "enderman", "blaze");
 		put(tex(64, 32).box(32, 4, -4, -4, -8, 8, 8, 8).done(), "spider", "cave_spider");
@@ -157,7 +157,52 @@ public final class MobHeads {
 		put(tex(128, 64).box(0, 0, -3.5f, -3, -3, 7, 7, 7).box(0, 44, -2.5f, 1, -6, 5, 3, 3).box(26, 0, -4.5f, -4, -1, 2, 2, 1).box(26, 0, 2.5f, -4, -1, 2, 2, 1).done(), "polar_bear");
 		put(tex(64, 64).box(0, 6, -6.5f, -5, -4, 13, 10, 9).box(45, 16, -3.5f, 0, -6, 7, 5, 2).box(52, 25, 3.5f, -8, -1, 5, 4, 1).box(52, 25, -8.5f, -8, -1, 5, 4, 1).done(), "panda");
 		put(tex(64, 32).box(0, 0, -6, -8, -6, 12, 16, 12).done(), "squid", "glow_squid");
+		// the rest of the game's mobs (all but the ender dragon)
+		put(tex(32, 32).box(0, 0, -2.5f, -5, -2.5f, 5, 5, 5).done(), "allay");
+		// an armadillo's small snout with its ears standing up behind it
+		put(tex(64, 64).box(43, 15, -1.5f, -1, -1, 3, 5, 2).box(43, 10, -3.5f, -4, -0.6f, 2, 5, 0).box(47, 10, 1.5f, -4, -0.6f, 2, 5, 0).done(), "armadillo");
+		//#if MC >= 1.21.1
+		// the bat of 1.20.3 has a smaller head with long ears
+		put(tex(32, 32).box(0, 7, -2, -3, -1, 4, 3, 2).box(1, 15, -4, -6, 0, 3, 5, 0).box(8, 15, 1, -6, 0, 3, 5, 0).done(), "bat");
+		//#else
+		//$ put(tex(64, 64).box(0, 0, -3, -3, -3, 6, 6, 6).box(24, 0, -4, -6, -2, 3, 4, 1).box(24, 0, 1, -6, -2, 3, 4, 1).done(), "bat");
+		//#endif
+		put(tex(32, 32).box(0, 0, -4, -8, -4, 8, 8, 8).done(), "breeze");
+		// a camel's muzzle in front of the top of its neck, the ears at its sides
+		put(tex(128, 128).plain(28, 7, -3.5f, -21, -15, 7, 7).box(50, 0, -2.5f, -21, -21, 5, 5, 6).box(45, 0, 2, -20.5f, -10.5f, 3, 1, 2)
+			.box(67, 0, -5, -20.5f, -10.5f, 3, 1, 2).done(), "camel", "camel_husk");
+		// fish from the side (from the front they are a line): the nose, the head, the body
+		put(tex(32, 32).plain(0, 1, -4, -2, 0, 1, 3).plain(11, 3, -3, -2, 0, 3, 4).plain(0, 7, 0, -2, 0, 7, 4).done(), "cod");
+		put(tex(32, 32).plain(22, 3, -3, -2, 0, 3, 4).plain(0, 8, 0, -2.5f, 0, 8, 5).done(), "salmon");
+		put(tex(32, 32).plain(0, 6, -3, -1.5f, 0, 6, 3).done(), "tropical_fish");
+		put(tex(32, 32).box(0, 0, -4, -8, -4, 8, 8, 8).done(), "pufferfish");
+		put(tex(16, 16).box(0, 0, -1.5f, -1, 0, 3, 2, 3).done(), "tadpole");
+		put(tex(64, 64).box(0, 0, -4, -3, -3, 8, 7, 6).box(0, 13, -1, 2, -7, 2, 2, 4).done(), "dolphin");
+		// the little bugs: their segments one behind another, the biggest at the back
+		put(tex(64, 32).box(0, 9, -3, 20, -1, 6, 4, 3).box(0, 4, -2, 21, -2, 4, 3, 2).box(0, 0, -1.5f, 22, -3, 3, 2, 2).done(), "silverfish");
+		put(tex(64, 32).box(0, 5, -3, 20, -1, 6, 4, 5).box(0, 0, -2, 21, -2, 4, 3, 2).done(), "endermite");
+		// a creaking's head (without the branches at its sides, which would leave it tiny)
+		put(tex(64, 64).box(0, 0, -3, -10, -3, 6, 10, 6).box(28, 31, -3, -13, -3, 6, 3, 6).done(), "creaking");
+		// a copper golem's head, its nose, and the rod with the bulb on top
+		put(tex(64, 64).box(0, 0, -4, -5, -5, 8, 5, 10).box(56, 0, -1, -2, -6, 2, 3, 2).box(37, 8, -1, -9, -1, 2, 4, 2).box(37, 0, -2, -13, -2, 4, 4, 4).done(), "copper_golem");
+		put(tex(64, 64).box(0, 0, -8, -8, -8, 16, 16, 16).done(), "happy_ghast");
+		// a parrot's head with its crest and its hooked beak
+		put(tex(32, 32).box(2, 2, -1, -1.5f, -1, 2, 3, 2).box(10, 0, -1, -2.5f, -3, 2, 1, 4).box(11, 7, -0.5f, -1.5f, -2, 1, 2, 1).box(16, 7, -0.5f, -1.75f, -2.95f, 1, 2, 1).done(), "parrot");
+		// a nautilus from the side: its striped shell over its body with the eye (its mouth is only tentacles)
+		put(tex(128, 128).plain(0, 16, -8, -10, 0, 16, 10).plain(0, 68, -7, 0, 0, 14, 8).done(), "nautilus", "zombie_nautilus");
+		put(tex(128, 128).box(0, 0, -8, -20, -14, 16, 20, 16).box(0, 0, -2, -6, -18, 4, 8, 4).box(0, 36, -8, -2, -14, 16, 3, 16).done(), "ravager");
+		// a shulker: the lid over the base, its head peeking out between them
+		put(tex(64, 64).box(0, 0, -8, 8, -8, 16, 12, 16).box(0, 28, -8, 16, -8, 16, 8, 16).box(0, 52, -3, 12, -8.5f, 6, 6, 6).done(), "shulker");
+		// a sniffer's big head, its nose and beak in front, the long ears at its sides
+		put(tex(192, 192).box(8, 15, -6.5f, -7.5f, -11.5f, 13, 18, 11).box(10, 45, -6.5f, -6.5f, -20.5f, 13, 2, 9).box(10, 57, -6.5f, -4.5f, -20.5f, 13, 12, 9)
+			.box(2, 0, 6.51f, -7.5f, -7.51f, 1, 19, 7).box(48, 0, -7.51f, -7.5f, -7.51f, 1, 19, 7).done(), "sniffer");
+		put(tex(64, 128).box(0, 0, -8, -6, -8, 16, 14, 16).done(), "strider");
+		// the sulfur cube's face is on its inner cube, drawn over the outer one (as a slime's)
+		put(tex(128, 128).box(0, 0, -9, -9, -9, 18, 18, 18).box(0, 36, -8, -8, -10, 16, 16, 16).done(), "sulfur_cube");
 	}
+
+	/** A tropical fish of the large shape (its texture "tropical_b"): the other half of its texture. */
+	private static final Face TROPICAL_LARGE = tex(32, 32).plain(0, 26, -3, -3, 0, 6, 6).done();
 
 	/** Which mob kinds have a face (only the game's own: another mod's "zombie" is not ours). */
 	private static final Map<EntityType<?>, Face> BY_TYPE = new IdentityHashMap<>();
@@ -206,6 +251,7 @@ public final class MobHeads {
 			size = wh == null ? new Size(f.texW(), f.texH(), now + 5000) : new Size(wh[0], wh[1], now + 5000);
 			SIZES.put(looked.texture(), size);
 		}
+		if (f == FACES.get("tropical_fish") && looked.texture().getPath().endsWith("tropical_b.png")) f = TROPICAL_LARGE;
 		return new Head(looked.texture(), f, size.w(), size.h());
 	}
 
@@ -248,12 +294,18 @@ public final class MobHeads {
 		}
 	}
 
-	/** Draws the face as large as fits in the w × h area at (x, y), in the middle. */
+	/** How far past its area a long or tall face may go (a cod would be a thin line otherwise). */
+	private static final float STRETCH = 1.4f;
+
+	/**
+	 * Draws the face over about as much of the w × h area at (x, y) as a square one would, in the middle:
+	 * a long or tall face (a fish, a villager) as big as the others, going a little past the area if it must.
+	 */
 	public static void draw(GuiGraphicsExtractor g, Head head, float x, float y, float w, float h) {
 		Face f = head.face();
 		// a pack's texture twice as large has every pixel twice as large
 		float k = (float) head.texW() / f.texW();
-		float s = Math.min(w / f.w(), h / f.h());
+		float s = Math.min((float) Math.sqrt(w * h / (f.w() * f.h())), Math.min(w * STRETCH / f.w(), h * STRETCH / f.h()));
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(x + (w - f.w() * s) / 2, y + (h - f.h() * s) / 2);
@@ -272,9 +324,9 @@ public final class MobHeads {
 	public static boolean draw(GuiGraphicsExtractor g, Entity e, int x, int y, int size, int frame) {
 		Head head = head(e);
 		if (head == null) return false;
-		// as wide as tall at most `size`: a taller face (the illagers' long heads) keeps its shape
-		float a = head.aspect();
-		int w = a >= 1 ? size : Math.round(size * a), h = a >= 1 ? Math.round(size / a) : size;
+		// about as big as a square face of `size`: a long or tall face keeps its shape
+		float a = head.aspect(), root = (float) Math.sqrt(a);
+		int w = Math.max(1, Math.round(Math.min(size * root, size * STRETCH))), h = Math.max(1, Math.round(Math.min(size / root, size * STRETCH)));
 		int x0 = x - w / 2, y0 = y - h / 2;
 		g.fill(x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, frame);
 		draw(g, head, x0, y0, w, h);

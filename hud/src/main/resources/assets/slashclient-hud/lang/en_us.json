@@ -680,6 +680,7 @@
 	"key.slashclient-hud.spray": "Spray",
 	"key.slashclient-hud.dungeonZoomIn": "Dungeon map: zoom in",
 	"key.slashclient-hud.dungeonZoomOut": "Dungeon map: zoom out",
+	"key.slashclient-hud.dungeonStyle": "Dungeon map: detailed / simple view",
 	"key.slashclient-hud.dungeonMap": "Full-screen map (world or dungeon)",
 	"slashclient-hud.dungeon.whole": "Whole dungeon",
 	"slashclient-hud.dungeon.fullHelp": "Drag: move · Wheel: zoom in/out · Right click: whole map · Tab: view · M/Esc: close",

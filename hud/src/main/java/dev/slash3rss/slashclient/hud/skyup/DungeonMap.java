@@ -124,7 +124,7 @@ public final class DungeonMap implements HudModule {
 	private static DynamicTexture viewTexture;
 	private static Identifier viewId;
 	private static float viewX, viewZ, viewScale = 1f;
-	public static net.minecraft.client.KeyMapping zoomInKey, zoomOutKey, fullKey;
+	public static net.minecraft.client.KeyMapping zoomInKey, zoomOutKey, fullKey, styleKey;
 
 	public String id() {
 		return "dungeonmap";
@@ -282,6 +282,15 @@ public final class DungeonMap implements HudModule {
 
 	/** = and - zoom the map in and out, a quarter at a time. */
 	private static void zoomKeys() {
+		// H: the other look of the map (detailed or simple), as Tab in the full map
+		if (styleKey != null) {
+			boolean flip = false;
+			while (styleKey.consumeClick()) flip = !flip;
+			if (flip) {
+				SlashHud.config.dungeonStyle = simple() ? "detailed" : "simple";
+				SlashHud.config.save();
+			}
+		}
 		if (zoomInKey == null) return;
 		float zoom = SlashHud.config.dungeonZoom;
 		while (zoomInKey.consumeClick()) zoom += 0.25f;
