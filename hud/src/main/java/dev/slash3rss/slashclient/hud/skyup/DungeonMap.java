@@ -1090,6 +1090,17 @@ public final class DungeonMap implements HudModule {
 		arrow(g, x + 61, top + 98, 180);
 	}
 
+	/**
+	 * The debug (the grid and signs on the full map, D saving a file) is for the mod's makers: players do not see
+	 * it, only a game started from the sources or with -Dslashclient.debug=true in the profile's Java arguments.
+	 */
+	public static final boolean DEBUG_ALLOWED = net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment()
+		|| Boolean.getBoolean("slashclient.debug");
+
+	public static boolean debug() {
+		return DEBUG_ALLOWED && SlashHud.config.dungeonDebug;
+	}
+
 	/** Debug: what the map knows saved to a file (DungeonRooms.dump); null when there is nothing yet. */
 	public static java.nio.file.Path dumpDebug(Minecraft mc) throws java.io.IOException {
 		if (!active || minX > maxX) return null;
