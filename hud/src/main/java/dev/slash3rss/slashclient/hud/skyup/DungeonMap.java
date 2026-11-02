@@ -603,11 +603,7 @@ public final class DungeonMap implements HudModule {
 		drawOver(g, mc, ox, oy, W, H, viewX, viewZ, viewScale, SHOWN);
 		switch (SlashHud.config.dungeonCountersAt) {
 			case "above" -> drawCounters(g, mc, ox, y, counters());
-			case "inside" -> {
-				// a dark strip under them, so they read over the map
-				if (over > 0) g.fill(ox, oy + H - over, ox + W, oy + H, 0xA0000000);
-				drawCounters(g, mc, ox, oy + H - over, counters());
-			}
+			case "inside" -> drawCounters(g, mc, ox, oy + H - over, counters());
 			default -> drawCounters(g, mc, ox, oy + H, counters());
 		}
 	}
