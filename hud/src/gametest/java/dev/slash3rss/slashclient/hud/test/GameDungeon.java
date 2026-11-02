@@ -182,6 +182,18 @@ public class GameDungeon implements FabricClientGameTest {
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonCountersAt = "inside");
 			context.waitTicks(2);
 			context.takeScreenshot("dungeon-map-counters-inside");
+			// apart: a module of their own, put elsewhere (here top right), none under the map
+			context.runOnClient(mc -> {
+				var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+				cfg.dungeonCountersAt = "apart";
+				var p = cfg.placement("dungeonloot");
+				p.enabled = true;
+				p.ax = 0.5f;
+				p.ay = 0.8f;
+			});
+			context.waitTicks(2);
+			if (!context.computeOnClient(mc -> new dev.slash3rss.slashclient.hud.skyup.DungeonMap.Loot().visible(mc))) throw new AssertionError("The loot counters apart are not shown");
+			context.takeScreenshot("dungeon-map-counters-apart");
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonCountersAt = "below");
 			// a spawner block up on a ledge in the room south-east: visited, it is a room with a spawner
 			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 15, y, z0 + 15, x0 + 16, y + 2, z0 + 16));

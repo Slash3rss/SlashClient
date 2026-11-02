@@ -52,6 +52,8 @@ public final class Modules {
 		out.add(new NetherCoords());
 		// SkyUp.pl's dungeons: shown only inside one
 		out.add(new DungeonMap());
+		// its loot counters, when the player wants them apart from it
+		out.add(new DungeonMap.Loot());
 		// the ground around, from above (no entities)
 		out.add(new Minimap());
 		//#if MC >= 26.3

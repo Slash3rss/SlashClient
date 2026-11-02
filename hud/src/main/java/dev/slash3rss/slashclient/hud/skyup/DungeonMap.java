@@ -604,6 +604,8 @@ public final class DungeonMap implements HudModule {
 		switch (SlashHud.config.dungeonCountersAt) {
 			case "above" -> drawCounters(g, mc, ox, y, counters());
 			case "inside" -> drawCounters(g, mc, ox, oy + H - over, counters());
+			// a module of their own (Loot), wherever the player put it
+			case "apart" -> {}
 			default -> drawCounters(g, mc, ox, oy + H, counters());
 		}
 	}
@@ -897,6 +899,52 @@ public final class DungeonMap implements HudModule {
 		return dx * dx + dz * dz <= (W / 2f - 1) * (W / 2f - 1);
 	}
 
+	/** The width of the counters in one row. */
+	private static int rowWidth(Minecraft mc, java.util.List<int[]> counters) {
+		int w = 0;
+		for (int[] c : counters) w += counterWidth(mc, c) + 6;
+		return Math.max(0, w - 2);
+	}
+
+	/**
+	 * The loot counters as a module of their own, put anywhere in the HUD editor (with the map's
+	 * counters set to "apart"): one row, shown only in a dungeon with loot in the room.
+	 */
+	public static final class Loot implements HudModule {
+		/** Made-up counters for the editor: two chests of three taken, no barrel of two yet. */
+		private static final java.util.List<int[]> SAMPLE = java.util.List.of(new int[] { 0, 2, 3 }, new int[] { 1, 0, 2 });
+
+		@Override
+		public String id() {
+			return "dungeonloot";
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return "apart".equals(SlashHud.config.dungeonCountersAt) && !counters().isEmpty();
+		}
+
+		private static java.util.List<int[]> shown() {
+			java.util.List<int[]> c = counters();
+			return c.isEmpty() ? SAMPLE : c;
+		}
+
+		@Override
+		public int width(Minecraft mc) {
+			return rowWidth(mc, shown()) + 4;
+		}
+
+		@Override
+		public int height(Minecraft mc) {
+			return ROW + 2;
+		}
+
+		@Override
+		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			drawCounters(g, mc, x, y, shown(), Integer.MAX_VALUE);
+		}
+	}
+
 	/** The counters under the map: each kind of loot shown and found, its icon and taken of all. */
 	private static java.util.List<int[]> counters() {
 		java.util.List<int[]> out = new java.util.ArrayList<>();
@@ -913,17 +961,21 @@ public final class DungeonMap implements HudModule {
 
 	/** The counters' height: what they add to the module's (`all`: also when they lie on the map). */
 	private static int countersHeight(Minecraft mc, boolean all) {
-		if (!all && "inside".equals(SlashHud.config.dungeonCountersAt)) return 0;
+		if (!all && "inside".equals(SlashHud.config.dungeonCountersAt) || "apart".equals(SlashHud.config.dungeonCountersAt)) return 0;
 		java.util.List<int[]> counters = counters();
 		return counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2;
 	}
 
 	/** How many rows the counters take, laid out left to right and wrapped at the map's width. */
 	private static int counterRows(Minecraft mc, java.util.List<int[]> counters) {
+		return counterRows(mc, counters, W);
+	}
+
+	private static int counterRows(Minecraft mc, java.util.List<int[]> counters, int wrap) {
 		int rows = counters.isEmpty() ? 0 : 1, at = 0;
 		for (int[] c : counters) {
 			int w = counterWidth(mc, c);
-			if (at > 0 && at + w > W) {
+			if (at > 0 && at + w > wrap) {
 				rows++;
 				at = 0;
 			}
@@ -937,10 +989,14 @@ public final class DungeonMap implements HudModule {
 	}
 
 	private static void drawCounters(GuiGraphicsExtractor g, Minecraft mc, int x, int y, java.util.List<int[]> counters) {
+		drawCounters(g, mc, x, y, counters, W);
+	}
+
+	private static void drawCounters(GuiGraphicsExtractor g, Minecraft mc, int x, int y, java.util.List<int[]> counters, int wrap) {
 		int at = 0, row = 0;
 		for (int[] c : counters) {
 			int w = counterWidth(mc, c);
-			if (at > 0 && at + w > W) {
+			if (at > 0 && at + w > wrap) {
 				row++;
 				at = 0;
 			}

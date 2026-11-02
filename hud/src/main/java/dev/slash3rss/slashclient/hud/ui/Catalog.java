@@ -155,7 +155,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("attackindicator", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"),
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("dungeonloot", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	/** The accents to pick from: the launcher's blue first. */
@@ -304,8 +304,12 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
-					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside" }, "slashclient-hud.dungeon.countersAt.",
-						() -> cfg.dungeonCountersAt, v -> cfg.dungeonCountersAt = v));
+					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside", "apart" }, "slashclient-hud.dungeon.countersAt.",
+						() -> cfg.dungeonCountersAt, v -> {
+							cfg.dungeonCountersAt = v;
+							// apart: their own module, switched on, to be moved in the editor
+							if ("apart".equals(v)) cfg.placement("dungeonloot").enabled = true;
+						}));
 					hideWhen("dungeonmap", settings, () -> !cfg.dungeonCounters);
 					settings.add(new Toggle("slashclient-hud.dungeon.debug", () -> cfg.dungeonDebug, v -> cfg.dungeonDebug = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.dungeonChests, v -> cfg.dungeonChests = v));

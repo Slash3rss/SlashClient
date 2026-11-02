@@ -201,7 +201,7 @@ public final class HudConfig {
 	public boolean dungeonChests = true, dungeonBarrels = true, dungeonPots = true, dungeonFlowerPots = true, dungeonOres = true;
 	/** Counters under the dungeon map, one per kind of loot. */
 	public boolean dungeonCounters = true;
-	/** Where the counters are: "below" the map, "above" it, or "inside" it, along its bottom edge. */
+	/** Where the counters are: "below" the map, "above" it, "inside" it, along its bottom edge, or "apart" (a module of their own). */
 	public String dungeonCountersAt = "below";
 	/** Deepslate ores not counted ("coal,copper"), the rest are. */
 	public String dungeonOresOff = "";
@@ -690,6 +690,8 @@ public final class HudConfig {
 		// left column, one text line (14 px) apart
 		// the dungeon map on the left, beside the keystrokes (not over them); it shows only in a dungeon
 		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 80, 0));
+		// its loot counters on their own (only when set apart from the map), over it
+		c.modules.put("dungeonloot", new Placement(true, 0f, 0.5f, 80, 0));
 		// SkyUp's tasks on the left, under the usual top-left modules and above the dungeon map (the right side has
 		// the effects, CPU/GPU and the scoreboard); shown only with tasks to show
 		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
@@ -880,7 +882,7 @@ public final class HudConfig {
 		lootHighlightRange = Math.max(8, Math.min(64, other.lootHighlightRange));
 		dungeonOres = other.dungeonOres;
 		dungeonCounters = other.dungeonCounters;
-		dungeonCountersAt = java.util.List.of("below", "above", "inside").contains(other.dungeonCountersAt) ? other.dungeonCountersAt : "below";
+		dungeonCountersAt = java.util.List.of("below", "above", "inside", "apart").contains(other.dungeonCountersAt) ? other.dungeonCountersAt : "below";
 		dungeonOresOff = other.dungeonOresOff;
 		dungeonCleared = other.dungeonCleared;
 		dungeonNoSpawner = other.dungeonNoSpawner;
