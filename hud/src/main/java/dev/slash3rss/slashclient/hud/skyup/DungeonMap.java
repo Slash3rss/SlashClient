@@ -977,7 +977,7 @@ public final class DungeonMap implements HudModule {
 		int top = y;
 		if (simple()) {
 			// tiles in a grid: the start room, the one you are in, one with mobs, the rest; doors between them
-			int[][] tiles = { { 0, 0, 0xFFF06B6B }, { 1, 0, 0xFFA30E0E }, { 2, 0, 0xFFF06B6B }, { 0, 1, 0xFFF06B6B }, { 1, 1, 0xFF6EE86E }, { 2, 1, 0xFFB45656 }, { 1, 2, 0xFF0EA30E } };
+			int[][] tiles = { { 0, 0, 0xFF8B95A5 }, { 1, 0, 0xFF2E3440 }, { 2, 0, 0xFF8B95A5 }, { 0, 1, 0xFF8B95A5 }, { 1, 1, 0xFF6EE86E }, { 2, 1, 0xFF5B6475 }, { 1, 2, 0xFF0EA30E } };
 			for (int[] t : tiles) {
 				int tx = x + 8 + t[0] * 36, ty = top + 6 + t[1] * 36;
 				g.fill(tx, ty, tx + 32, ty + 32, 0xFF000000 | (t[2] & 0xFEFEFE) >> 1);
