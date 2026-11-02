@@ -136,12 +136,13 @@ public final class SessionRenew {
 		busy = true;
 		asked.add(why);
 		String token = mc.getUser().getAccessToken();
+		UUID player = mc.getUser().getProfileId();
 		Thread.ofVirtual().start(() -> {
 			String error = null;
 			JsonObject answer = null;
 			try {
 				Function<Boolean, JsonObject> fake = fakeLauncher;
-				answer = fake != null ? fake.apply(force) : Social.session(force);
+				answer = fake != null ? fake.apply(force) : Social.session(force, player);
 			} catch (Exception e) {
 				error = String.valueOf(e.getMessage());
 				SlashHud.LOG.warn("SlashClient: session renewal: {}", error);
@@ -151,6 +152,8 @@ public final class SessionRenew {
 			mc.execute(() -> {
 				busy = false;
 				String result = failed != null ? failed : handle(mc, token, got);
+				// each try in the log (a few a day), so a session that still runs out can be traced
+				if (failed == null) SlashHud.LOG.info("SlashClient: session renewal ({}): {}", why, result == null ? "renewed" : result);
 				if (then != null) then.accept(result);
 			});
 		});
