@@ -648,7 +648,7 @@ public final class DungeonMap implements HudModule {
 			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible() && !simple()) {
 				// (on the simple map mobs are heads on their room's tile)
 				// a mob, or an NPC (a player with a skin who is not on the tab list): drawn as its class is set to be
-				int kind = kind(e), size = kind == 3 ? 12 : 8, frame = FRAMES[kind];
+				int kind = kind(e), size = 8, frame = FRAMES[kind];
 				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
 			}
 		}
@@ -658,7 +658,7 @@ public final class DungeonMap implements HudModule {
 			if (!(m.mob() instanceof net.minecraft.world.entity.LivingEntity e)) continue;
 			int sx = Math.round((float) (m.x() - viewX) * viewScale), sz = Math.round((float) (m.z() - viewZ) * viewScale);
 			if (!clip.test(sx, sz)) continue;
-			int kind = mobKind(e), size = kind == 3 ? 12 : 8;
+			int kind = mobKind(e), size = 8;
 			mob(g, e, ox + sx, oy + sz, size, FRAMES[kind], mobStyle(kind));
 		}
 	}
@@ -689,7 +689,7 @@ public final class DungeonMap implements HudModule {
 			default -> {
 				// its face: a head it wears (servers dress mobs in player heads), an NPC's skin, its own face, else a dot
 				ItemStack worn = e.getItemBySlot(EquipmentSlot.HEAD);
-				if (e instanceof AbstractClientPlayer p) face(g, p, x, y, frame);
+				if (e instanceof AbstractClientPlayer p) face(g, p, x, y, frame, size);
 				else if (!worn.isEmpty() && worn.getItem() instanceof net.minecraft.world.item.BlockItem block && block.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock) {
 					g.fill(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1, frame);
 					item(g, worn, x, y, size);
@@ -717,10 +717,16 @@ public final class DungeonMap implements HudModule {
 
 	/** A face from the skin (with its hat layer) in a frame of the given colour, 8 pixels round the point. */
 	private static void face(GuiGraphicsExtractor g, AbstractClientPlayer p, int x, int y, int frame) {
+		face(g, p, x, y, frame, 8);
+	}
+
+	/** The same `size` pixels round the point (an NPC's face as big as the mobs' heads beside it). */
+	private static void face(GuiGraphicsExtractor g, AbstractClientPlayer p, int x, int y, int frame, int size) {
 		Identifier skin = Compat.skinTexture(p);
-		g.fill(x - 4, y - 4, x + 4, y + 4, frame);
-		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 8, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
-		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 40, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
+		int half = size / 2, inner = size - 2;
+		g.fill(x - half, y - half, x - half + size, y - half + size, frame);
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - half + 1, y - half + 1, 8, 8, inner, inner, 8, 8, 64, 64, 0xFFFFFFFF);
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - half + 1, y - half + 1, 40, 8, inner, inner, 8, 8, 64, 64, 0xFFFFFFFF);
 	}
 
 	/** Frames of the mob classes: unknown, normal (&e), elite (&6), mini boss (&4), minion (&5). */

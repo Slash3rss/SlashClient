@@ -1240,8 +1240,9 @@ public final class DungeonRooms {
 				strongestFirst(seen);
 				bossesOnly(seen);
 				if (seen.size() > 4) seen = new ArrayList<>(seen.subList(0, 4));
-				// heads smaller than the other icons, so a few fit side by side with room around them
-				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));
+				// heads all one size on every tile (big room or small, one mob or four): four of them fit
+				// two by two on a room of one square
+				int head = Math.max(6, Math.min(12, (Math.round(CELL * scale) - 8) / 2));
 				if (!near && SlashHud.config.dungeonMobs) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
 				for (int i = 0; i < seen.size(); i++) {
 					int cols = Math.min(2, seen.size() - i / 2 * 2), rows = (seen.size() + 1) / 2;
