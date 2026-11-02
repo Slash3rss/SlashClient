@@ -1,12 +1,13 @@
 // The "Wesprzyj" page (/wsparcie): why support helps, the tiers with what they give and cost, and
 // a checkout at the payment provider. Also the pages the provider sends the player back to
-// (/wsparcie/dziekujemy, /wsparcie/anulowano). The server sets every price and grants a tier only
+// (/wsparcie/dziekujemy, /wsparcie/anulowano; in English /support, /support/thanks, /support/cancelled). The server sets every price and grants a tier only
 // when the provider's webhook confirms the payment; this page only asks and shows.
-import { $, PROVIDERS, api, el, errorText, icon, signInDev, signInWith, toast, token } from './common.js';
+import { $, PROVIDERS, api, el, english, errorText, icon, localizePage, signInDev, signInWith, toast, token } from './common.js';
 import { featureOn, siteFeatures } from './siteBanner.js';
 
-/** The page is Polish; a browser in another language gets the English texts. */
-const EN = !/^pl\b/i.test(navigator.language || 'pl');
+/** The page is Polish; at /support, or for a browser in another language, English. */
+const EN = english();
+localizePage('Support SlashClient');
 const L = (pl, en) => (EN ? en : pl);
 const LOCALE = EN ? 'en-GB' : 'pl-PL';
 const money = (minor, currency) => new Intl.NumberFormat(LOCALE, { style: 'currency', currency, minimumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100);
@@ -139,7 +140,7 @@ function consents() {
     return el('label', { class: 'check' }, input, el('span', {}, ...label));
   };
   return el('div', { class: 'consents' },
-    box('terms', L('Akceptuję ', 'I accept the '), el('a', { href: '/wsparcie/regulamin', target: '_blank', textContent: L('regulamin wsparcia', 'support terms') }),
+    box('terms', L('Akceptuję ', 'I accept the '), el('a', { href: L('/wsparcie/regulamin', '/support/terms'), target: '_blank', textContent: L('regulamin wsparcia', 'support terms') }),
       L(' i rozumiem, że to dobrowolne wsparcie bez przewag w grze.', ' and understand this is voluntary support with no in-game advantages.')),
     box('consent', L('Mam 18 lat albo rodzic/opiekun zgodził się na tę płatność.', 'I am 18 or older, or a parent/guardian agreed to this payment.')));
 }
@@ -240,7 +241,7 @@ async function thanks() {
   const status = el('p', { class: 'muted', textContent: L('Sprawdzam płatność…', 'Checking the payment…') });
   root.replaceChildren(el('div', { class: 'glass card result' }, el('div', { class: 'result-icon' }, icon('fa-solid fa-heart')),
     el('h1', { textContent: L('Dziękujemy!', 'Thank you!') }), status,
-    el('div', { class: 'row' }, el('a', { class: 'btn', href: '/konto#wsparcie' }, icon('fa-solid fa-user'), L('Twoje konto', 'Your account')), el('a', { class: 'btn', href: '/wsparcie' }, L('Wróć', 'Back')))));
+    el('div', { class: 'row' }, el('a', { class: 'btn', href: L('/konto#wsparcie', '/account#wsparcie') }, icon('fa-solid fa-user'), L('Twoje konto', 'Your account')), el('a', { class: 'btn', href: L('/wsparcie', '/support') }, L('Wróć', 'Back')))));
   if (!token.get() || !/^p_[\w-]{6,20}$/.test(id)) {
     status.textContent = L('Gdy operator potwierdzi płatność, ranga pojawi się na Twoim koncie.', 'Once the provider confirms the payment, the rank shows on your account.');
     return;
@@ -275,13 +276,13 @@ function cancelled() {
   $('#support').replaceChildren(el('div', { class: 'glass card result' }, el('div', { class: 'result-icon muted' }, icon('fa-solid fa-circle-xmark')),
     el('h1', { textContent: L('Płatność przerwana', 'Payment cancelled') }),
     el('p', { class: 'muted', textContent: L('Nic nie zostało pobrane. Możesz spróbować ponownie, kiedy zechcesz.', 'Nothing was charged. You can try again whenever you like.') }),
-    el('div', { class: 'row' }, el('a', { class: 'btn primary', href: '/wsparcie' }, L('Wróć do wsparcia', 'Back to support')))));
+    el('div', { class: 'row' }, el('a', { class: 'btn primary', href: L('/wsparcie', '/support') }, L('Wróć do wsparcia', 'Back to support')))));
 }
 
 me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
 renderNav();
-if (/\/dziekujemy\/?$/.test(location.pathname)) thanks();
-else if (/\/anulowano\/?$/.test(location.pathname)) cancelled();
+if (/\/(dziekujemy|thanks)\/?$/.test(location.pathname)) thanks();
+else if (/\/(anulowano|cancelled)\/?$/.test(location.pathname)) cancelled();
 else {
   [offer, health] = await Promise.all([api('GET', '/v1/support').catch(() => offer), api('GET', '/v1/health').catch(() => health)]);
   // the admin may have switched new payments off for a while (Ustawienia → Funkcje)

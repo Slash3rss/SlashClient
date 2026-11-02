@@ -1,5 +1,6 @@
 import { escapeHtml, type Rendered } from './markdown.ts';
 import { DOCS, type Lang } from './store.ts';
+import { siteFooter } from '../siteFooter.ts';
 
 /** The page of one legal document: the site's header and footer, the contents list, the text. */
 
@@ -85,13 +86,7 @@ ${o.rendered.html}
       </div>
     </section>
   </main>
-  <footer class="foot">
-    <div class="wrap foot-row">
-      <span class="muted small">${u.unofficial}</span>
-      ${footer}
-      <a class="foot-link" href="${o.lang === 'en' ? '/en' : '/'}">${u.home}</a>
-    </div>
-  </footer>
+  ${siteFooter(o.lang)}
 </body>
 </html>
 `;

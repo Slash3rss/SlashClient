@@ -158,6 +158,8 @@ html:has(body.landing) { overflow-x: clip; }
 .foot-grid a:not(.brand) { color: var(--text-2); }
 .foot-grid a:not(.brand):hover { color: var(--text); }
 .foot .brand { margin-bottom: 10px; }
+/* in the one-line footer the logo sits on the line with the note and the links */
+.foot-row .brand { margin-bottom: 0; }
 
 @media (max-width: 900px) {
   .show { grid-template-columns: 1fr; gap: 34px; margin-bottom: 80px; }

@@ -518,7 +518,9 @@ export function supportRoutes(ctx: SupportContext) {
           console.error(`wsparcie: przechwycenie zamówienia PayPal ${pay.id}: ${scrub((err as Error).message)}`);
         }
       }
-      res.writeHead(302, { Location: `/wsparcie/dziekujemy${pay ? `?p=${encodeURIComponent(pay.id)}` : ''}`, 'Cache-Control': 'no-store' });
+      // back to the page in the language the player paid from
+      const back = url.searchParams.get('l') === 'en' ? '/support/thanks' : '/wsparcie/dziekujemy';
+      res.writeHead(302, { Location: `${back}${pay ? `?p=${encodeURIComponent(pay.id)}` : ''}`, 'Cache-Control': 'no-store' });
       res.end();
       return true;
     }
@@ -711,20 +713,22 @@ export function supportRoutes(ctx: SupportContext) {
       const pay = store.newPayment({ provider: providerId, ref: '', user: me, tier: tier.id, kind, quantity, days, amount, currency, mode: p.mode, customer, consentAt: now() });
       const productName = kind === 'monthly' ? `SlashClient – ${tier.name} (co miesiąc)` : `SlashClient – ${tier.name} (${days} dni)`;
       const en = typeof b.lang === 'string' && b.lang === 'en';
+      // where the provider sends the player back: the page in their language
+      const thanks = `${base}${en ? '/support/thanks' : '/wsparcie/dziekujemy'}?p=${pay.id}`, cancelled = `${base}${en ? '/support/cancelled' : '/wsparcie/anulowano'}?p=${pay.id}`;
       try {
         let made: { id: string; url: string };
         if (providerId === 'stripe') {
           const methods = String(p.settings.paymentMethods ?? '').split(',').map((s) => s.trim()).filter((m) => STRIPE_METHODS.includes(m));
           made = await createStripeCheckout(stripeOf(p.mode), {
             paymentId: pay.id, user: me, tier: tier.id, kind, amount, currency, productName,
-            successUrl: `${base}/wsparcie/dziekujemy?p=${pay.id}`, cancelUrl: `${base}/wsparcie/anulowano?p=${pay.id}`,
+            successUrl: thanks, cancelUrl: cancelled,
             customer: customer || undefined, paymentMethods: methods, locale: en ? 'en' : 'pl',
             taxCode: String(p.settings.taxCode ?? '') || undefined, managedPayments: p.settings.managedPayments === 'off' ? false : undefined,
           });
         } else {
           made = await createPayPalOrder(paypalOf(p.mode), {
             paymentId: pay.id, amount, currency, description: `${productName} @${user.handle}`,
-            returnUrl: `${base}/v1/payments/paypal/return?p=${pay.id}`, cancelUrl: `${base}/wsparcie/anulowano?p=${pay.id}`, locale: en ? 'en-GB' : 'pl-PL',
+            returnUrl: `${base}/v1/payments/paypal/return?p=${pay.id}${en ? '&l=en' : ''}`, cancelUrl: cancelled, locale: en ? 'en-GB' : 'pl-PL',
           });
         }
         store.updatePayment(pay.id, { ref: made.id });

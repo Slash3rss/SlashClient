@@ -5,6 +5,8 @@
 // A page's script may have left timers, animation loops and listeners on window or document behind:
 // they belong to the page they were made on and stop when it is left.
 
+import { restoreNav } from './navState.js';
+
 const PAGE = /^\/(|en|konto|account|admin|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
 const ROUTER = new URL(import.meta.url).pathname;
 
@@ -89,32 +91,49 @@ export async function go(href, { push = true } = {}) {
     document.head.append(added);
     return new Promise((done) => { added.onload = added.onerror = done; });
   }));
-  leave();
-  if (push) history.pushState(null, '', url.href);
-  shown = url.pathname + url.search;
-  document.title = next.title;
-  // the home page is Polish at / and English at /en
-  document.documentElement.lang = next.documentElement.lang || 'pl';
-  // what the page says about itself (description, canonical address, link previews) goes with it
-  const META = 'meta[name="description"], meta[name="robots"], meta[name="keywords"], link[rel="canonical"], meta[property^="og:"], meta[name^="twitter:"]';
-  document.head.querySelectorAll(META).forEach((m) => m.remove());
-  for (const m of next.head.querySelectorAll(META)) document.head.append(document.importNode(m, true));
-  document.body.className = next.body.className;
-  document.body.replaceChildren(...[...next.body.childNodes].map((n) => document.importNode(n, true)));
-  // the look of the page left goes with it (the admin panel's and the site's do not mix)
-  const wanted = new Set([...next.querySelectorAll('link[rel="stylesheet"]')].map((l) => new URL(l.getAttribute('href'), url).href));
-  document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => !wanted.has(l.href) && l.remove());
-  // the page's script runs again for the new content (a fresh copy of it; the shared modules stay)
-  loads++;
-  for (const s of next.querySelectorAll('script[type="module"][src]')) {
-    const src = new URL(s.getAttribute('src'), url);
-    if (src.pathname === ROUTER) continue;
-    src.searchParams.set('strona', String(loads));
-    await import(src.href).catch((err) => console.error(err));
-  }
-  // a new page starts where it should at once (the site scrolls smoothly only within a page)
-  if (url.hash) native.setTimeout(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView({ behavior: 'instant' }), 50);
-  else window.scrollTo({ top: 0, behavior: 'instant' });
+  const swap = async () => {
+    leave();
+    if (push) history.pushState(null, '', url.href);
+    shown = url.pathname + url.search;
+    document.title = next.title;
+    // the home page is Polish at / and English at /en
+    document.documentElement.lang = next.documentElement.lang || 'pl';
+    // what the page says about itself (description, canonical address, link previews) goes with it
+    const META = 'meta[name="description"], meta[name="robots"], meta[name="keywords"], link[rel="canonical"], meta[property^="og:"], meta[name^="twitter:"]';
+    document.head.querySelectorAll(META).forEach((m) => m.remove());
+    for (const m of next.head.querySelectorAll(META)) document.head.append(document.importNode(m, true));
+    document.body.className = next.body.className;
+    document.body.replaceChildren(...[...next.body.childNodes].map((n) => document.importNode(n, true)));
+    // the signed-in player's name in the new header straight away, not "Zaloguj się" until its script asks
+    restoreNav();
+    // the look of the page left goes with it (the admin panel's and the site's do not mix)
+    const wanted = new Set([...next.querySelectorAll('link[rel="stylesheet"]')].map((l) => new URL(l.getAttribute('href'), url).href));
+    document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => !wanted.has(l.href) && l.remove());
+    // the page's script runs again for the new content (a fresh copy of it; the shared modules stay)
+    loads++;
+    for (const s of next.querySelectorAll('script[type="module"][src]')) {
+      const src = new URL(s.getAttribute('src'), url);
+      if (src.pathname === ROUTER) continue;
+      src.searchParams.set('strona', String(loads));
+      await import(src.href).catch((err) => console.error(err));
+    }
+    // a page drawn whole by its script (the admin panel's empty #root) is shown once it has something in it
+    const root = document.getElementById('root');
+    if (root && !root.children.length) {
+      await new Promise((done) => {
+        const seen = new MutationObserver(() => root.children.length && (seen.disconnect(), done()));
+        seen.observe(root, { childList: true });
+      });
+    }
+    // a new page starts where it should at once (the site scrolls smoothly only within a page)
+    if (url.hash) native.setTimeout(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView({ behavior: 'instant' }), 50);
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  // the page left stays on screen until the new one has drawn itself (the admin panel builds its whole look in
+  // its script, after asking the server), then fades into it: no empty frame in another colour in between
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    await document.startViewTransition(() => Promise.race([swap(), new Promise((done) => native.setTimeout(done, 400))])).finished.catch(() => {});
+  } else await swap();
 }
 
 native.docAdd('click', (e) => {

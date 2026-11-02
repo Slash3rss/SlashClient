@@ -235,6 +235,12 @@ describe('checkouts', () => {
     assert.equal((await call('POST', '/v1/admin/support/providers/stripe', admin.token, { taxCode: '', managedPayments: 'default' })).status, 200);
   });
 
+  it('sends a player who paid from the English page back to it', async () => {
+    const c = await stripeCheckout(alice.token, { lang: 'en', currency: 'PLN' });
+    assert.equal(c.params.get('success_url'), `https://client.example/support/thanks?p=${c.payment}`);
+    assert.equal(c.params.get('cancel_url'), `https://client.example/support/cancelled?p=${c.payment}`);
+  });
+
   it('asks Stripe for the tier\'s price, whatever the page says', async () => {
     assert.equal((await call('POST', '/v1/support/checkout', undefined, { tier: 'supporter', kind: 'one_time', provider: 'stripe', terms: true, consent: true })).status, 401);
     const c = await stripeCheckout(alice.token, { quantity: 2, amount: 1, price: 1, currency: 'PLN' });
@@ -418,6 +424,8 @@ describe('PayPal', () => {
     assert.equal(back.status, 302);
     assert.equal(back.headers.get('location'), `/wsparcie/dziekujemy?p=${res.body.payment}`);
     assert.equal(paypalCalls.filter((c) => c.path === '/v2/checkout/orders/ORDER1/capture').length, 1);
+    // from the English page: back to it
+    assert.equal((await call('GET', `/v1/payments/paypal/return?p=${res.body.payment}&token=ORDER1&l=en`)).headers.get('location'), `/support/thanks?p=${res.body.payment}`);
     assert.equal(paypalCalls.find((c) => c.path === '/v2/checkout/orders/ORDER1/capture')!.requestId, `capture-${res.body.payment}`);
     assert.equal((await me(erin.token)).supporter, null);
 

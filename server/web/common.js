@@ -2,14 +2,16 @@
 // small DOM helpers and toasts. The session token stays in this browser only (localStorage).
 
 import { gameIconInto } from './preview.js';
+import './navState.js';
 
 const TOKEN = 'slashclient.token';
 
 /**
- * The player's pages speak English to a browser not set to Polish; the admin panel stays Polish.
+ * The player's pages speak English to a browser not set to Polish, and always at their English address
+ * (/support, the link of the English home page); the admin panel stays Polish.
  * Asked on each use: the router moves between the site and the panel without loading this file again.
  */
-export const english = () => !location.pathname.startsWith('/admin') && !/^pl\b/i.test(navigator.language || 'pl');
+export const english = () => /^\/support(\/|$)/.test(location.pathname) || (!location.pathname.startsWith('/admin') && !/^pl\b/i.test(navigator.language || 'pl'));
 /** The Polish or the English text, by the page's language. */
 export const L = (pl, en) => (english() ? en : pl);
 /** Dates and numbers in the page's language. */

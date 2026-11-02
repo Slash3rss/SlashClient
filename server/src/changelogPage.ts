@@ -1,6 +1,7 @@
 import type http from 'node:http';
 import type { ChangelogEntry, Downloads } from './downloads.ts';
 import { escapeHtml, notesHtml, parseVersion } from './releaseNotes.ts';
+import { siteFooter } from './siteFooter.ts';
 
 /**
  * The changelog page: /zmiany in Polish, /changelog in English. Every launcher release with its
@@ -119,12 +120,7 @@ export function changelogPage(o: { lang: Lang; releases: ChangelogEntry[]; more:
       </div>
     </section>
   </main>
-  <footer class="foot">
-    <div class="wrap foot-row">
-      <span class="muted small">${u.unofficial}</span>
-      <a class="push foot-link" href="${u.home}">${u.homeLabel}</a>
-    </div>
-  </footer>
+  ${siteFooter(o.lang)}
 </body>
 </html>
 `;

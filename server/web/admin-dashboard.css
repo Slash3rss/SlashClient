@@ -2,8 +2,9 @@
 .dash-section { margin-top: 30px; }
 .dash-h { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
 .dash-h i { color: var(--accent-light); font-size: 15px; width: 18px; text-align: center; }
-.dash-period { display: flex; gap: 6px; }
-.dash-period button { min-width: 64px; }
+/* in the page's head, level with the button beside it (the tabs' own margin is for under a heading) */
+.dash-period { display: flex; gap: 6px; margin: 0; }
+.dash-period button { min-width: 64px; height: 40px; }
 
 /* a tile that opens a tab */
 .stat.link { position: relative; color: inherit; text-decoration: none; transition: background .15s, border-color .15s; }

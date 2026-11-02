@@ -61,8 +61,9 @@ export async function supportPage() {
       stat('fa-solid fa-rotate', 'Subskrypcje (live)', data.activeSubscriptions),
       stat('fa-solid fa-coins', 'Ten miesiąc (live)', thisMonth.length ? thisMonth.map((r) => money(r.paid - r.refunded, r.currency)).join(' + ') : money(0), 'po zwrotach'),
       // the unregistered business's limit (Ustawienia → Wsparcie); an older server sends no quarter
-      data.quarter?.on ? stat('fa-solid fa-scale-balanced', 'Ten kwartał / limit', `${money(data.quarter.taken)} / ${money(data.quarter.limit)}`,
-        data.quarter.taken >= data.quarter.stopAt ? 'nowe płatności wstrzymane do następnego kwartału' : `wstrzymanie przy ${money(data.quarter.stopAt)}, euro po kursie z ustawień`) : ''),
+      data.quarter?.on ? stat('fa-solid fa-scale-balanced', 'Ten kwartał', money(data.quarter.taken),
+        data.quarter.taken >= data.quarter.stopAt ? 'limit: nowe płatności wstrzymane do następnego kwartału'
+          : `z ${money(data.quarter.limit)} · wstrzymanie przy ${Math.round((data.quarter.stopAt / data.quarter.limit) * 100)}%`) : ''),
     // the players' refund requests (adminRefunds.js), waiting ones first
     el('h2', { class: 'sup-h' }, 'Zwroty', data.pendingRefunds ? el('span', { class: 'chip gold', textContent: `${data.pendingRefunds} czeka` }) : ''),
     el('div', { id: 'sup-refunds' }),

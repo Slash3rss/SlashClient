@@ -16,6 +16,7 @@ const TYPES: Record<string, string> = {
 const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/account': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html',
   // supporting the project (payments/support.ts): the page, where the payment providers send players back, the terms
   '/wsparcie': 'wsparcie.html', '/support': 'wsparcie.html', '/wsparcie/dziekujemy': 'wsparcie.html', '/wsparcie/anulowano': 'wsparcie.html',
+  '/support/thanks': 'wsparcie.html', '/support/cancelled': 'wsparcie.html',
   '/wsparcie/regulamin': 'wsparcie-regulamin.html', '/support/terms': 'wsparcie-regulamin.html',
   // the phone app (installed from the browser), its own pages under /app/
   '/app': 'app/index.html', '/app/': 'app/index.html' };

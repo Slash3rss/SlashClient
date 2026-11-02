@@ -46,7 +46,7 @@ export async function supportCard() {
     card.replaceChildren(
       el('h3', {}, icon('fa-solid fa-heart'), L(' Wsparcie projektu', ' Supporting the project')),
       now, subLine,
-      el('div', { class: 'row' }, el('a', { class: 'btn', href: '/wsparcie' }, icon('fa-solid fa-heart'), s && !s.past ? L('Wesprzyj ponownie', 'Support again') : L('Wesprzyj projekt', 'Support the project')), portal),
+      el('div', { class: 'row' }, el('a', { class: 'btn', href: L('/wsparcie', '/support') }, icon('fa-solid fa-heart'), s && !s.past ? L('Wesprzyj ponownie', 'Support again') : L('Wesprzyj projekt', 'Support the project')), portal),
       toggle('profile', L('Pokazuj odznakę wsparcia na moim profilu', 'Show the supporter badge on my profile')),
       toggle('wall', L('Pokaż mnie na ścianie wspierających', 'Show me on the supporters wall')),
       // the payments with their refund requests (paymentHistory.js)

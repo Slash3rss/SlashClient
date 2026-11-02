@@ -74,6 +74,9 @@
 
 /* the account page's card */
 .support-card .row { gap: 8px; }
+/* the support button apart from the switches under it, the switches a little apart from each other */
+.support-card > .row:has(> .btn) { margin-bottom: 8px; }
+.support-card > label.row + label.row { margin-top: 6px; }
 .support-card table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
 .support-card td { padding: 4px 6px 4px 0; border-top: 1px solid var(--border); }
 .chip.supporter { background: color-mix(in srgb, var(--tier, #f472b6) 18%, transparent); color: var(--tier, #f472b6); }
@@ -89,7 +92,9 @@
 }
 
 /* the account page's payment history and refund requests (paymentHistory.js) */
-.pay-history { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+/* apart from the switches above it; nothing when there is no history */
+.pay-history { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.pay-history:empty { margin-top: 0; }
 .pay-history h4 { margin: 4px 0 0; font-size: 14px; }
 .pay-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
 .pay-row .row { gap: 8px; flex-wrap: wrap; }
