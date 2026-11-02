@@ -25,6 +25,7 @@ import java.util.Locale;
 import dev.slash3rss.slashclient.hud.chat.ChatLook;
 import dev.slash3rss.slashclient.hud.chat.ChatTabs;
 import dev.slash3rss.slashclient.hud.chat.ChatTabsScreen;
+import dev.slash3rss.slashclient.hud.config.HudPresets;
 import dev.slash3rss.slashclient.hud.servers.ServerLayouts;
 import dev.slash3rss.slashclient.hud.servers.ServerLayoutsPanel;
 
@@ -79,6 +80,8 @@ public class HudEditScreen extends Screen {
 	private List<Catalog.Entry> entries;
 	/** The text fields of the open settings page (Catalog.Text rows), placed on their rows as they are drawn. */
 	private final java.util.Map<Catalog.Text, EditBox> textFields = new java.util.LinkedHashMap<>();
+	/** The Share page's field for the name of a preset to save (null on other pages). */
+	private EditBox presetName;
 
 	/** Clickable places of the last frame, checked from the top down. */
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
@@ -649,6 +652,17 @@ public class HudEditScreen extends Screen {
 		longHints.clear();
 		if (chatTabsPage()) initChatTabs();
 		else if (window && settingsOf != null && !crosshairPage()) initTextFields();
+		presetName = null;
+		PresetsPanel.message = Component.empty();
+		if (window && settingsOf == null && category.equals("share")) {
+			// the name of a preset to save on the Share page; shown once drawShare has put it in its place
+			presetName = new EditBox(font, 0, 0, 100, 12, Ui.tr("slashclient-hud.presets.name"));
+			presetName.setBordered(false);
+			presetName.setTextColor(Ui.TEXT);
+			presetName.setMaxLength(HudPresets.NAME_MAX);
+			presetName.visible = false;
+			addRenderableWidget(presetName);
+		}
 		if (window && settingsOf == null && !category.equals("share")) {
 			search = new EditBox(font, winX() + winW() - 176, winY() + 12, 132, 12, Ui.tr("slashclient-hud.ui.search"));
 			search.setBordered(false);
@@ -1435,6 +1449,15 @@ public class HudEditScreen extends Screen {
 		int hitsBefore = hits.size();
 		g.enableScissor(x, top, x + w, top + h);
 		Ui.beginClip("share page", x, top, w, h);
+		sharePageBox = new int[] { top, top + h };
+		// first the ready layouts and the player's saved ones: a click puts one on, Ctrl+Z or "Back to my layout" takes it off
+		y = PresetsPanel.draw(g, mx, my, x, y, w, top, top + h, presetName, (hx, hy, hw, hh, action) -> hits.add(new Hit(hx, hy, hw, hh, action)), () -> {
+			entries = null;
+			entries();
+			history.commit();
+		});
+		g.fill(x, y, x + w, y + 1, Ui.BORDER);
+		y += 7;
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.share.title"), w), x, y + 2, Ui.TEXT);
 		int ty = Ui.wrapped(g, Ui.tr("slashclient-hud.share.help"), x, y + 16, w, Ui.TEXT_2) + 8;
 		HudConfig cfg = SlashHud.config;
@@ -1517,6 +1540,7 @@ public class HudEditScreen extends Screen {
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
 		if (search != null) search.setFocused(false);
+		if (presetName != null) presetName.setFocused(false);
 		for (EditBox box : textFields.values()) box.setFocused(false);
 		HudModule last = clicked;
 		clicked = null;
@@ -1907,6 +1931,19 @@ public class HudEditScreen extends Screen {
 		HudModule m = SlashHud.MODULES.stream().filter(x -> x.id().equals(id)).findFirst().orElseThrow();
 		int[] c = gearBox(m);
 		return new double[] { c[0] + c[2] / 2.0, c[1] + c[2] / 2.0 };
+	}
+
+	/** For the in-game test: the Share page's box, from its top to its bottom, as last drawn. */
+	private int[] sharePageBox;
+
+	/** For the in-game test: whether this point of the Share page is in its box, so it can be clicked. */
+	public boolean onSharePage(double[] at) {
+		return at != null && sharePageBox != null && at[1] >= sharePageBox[0] + 4 && at[1] <= sharePageBox[1] - 4;
+	}
+
+	/** For the in-game test: a name typed in the Share page's field for a new preset. */
+	public void presetNameForTest(String name) {
+		if (presetName != null) presetName.setValue(name);
 	}
 
 	/** A module's box on this screen, for the test. */
