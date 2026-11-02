@@ -4,7 +4,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
+import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionAccount, gameSessionMargin, LAUNCH_RENEW_MS, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
@@ -1851,7 +1851,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (account.type === 'msa') {
     send('launch:stage', { stage: t('Odświeżanie sesji Microsoft'), done: 0, total: 1 });
     // through the same renewal as the skin panel and the running game: one request to Microsoft
-    account = await freshMsa(account.id);
+    account = await freshMsa(account.id, LAUNCH_RENEW_MS);
   }
   await persist();
 
@@ -2258,7 +2258,7 @@ const bridge = new GameBridge({
     const account = store.accounts.find((a) => a.id === id);
     if (!account) throw new Error('no_account');
     const session = account.type === 'msa'
-      ? await freshMsa(id).then((a) => ({ name: a.name, uuid: a.uuid, accessToken: a.accessToken, xuid: a.xuid, type: 'msa' }))
+      ? await freshMsa(id, LAUNCH_RENEW_MS).then((a) => ({ name: a.name, uuid: a.uuid, accessToken: a.accessToken, xuid: a.xuid, type: 'msa' }))
       : { name: account.name, uuid: account.uuid, accessToken: randomBytes(16).toString('hex'), xuid: '', type: 'offline' };
     gameAccountId = id;
     store.settings.selectedAccountId = id;
