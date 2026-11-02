@@ -45,9 +45,11 @@ public final class XpMath {
 	public static final int[] GENERATORS = { 8, 16 }, UNBREAKING = { 3, 4, 5, 6 };
 
 	/**
-	 * XP a generator wears off a pickaxe between two throws of a 12 s clock, without Unbreaking: the
-	 * low end, safe, the high end and the most. Fitted to what was measured on SkyUp (8 and 16
-	 * generators, Unbreaking III–VI, the website's table): safe and the high end give exactly its numbers.
+	 * XP a generator wears off a pickaxe between two throws of the server clock (12 s), without
+	 * Unbreaking: the low end, safe, the high end and the most. On SkyUp mending one point of wear costs
+	 * 2 XP, so 26 is about 13 blocks a generator at its fastest regrowth. Fitted to SkyUp's wiki table
+	 * (skyup.pl/wiki/afk: 8 and 16 generators, Unbreaking III–VI): safe and the high end give exactly its
+	 * numbers. The miner's job, which wears less, is not counted, as there.
 	 */
 	private static final double LOW = 24.1, SAFE = 25.7, HIGH = 26, MAX = 27.1;
 
