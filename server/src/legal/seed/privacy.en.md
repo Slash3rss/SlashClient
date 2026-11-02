@@ -2,7 +2,7 @@
 
 ## 1. Controller and contact {#controller}
 
-The controller of your personal data is {{admin.name}}, {{admin.address}}, {{admin.nip}} ("we"). For data protection matters write to {{admin.email}}. [UZUPEŁNIJ: data protection officer, if appointed; otherwise delete this sentence]
+The controller of your personal data is {{admin.name}}, {{admin.address}}, {{admin.nip}} ("we"). For data protection matters write to {{admin.email}}. We have not appointed a data protection officer (we are not required to).
 
 This policy covers the SlashClient launcher, the mod (HUD), the website [slashclient.pl](https://slashclient.pl/) and the online services server (account, friends, chat, clans, achievements, Cosmetics, file sharing, support). Terms have the same meaning as in the [Terms of Service](/terms).
 
@@ -49,6 +49,8 @@ Legal bases (Art. 6(1) GDPR): **(b)** performance of a contract — providing th
 | Bug reports | title, description, log link, version, system, comments, author (public) | handling reports — (f) |
 | Support and payments | account, tier, type (one-time/monthly), amount, currency, status, payment and refund dates, the operator's payment, customer and subscription identifiers (Stripe, PayPal), confirmation of being an adult or having parental consent (time), perks granted; payment confirmation details (method type, e.g. card or BLIK, the operator's receipt link, refunded amount, end of the paid period); presence on the supporters wall, profile badge. We do not receive card or payment account details. | support — (b); accounting and tax — (c); complaints, refunds, chargebacks — (f); supporters wall — (a), off by default |
 | Refund requests | payment, account, reason (free text up to 500 characters, if you give one), whether a parent or guardian is asking, status, the answer and id of the deciding administrator, the operator's refund id, dates. Visible only to the requester and administrators. | handling refunds — (b); accounting — (c); defending claims — (f) |
+| Benchmark results shared by link | the test result (FPS, game version, scene), names and sizes of the computer's parts (processor, graphics card, memory, system, Java), date; no account or name | sharing the result — (b) |
+| Voting for servers | your Minecraft name (verified by Mojang) and IP address passed to the server list (lista.slash3rss.dev), which enforces one vote a day; we keep only an in-memory rate limit | the vote you ask for — (b) |
 | Technical data | see section 5 | security and operation of the Services — (f) |
 | Admin log | administrators' actions (who, what, to whom, when, details) | accountability of moderation — (f) |
 
@@ -56,10 +58,10 @@ Legal bases (Art. 6(1) GDPR): **(b)** performance of a contract — providing th
 
 - **API request log** — for the admin panel the server records requests: time, method, path (without parameters or body), response code, duration, account id, **IP address with the last part hidden** (e.g. 203.0.113.x), client type and version, error code. Entries are deleted after 7 days (at most the last 50,000 are kept).
 - **Statistics for the administrator** — the days on which an account used the services (the date only), the account's latest launcher version and the daily peak of players online; used only for aggregate statistics in the admin panel.
-- **Web server logs** — the reverse proxy (Caddy) logs access to the website and API (full IP address, time, URL, browser). Files rotate at 10 MB and the last 5 are kept. [UZUPEŁNIJ: actual retention period; possible reduction of logging]
-- **System logs** — server error messages. [UZUPEŁNIJ: retention of system logs on the server]
+- **Web server logs** — the reverse proxy (Caddy) logs access to the website and API (full IP address, time, URL, browser). Files rotate at 10 MB; at most the last 5 are kept and for no longer than 30 days.
+- **System logs** — server error messages (without message contents or tokens), kept for up to 30 days.
 - **Rate limits** — counters per IP address or account (e.g. sign-ins, log sharing) kept in memory only, for a few minutes.
-- **Backups** — [UZUPEŁNIJ: whether and how often database backups are made, where they are kept and for how long]
+- **Backups** — a copy of the database before each server update, on the same server; when a spare server runs, also a live copy of the database and files in Cloudflare R2 storage plus hourly (48 hours) and daily (30 days) copies. Backups are used only to restore the Services after a failure.
 
 Basis: our legitimate interest in keeping the Services secure and running (Art. 6(1)(f) GDPR).
 
@@ -72,7 +74,7 @@ Limitations worth knowing:
 - we see metadata: who writes to whom and when, when a message was read, edited or deleted;
 - **community chat is not end-to-end encrypted**: encrypting for each of up to 1000 members isn't practical, and moderators must be able to act on reports. The text is encrypted only in transit (HTTPS) and stored on the server; community members, its moderators and SlashClient administrators can see it. The launcher and the game say so above the message box;
 - game invites and shared waypoints (server address, coordinates) are not end-to-end encrypted;
-- if a friend uses a very old launcher without encryption keys, a text message to them is sent without end-to-end encryption (pictures cannot be sent then) [UZUPEŁNIJ: consider disabling this];
+- if a friend uses a very old launcher without encryption keys, a text message to them is sent without end-to-end encryption (pictures cannot be sent then);
 - after signing in on a new computer, older messages may be unreadable because they were encrypted for other devices.
 
 Connections to the server are encrypted (HTTPS/TLS).
@@ -89,7 +91,7 @@ Connections to the server are encrypted (HTTPS/TLS).
 
 - The website **uses no analytics or advertising cookies** and no third-party tracking scripts.
 - After you sign in, the session token is stored in the browser (localStorage, key `slashclient.token`) — it is needed to keep you signed in; signing out removes it.
-- The website may be served through Cloudflare's network, which may set technical security cookies (e.g. bot protection). [UZUPEŁNIJ: confirm whether the domain is behind the Cloudflare proxy and which cookies appear]
+- The website runs through Cloudflare's network, which may set strictly necessary technical security cookies (e.g. bot protection, `__cf_bm`, `cf_clearance`). They are not used for tracking or advertising.
 - When you sign in we redirect you to the chosen sign-in provider; its page follows its own rules and cookies. Providers' avatars (Discord, Google, GitHub) load from their servers.
 - The payment page redirects to Stripe or PayPal, which use their own cookies.
 
@@ -97,8 +99,9 @@ Connections to the server are encrypted (HTTPS/TLS).
 
 We do not sell data. Data may be received by:
 
-- **the server (VPS) provider** — [UZUPEŁNIJ: hosting provider's name, country, data processing agreement];
-- **Cloudflare, Inc.** — content delivery and protection of the website [UZUPEŁNIJ: confirm]; optionally **Cloudflare R2** or **Backblaze B2** — storage of shared files and cloud profiles, if enabled in the panel [UZUPEŁNIJ: which are used and in which location/jurisdiction, e.g. EU];
+- **the server (VPS) provider** — {{admin.hosting}}, under a data processing agreement;
+- **Cloudflare, Inc.** — content delivery and protection of the website; **Cloudflare R2** (and optionally **Backblaze B2**, if enabled in the panel) — storage of shared files, cloud profiles and backups;
+- **the server list** (lista.slash3rss.dev) — your Minecraft name and IP address, only when you vote for a server;
 - **Stripe** and **PayPal** — payment processing; we pass the SlashClient Account id, tier and amount, while you give payment details directly to the operator, which is a separate controller for them;
 - **sign-in providers** (Discord, Microsoft, Google, GitHub) and **Mojang/Microsoft** — for sign-in and Minecraft account verification; they are separate controllers;
 - **GitHub** — installers and launcher updates are downloaded from its servers (it sees your IP address);
@@ -107,31 +110,33 @@ We do not sell data. Data may be received by:
 
 ## 10. Transfers outside the EEA {#transfers}
 
-Some recipients (e.g. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google, GitHub, Microsoft) are based or have servers in the USA or other countries outside the European Economic Area. Transfers rely on [UZUPEŁNIJ: for each recipient — a European Commission adequacy decision (EU-US Data Privacy Framework) or standard contractual clauses]. You can get a copy of the safeguards by writing to us.
+Some recipients (e.g. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google, GitHub, Microsoft) are based or have servers in the USA or other countries outside the European Economic Area. Transfers rely on the European Commission's adequacy decision (EU-US Data Privacy Framework) for recipients certified under it, and otherwise on standard contractual clauses adopted by the European Commission. You can get a copy of the safeguards by writing to us.
 
 ## 11. How long we keep data {#retention}
 
 | Data | Period |
 |---|---|
 | Account, friends, Cosmetics, Sparks, achievements, statistics, clans, profile settings | until the account is deleted |
-| Private and group messages (ciphertext and metadata) | until the author deletes the message (a "deleted" marker without content remains) or the account is deleted [UZUPEŁNIJ: consider automatic deletion of old messages] |
+| Private and group messages (ciphertext and metadata) | until the author deletes the message (a "deleted" marker without content remains) or the account is deleted |
 | Chat pictures | 30 days (not attached to a message — 1 hour) |
 | Screenshots and clips shared by link | 30 days or earlier deletion by you |
 | Profile codes | 30 days or earlier deletion by you |
 | Cloud profiles | until you or the account deletion removes them |
 | Logs (/logs) | 90 days |
-| Bug reports and comments | until removed by an administrator [UZUPEŁNIJ: target period] |
+| Bug reports and comments | until removed by an administrator (a public history of bugs) |
+| Benchmark results shared by link | 365 days |
 | Sessions | until sign-out; a session unused for 90 days expires |
 | Device public keys | the 10 most recently used devices, until the account is deleted |
 | Status, activity, parties, emotes, sprays, rate limits | server memory only — minutes to a few hours |
 | API request log (masked IP) | 7 days (at most 50,000 entries) |
 | Account activity days, launcher version (statistics) | until the account is deleted |
-| Web server logs (full IP) | rotation 5 × 10 MB [UZUPEŁNIJ: period] |
-| Payments | [UZUPEŁNIJ: e.g. 5 years from the end of the year of payment (Polish Accounting Act, Tax Ordinance)] |
-| Refund requests | as payment records [UZUPEŁNIJ: consider deleting the reason text a few months after the request is closed] |
+| Web server logs (full IP) | up to 30 days (at most 5 × 10 MB) |
+| System logs | up to 30 days |
+| Payments and the sales record | 5 years from the end of the year of payment (Polish Tax Ordinance), also after the account is deleted |
+| Refund requests | as payment records |
 | Acknowledgements of document changes | until the account is deleted |
-| Admin log | [UZUPEŁNIJ: period] |
-| Backups | [UZUPEŁNIJ: period] |
+| Admin log | 3 years |
+| Backups | hourly copies 48 hours, daily copies 30 days; copies made before server updates up to 30 days |
 
 After the period, data is deleted automatically (shared files by an hourly cleanup). Data needed to defend against claims may be kept until the claims are time-barred.
 
@@ -158,7 +163,7 @@ Much of it you can do yourself:
 - deleting your own message, a shared screenshot or clip, a profile code, a cloud profile — in the launcher;
 - supporters wall and badge — in the support settings on the account page.
 
-For everything else — in particular **account deletion and a copy of your data** — write to {{admin.email}}. [UZUPEŁNIJ: once implemented, add the "Download my data" and "Delete account" buttons on /account] To make sure nobody impersonates you, we may ask you to confirm the account is yours (e.g. a SlashClient chat message to an administrator or signing in on the website). We reply within one month; for complex requests this may be extended by two further months, in which case we will tell you.
+For everything else — in particular **account deletion and a copy of your data** — write to {{admin.email}}. To make sure nobody impersonates you, we may ask you to confirm the account is yours (e.g. a SlashClient chat message to an administrator or signing in on the website). We reply within one month; for complex requests this may be extended by two further months, in which case we will tell you.
 
 ## 14. Do you have to provide data {#voluntary}
 

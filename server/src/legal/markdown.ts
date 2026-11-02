@@ -24,7 +24,8 @@ export const VARS: Record<string, string> = {
   'admin.name': 'imię i nazwisko albo nazwa firmy administratora',
   'admin.address': 'adres do doręczeń',
   'admin.email': 'adres e-mail do kontaktu',
-  'admin.nip': 'NIP i REGON, jeśli są',
+  'admin.nip': 'NIP i REGON, jeśli są; przy działalności nierejestrowanej: „działalność nierejestrowana (bez NIP)”',
+  'admin.hosting': 'dostawca serwera (VPS) i kraj, np. „SummerHosting, Polska”',
 };
 
 export const escapeHtml = (s: string): string =>

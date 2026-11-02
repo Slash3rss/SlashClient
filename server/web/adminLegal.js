@@ -230,6 +230,17 @@ async function editor(doc, lang) {
         el('tbody', {}, ...rows))));
   }
 
+  // the wording a server update brought: into the field only, to be read, compared on publishing and published by hand
+  const fromCode = el('button', { class: 'small', title: 'Tekst dostarczony z aktualizacją serwera. Trafia tylko do edytora; na stronie pojawi się po opublikowaniu.', onclick: async () => {
+    const r = await guard(() => api('GET', `/v1/admin/legal/${doc}/${lang}/seed`));
+    if (!r) return;
+    if (r.body === area.value) return toast('Tekst w edytorze jest już taki jak w kodzie.');
+    if (dirty() && !await confirmModal(DISCARD)) return;
+    area.value = r.body;
+    showStatus();
+    livePreview();
+    toast('Wczytano tekst z kodu. Przejrzyj podgląd i opublikuj.');
+  } }, icon('fa-solid fa-file-import'), 'Wczytaj tekst z kodu');
   const back = el('button', { onclick: async () => { if (!dirty() || await confirmModal(DISCARD)) legalPage(); } }, icon('fa-solid fa-arrow-left'), 'Dokumenty');
   const other = lang === 'pl' ? 'en' : 'pl';
   head.append(back, el('h1', { textContent: `${state.name} — ${LANG_NAMES[lang]}` }),
@@ -244,7 +255,7 @@ async function editor(doc, lang) {
         el('label', { class: 'row small lg-major' }, el('span', { class: 'switch' }, major, el('span')), 'Zmiana istotna (powiadom zalogowanych graczy)')),
       el('div', { class: 'row' }, el('div', { class: 'grow' }, note), publish)),
     el('div', { class: 'lg-editor' },
-      el('div', { class: 'glass card lg-pane' }, el('div', { class: 'row lg-pane-head' }, el('b', { textContent: 'Tekst (Markdown)' })), area,
+      el('div', { class: 'glass card lg-pane' }, el('div', { class: 'row lg-pane-head' }, el('b', { class: 'grow', textContent: 'Tekst (Markdown)' }), fromCode), area,
         el('details', { class: 'lg-help' }, el('summary', { textContent: 'Składnia' }),
           el('table', {}, el('tbody', {}, ...HELP.map(([a, b]) => el('tr', {}, el('td', {}, el('code', { textContent: a.replace('\\n', '\n') })), el('td', { class: 'muted small', textContent: b }))))))),
       el('div', { class: 'glass card lg-pane' }, el('div', { class: 'row lg-pane-head' }, previewTitle, backToLive), preview)),

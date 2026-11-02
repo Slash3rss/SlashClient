@@ -22,6 +22,7 @@ const ERRORS = {
   rate_limited: L('Za dużo prób, odczekaj chwilę.', 'Too many tries, wait a moment.'),
   unauthorized: L('Zaloguj się, żeby wesprzeć projekt.', 'Sign in to support the project.'),
   feature_disabled: L('Wsparcie jest chwilowo wyłączone. Spróbuj później.', 'Supporting is switched off for now. Try again later.'),
+  limit_reached: L('W tym kwartale wsparcie już się zebrało. Nowe płatności ruszą od początku następnego kwartału – dziękujemy!', 'Support for this quarter is already in. New payments open at the start of the next quarter – thank you!'),
 };
 /** New payments may be switched off in the admin panel (siteBanner.js reads the switches). */
 let paymentsOn = true;
@@ -200,6 +201,7 @@ function checkout() {
     el('h3', { textContent: L('Jak chcesz zapłacić?', 'How do you want to pay?') }),
     providerPick(), months(), consents(), now,
     !paymentsOn ? el('p', { class: 'test-banner' }, icon('fa-solid fa-circle-pause'), L(' Wsparcie jest chwilowo wyłączone. Spróbuj później.', ' Supporting is switched off for now. Try again later.'))
+      : offer.paused ? el('p', { class: 'test-banner' }, icon('fa-solid fa-circle-pause'), ` ${ERRORS.limit_reached}`)
       : me ? el('div', { class: 'row checkout-go' }, el('span', { class: 'grow small muted' }, L('Wspierasz jako ', 'Supporting as '), el('b', { textContent: `@${me.handle}` }), total ? ` · ${total}${choice.kind === 'monthly' ? L(' co miesiąc', ' monthly') : ''}` : ''), sendButton) : signInBox(),
     el('p', { class: 'muted small', textContent: L(
       'Płatność obsługuje operator (Stripe albo PayPal) na swojej stronie: nie widzimy danych Twojej karty ani konta. Rangę dostajesz, gdy operator potwierdzi płatność, zwykle po kilku sekundach.',

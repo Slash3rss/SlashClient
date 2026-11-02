@@ -1,6 +1,6 @@
 ## 1. Administrator danych i kontakt {#administrator}
 
-Administratorem Twoich danych osobowych jest {{admin.name}}, {{admin.address}}, {{admin.nip}} („my”). W sprawach danych osobowych pisz na {{admin.email}}. [UZUPEŁNIJ: inspektor ochrony danych, jeśli został wyznaczony; inaczej usuń to zdanie]
+Administratorem Twoich danych osobowych jest {{admin.name}}, {{admin.address}}, {{admin.nip}} („my”). W sprawach danych osobowych pisz na {{admin.email}}. Nie wyznaczyliśmy inspektora ochrony danych (nie mamy takiego obowiązku).
 
 Polityka dotyczy launchera SlashClient, moda (HUD), strony [slashclient.pl](https://slashclient.pl/) i serwera usług online (konto, znajomi, czat, klany, osiągnięcia, Kosmetyki, udostępnianie plików, wsparcie). Pojęcia znaczą to samo co w [Regulaminie](/regulamin).
 
@@ -47,6 +47,8 @@ Podstawy prawne (art. 6 ust. 1 RODO): **(b)** wykonanie umowy — świadczenie U
 | Zgłoszenia błędów | tytuł, opis, link do logu, wersja, system, komentarze, autor (widoczne publicznie) | obsługa zgłoszeń — (f) |
 | Wsparcie i płatności | konto, poziom, rodzaj (jednorazowe/miesięczne), kwota, waluta, status, daty płatności i zwrotu, identyfikatory płatności, klienta i subskrypcji u operatora (Stripe, PayPal), potwierdzenie pełnoletności lub zgody rodzica (czas), przyznane korzyści; dane z potwierdzenia płatności (rodzaj metody, np. karta lub BLIK, link do potwierdzenia u operatora, kwota zwrotu, koniec opłaconego okresu); obecność na ścianie wspierających, odznaka na profilu. Danych kart i kont płatniczych nie otrzymujemy. | wsparcie — (b); rachunkowość i podatki — (c); reklamacje, zwroty, obciążenia zwrotne — (f); ściana wspierających — (a), domyślnie wyłączona |
 | Prośby o zwrot | płatność, konto, powód (tekst do 500 znaków, jeśli go podasz), informacja, że prosi rodzic lub opiekun, stan, odpowiedź i identyfikator administratora, który zdecydował, identyfikator zwrotu u operatora, daty. Widzi je tylko osoba prosząca i administratorzy. | obsługa zwrotów — (b); rozliczenia — (c); obrona przed roszczeniami — (f) |
+| Wyniki benchmarku udostępnione linkiem | wynik testu (FPS, wersja gry, scena), nazwy i wielkości podzespołów komputera (procesor, karta graficzna, pamięć, system, Java), data; bez konta i nicku | udostępnianie wyniku — (b) |
+| Głosowanie na serwery | nick Minecraft (potwierdzony przez Mojang) i Twój adres IP przekazywane liście serwerów (lista.slash3rss.dev), która pilnuje zasady jednego głosu na dobę; u nas tylko limit zapytań w pamięci | głos, o który prosisz — (b) |
 | Dane techniczne | zob. pkt 5 | bezpieczeństwo i działanie Usług — (f) |
 | Dziennik administracyjny | działania administratorów (kto, co, wobec kogo, kiedy, szczegóły) | rozliczalność moderacji — (f) |
 
@@ -54,10 +56,10 @@ Podstawy prawne (art. 6 ust. 1 RODO): **(b)** wykonanie umowy — świadczenie U
 
 - **Dziennik zapytań API** — dla panelu administratora serwer zapisuje zapytania: czas, metodę, ścieżkę (bez parametrów i treści), kod odpowiedzi, czas obsługi, identyfikator konta, **adres IP z ukrytą końcówką** (np. 203.0.113.x), rodzaj i wersję klienta, kod błędu. Wpisy są usuwane po 7 dniach (najwyżej 50 000 ostatnich).
 - **Statystyki dla administratora** — dni, w których konto korzystało z usług (sama data), ostatnia wersja launchera na koncie i dzienny szczyt liczby graczy online; służą tylko zbiorczym statystykom w panelu administratora.
-- **Logi serwera WWW** — serwer pośredniczący (Caddy) zapisuje dostęp do strony i API (pełny adres IP, czas, adres URL, przeglądarka). Pliki są rotowane po 10 MB, przechowywanych jest 5 ostatnich. [UZUPEŁNIJ: rzeczywisty okres przechowywania; ewentualne ograniczenie logów]
-- **Logi systemowe** — komunikaty błędów serwera. [UZUPEŁNIJ: okres przechowywania logów systemowych na serwerze]
+- **Logi serwera WWW** — serwer pośredniczący (Caddy) zapisuje dostęp do strony i API (pełny adres IP, czas, adres URL, przeglądarka). Pliki są rotowane po 10 MB, przechowywanych jest najwyżej 5 ostatnich i nie dłużej niż 30 dni.
+- **Logi systemowe** — komunikaty błędów serwera (bez treści wiadomości i tokenów), przechowywane do 30 dni.
 - **Limity zapytań** — liczniki per adres IP lub konto (np. logowania, udostępnianie logów) trzymane tylko w pamięci, przez kilka minut.
-- **Kopie zapasowe** — [UZUPEŁNIJ: czy i jak często tworzone są kopie bazy, gdzie są przechowywane i jak długo]
+- **Kopie zapasowe** — kopia bazy danych przed każdą aktualizacją serwera, na tym samym serwerze; jeśli działa serwer zapasowy, także bieżąca kopia bazy i plików w magazynie Cloudflare R2 oraz kopie co godzinę (48 godzin) i co dzień (30 dni). Kopie służą tylko odtworzeniu Usług po awarii.
 
 Podstawa: nasz prawnie uzasadniony interes w zapewnieniu bezpieczeństwa i ciągłości działania Usług (art. 6 ust. 1 lit. f RODO).
 
@@ -70,7 +72,7 @@ Ograniczenia, o których warto wiedzieć:
 - widzimy metadane: kto, do kogo i kiedy pisze, kiedy wiadomość odczytano, edytowano lub usunięto;
 - **czat społeczności nie jest szyfrowany end-to-end**: szyfrowanie dla każdego z nawet 1000 członków nie jest praktyczne, a moderatorzy muszą móc reagować na zgłoszenia. Treść jest szyfrowana tylko w drodze (HTTPS) i przechowywana na serwerze; widzą ją członkowie społeczności, jej moderatorzy i administratorzy SlashClient. Launcher i gra pokazują o tym informację nad polem wiadomości;
 - zaproszenia do gry i udostępnione punkty trasy (adres serwera, współrzędne) nie są szyfrowane end-to-end;
-- jeśli znajomy używa bardzo starej wersji launchera bez kluczy szyfrowania, wiadomość tekstowa do niego jest wysyłana bez szyfrowania end-to-end (obrazów wtedy nie da się wysłać) [UZUPEŁNIJ: rozważcie wyłączenie tej możliwości];
+- jeśli znajomy używa bardzo starej wersji launchera bez kluczy szyfrowania, wiadomość tekstowa do niego jest wysyłana bez szyfrowania end-to-end (obrazów wtedy nie da się wysłać);
 - po zalogowaniu na nowym komputerze starsze wiadomości mogą być nieczytelne, bo były zaszyfrowane dla innych urządzeń.
 
 Połączenia z serwerem są szyfrowane (HTTPS/TLS).
@@ -87,7 +89,7 @@ Połączenia z serwerem są szyfrowane (HTTPS/TLS).
 
 - Strona **nie używa plików cookie do analityki ani reklam** i nie zawiera zewnętrznych skryptów śledzących.
 - Po zalogowaniu token sesji jest zapisywany w pamięci przeglądarki (localStorage, klucz `slashclient.token`) — jest niezbędny do utrzymania zalogowania; usuwa go wylogowanie.
-- Strona może być obsługiwana przez sieć Cloudflare, która w celach bezpieczeństwa może ustawiać techniczne cookies (np. ochrona przed botami). [UZUPEŁNIJ: potwierdźcie, czy domena jest za proxy Cloudflare i jakie cookies się pojawiają]
+- Strona działa przez sieć Cloudflare, która w celach bezpieczeństwa może ustawiać niezbędne techniczne cookies (np. ochrona przed botami, `__cf_bm`, `cf_clearance`). Nie służą one do śledzenia ani reklam.
 - Przy logowaniu przekierowujemy Cię do wybranego dostawcy logowania; jego strona działa według jego zasad i cookies. Avatary dostawców (Discord, Google, GitHub) są wczytywane z ich serwerów.
 - Strona płatności przekierowuje do Stripe lub PayPal, które stosują własne cookies.
 
@@ -95,8 +97,9 @@ Połączenia z serwerem są szyfrowane (HTTPS/TLS).
 
 Nie sprzedajemy danych. Dane mogą otrzymać:
 
-- **dostawca serwera (VPS)** — [UZUPEŁNIJ: nazwa dostawcy hostingu, kraj, umowa powierzenia];
-- **Cloudflare, Inc.** — sieć dostarczania treści i ochrona strony [UZUPEŁNIJ: potwierdzić]; opcjonalnie **Cloudflare R2** lub **Backblaze B2** — przechowywanie udostępnionych plików i chmury profili, jeśli zostały włączone w panelu [UZUPEŁNIJ: które są używane, w jakiej lokalizacji/jurysdykcji, np. UE];
+- **dostawca serwera (VPS)** — {{admin.hosting}}, na podstawie umowy powierzenia przetwarzania danych;
+- **Cloudflare, Inc.** — sieć dostarczania treści i ochrona strony; **Cloudflare R2** (i opcjonalnie **Backblaze B2**, jeśli został włączony w panelu) — przechowywanie udostępnionych plików, chmury profili i kopii zapasowych;
+- **lista serwerów** (lista.slash3rss.dev) — nick Minecraft i adres IP, tylko gdy głosujesz na serwer;
 - **Stripe** i **PayPal** — obsługa płatności; przekazujemy identyfikator Konta SlashClient, poziom i kwotę, a dane płatnicze podajesz bezpośrednio operatorowi, który w tym zakresie jest odrębnym administratorem;
 - **dostawcy logowania** (Discord, Microsoft, Google, GitHub) i **Mojang/Microsoft** — w zakresie logowania i potwierdzenia konta Minecraft; są odrębnymi administratorami;
 - **GitHub** — z jego serwerów pobierane są instalatory i aktualizacje launchera (widzi adres IP);
@@ -105,31 +108,33 @@ Nie sprzedajemy danych. Dane mogą otrzymać:
 
 ## 10. Przekazywanie danych poza EOG {#transfer}
 
-Niektórzy odbiorcy (np. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google, GitHub, Microsoft) mają siedziby lub serwery w USA lub innych państwach spoza Europejskiego Obszaru Gospodarczego. Przekazanie odbywa się na podstawie [UZUPEŁNIJ: dla każdego odbiorcy — decyzja Komisji Europejskiej o odpowiednim stopniu ochrony (EU-US Data Privacy Framework) albo standardowe klauzule umowne]. Kopię zabezpieczeń możesz otrzymać, pisząc do nas.
+Niektórzy odbiorcy (np. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google, GitHub, Microsoft) mają siedziby lub serwery w USA lub innych państwach spoza Europejskiego Obszaru Gospodarczego. Przekazanie odbywa się na podstawie decyzji Komisji Europejskiej o odpowiednim stopniu ochrony (EU-US Data Privacy Framework) wobec odbiorców, którzy przystąpili do tych ram, a wobec pozostałych — na podstawie standardowych klauzul umownych przyjętych przez Komisję Europejską. Kopię zabezpieczeń możesz otrzymać, pisząc do nas.
 
 ## 11. Jak długo przechowujemy dane {#przechowywanie}
 
 | Dane | Okres |
 |---|---|
 | Konto, znajomi, Kosmetyki, Iskry, osiągnięcia, statystyki, klany, ustawienia profilu | do usunięcia konta |
-| Wiadomości prywatne i grupowe (szyfrogram i metadane) | do usunięcia wiadomości przez autora (zostaje znacznik „usunięta” bez treści) albo usunięcia konta [UZUPEŁNIJ: rozważcie automatyczne usuwanie starych wiadomości] |
+| Wiadomości prywatne i grupowe (szyfrogram i metadane) | do usunięcia wiadomości przez autora (zostaje znacznik „usunięta” bez treści) albo usunięcia konta |
 | Obrazy w czacie | 30 dni (niedołączone do wiadomości — 1 godzina) |
 | Zrzuty ekranu i klipy udostępnione linkiem | 30 dni albo wcześniejsze usunięcie przez Ciebie |
 | Kody profili | 30 dni albo wcześniejsze usunięcie przez Ciebie |
 | Chmura profili | do usunięcia przez Ciebie albo usunięcia konta |
 | Logi (/logi) | 90 dni |
-| Zgłoszenia błędów i komentarze | do usunięcia przez administratora [UZUPEŁNIJ: docelowy okres] |
+| Zgłoszenia błędów i komentarze | do usunięcia przez administratora (publiczna historia błędów) |
+| Wyniki benchmarku udostępnione linkiem | 365 dni |
 | Sesje | do wylogowania; sesja nieużywana przez 90 dni wygasa |
 | Klucze publiczne urządzeń | 10 ostatnio używanych urządzeń, do usunięcia konta |
 | Status, aktywność, party, emotki, spraye, limity zapytań | tylko w pamięci serwera — od minut do kilku godzin |
 | Dziennik zapytań API (zamaskowany IP) | 7 dni (najwyżej 50 000 wpisów) |
 | Dni aktywności konta, wersja launchera (statystyki) | do usunięcia konta |
-| Logi serwera WWW (pełny IP) | rotacja 5 × 10 MB [UZUPEŁNIJ: okres] |
-| Płatności | [UZUPEŁNIJ: np. 5 lat od końca roku, w którym nastąpiła płatność (ustawa o rachunkowości, Ordynacja podatkowa)] |
-| Prośby o zwrot | jak dane płatności [UZUPEŁNIJ: rozważcie usuwanie treści powodu kilka miesięcy po zamknięciu prośby] |
+| Logi serwera WWW (pełny IP) | do 30 dni (najwyżej 5 × 10 MB) |
+| Logi systemowe | do 30 dni |
+| Płatności i ewidencja sprzedaży | 5 lat od końca roku, w którym nastąpiła płatność (Ordynacja podatkowa), także po usunięciu konta |
+| Prośby o zwrot | jak dane płatności |
 | Potwierdzenia przeczytania zmian dokumentów | do usunięcia konta |
-| Dziennik administracyjny | [UZUPEŁNIJ: okres] |
-| Kopie zapasowe | [UZUPEŁNIJ: okres] |
+| Dziennik administracyjny | 3 lata |
+| Kopie zapasowe | kopie co godzinę 48 godzin, co dzień 30 dni; kopie sprzed aktualizacji serwera do 30 dni |
 
 Po upływie okresu dane są usuwane automatycznie (pliki udostępnione — przez cogodzinne sprzątanie). Dane potrzebne do obrony przed roszczeniami możemy zachować do ich przedawnienia.
 
@@ -156,7 +161,7 @@ Wiele możesz zrobić sam:
 - usunięcie własnej wiadomości, udostępnionego zrzutu lub klipu, kodu profilu, profilu w chmurze — w launcherze;
 - ściana wspierających i odznaka — w ustawieniach wsparcia na stronie konta.
 
-W pozostałych sprawach — w szczególności **usunięcia konta i kopii danych** — napisz na {{admin.email}}. [UZUPEŁNIJ: po wdrożeniu dopisz przyciski „Pobierz moje dane” i „Usuń konto” na stronie /konto] Żeby nikt nie podszył się pod Ciebie, możemy poprosić o potwierdzenie, że konto należy do Ciebie (np. wiadomość z czatu SlashClient do administratora albo zalogowanie na stronie). Odpowiemy w ciągu miesiąca; w złożonych sprawach termin może zostać przedłużony o kolejne dwa miesiące — wtedy Cię o tym poinformujemy.
+W pozostałych sprawach — w szczególności **usunięcia konta i kopii danych** — napisz na {{admin.email}}. Żeby nikt nie podszył się pod Ciebie, możemy poprosić o potwierdzenie, że konto należy do Ciebie (np. wiadomość z czatu SlashClient do administratora albo zalogowanie na stronie). Odpowiemy w ciągu miesiąca; w złożonych sprawach termin może zostać przedłużony o kolejne dwa miesiące — wtedy Cię o tym poinformujemy.
 
 ## 14. Czy musisz podać dane {#dobrowolnosc}
 

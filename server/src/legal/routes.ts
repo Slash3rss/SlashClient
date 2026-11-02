@@ -129,6 +129,12 @@ export function legalRoutes(ctx: LegalContext) {
       ctx.admin(req);
       return editorView(doc, docOr404(doc, lang));
     }],
+    // the text in the code, for the editor to load and an admin to publish (after a server update brings new wording)
+    ['GET', /^\/v1\/admin\/legal\/([\w-]+)\/(\w+)\/seed$/, (req, [doc, lang]) => {
+      ctx.admin(req);
+      const body = store.seed(doc, docOr404(doc, lang));
+      return body === undefined ? ctx.fail(404, 'not_found') : { body };
+    }],
     // the editor's live preview, rendered here so it matches the site exactly
     ['POST', /^\/v1\/admin\/legal\/preview$/, async (req) => {
       ctx.admin(req);

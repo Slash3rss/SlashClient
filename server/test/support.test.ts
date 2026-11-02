@@ -521,3 +521,37 @@ describe('admin tools, profile and limits', () => {
     assert.equal(media.days, mediaBefore.days);
   });
 });
+
+describe('the revenue limit of an unregistered business', () => {
+  const set = (values: Record<string, number>) => call('POST', '/v1/admin/settings', admin.token, { values });
+
+  it('pauses new payments once the quarter has brought in its limit, and opens them the next quarter', async () => {
+    // earlier tests paid in test mode this quarter: a limit of 1 zł is already reached
+    assert.equal((await set({ 'support.quarterLimitPln': 1, 'support.limitStopPercent': 100 })).status, 200);
+    assert.equal((await call('GET', '/v1/support')).body.paused, true);
+    const refused = await call('POST', '/v1/support/checkout', alice.token, { tier: 'supporter', kind: 'one_time', provider: 'stripe', terms: true, consent: true });
+    assert.equal(refused.status, 409);
+    assert.equal(refused.body.error, 'limit_reached');
+    // live payments only in the panel's count (none here)
+    const panel = (await call('GET', '/v1/admin/support', admin.token)).body.quarter;
+    assert.equal(panel.on, true);
+    assert.equal(panel.taken, 0);
+    assert.equal(panel.limit, 100);
+
+    // a payment that would go past the threshold is refused, one within it goes through
+    assert.equal((await set({ 'support.quarterLimitPln': 1_000_000, 'support.limitStopPercent': 90 })).status, 200);
+    assert.equal((await call('GET', '/v1/support')).body.paused, false);
+    await stripeCheckout(alice.token);
+
+    // a new quarter starts from nothing
+    assert.equal((await set({ 'support.quarterLimitPln': 1, 'support.limitStopPercent': 100 })).status, 200);
+    clock += 100 * DAY;
+    assert.equal((await call('GET', '/v1/support')).body.paused, false);
+    clock -= 100 * DAY;
+
+    // no limit: as before
+    assert.equal((await set({ 'support.quarterLimitPln': 0 })).status, 200);
+    assert.equal((await call('GET', '/v1/support')).body.paused, false);
+    await stripeCheckout(alice.token);
+  });
+});

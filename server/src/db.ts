@@ -610,6 +610,11 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
     this.db.prepare('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
   }
 
+  /** The admin log keeps moderation accountable for a set time (the privacy policy names it), not forever. */
+  pruneAdminLog(maxAgeMs: number): number {
+    return Number(this.db.prepare('DELETE FROM admin_log WHERE at < ?').run(Date.now() - maxAgeMs).changes);
+  }
+
   logEntries(limit: number): LogEntry[] {
     return this.db.prepare('SELECT id, at, admin, action, target, detail FROM admin_log ORDER BY id DESC LIMIT ?').all(limit) as unknown as LogEntry[];
   }

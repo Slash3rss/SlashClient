@@ -963,7 +963,9 @@ export function createApp(cfg: Config) {
     sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl,
     user: (id) => db.user(id), userByHandle: (h) => db.userByHandle(h),
     authed, admin, body, clientIp, limitCheckout: limiter('support.checkoutsPerMinute'), limitWebhooks: limiter('support.webhooksPerMinute'),
-    limitRefunds: limiter('support.refundsPerMinute'), refundWindowDays: () => settings.num('support.refundWindowDays'), refundsPerDay: () => settings.num('support.refundsPerDay'), notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
+    limitRefunds: limiter('support.refundsPerMinute'), refundWindowDays: () => settings.num('support.refundWindowDays'), refundsPerDay: () => settings.num('support.refundsPerDay'),
+    revenueLimit: () => ({ quarterPln: settings.num('support.quarterLimitPln'), stopPercent: settings.num('support.limitStopPercent'), eurGrosze: settings.num('support.eurRateGrosze') }),
+    notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     changed: (userId) => cosmeticsChanged(userId),
     fetchImpl: cfg.fetchImpl, apiBase: { stripe: cfg.payments?.stripeApi, paypal: cfg.payments?.paypalApi }, now: cfg.payments?.now,
@@ -2426,6 +2428,11 @@ export function createApp(cfg: Config) {
       db.removeIdleSessions(sessionIdleMs());
     } catch (err) {
       console.error('sesje:', (err as Error).message);
+    }
+    try {
+      db.pruneAdminLog(settings.num('moderation.adminLogDays') * 86_400_000);
+    } catch (err) {
+      console.error('dziennik administracyjny:', (err as Error).message);
     }
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     try {

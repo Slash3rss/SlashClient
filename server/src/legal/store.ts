@@ -37,6 +37,7 @@ const toVersion = <T extends { major: unknown }>(r: T) => ({ ...r, major: !!r.ma
 export class LegalStore {
   private readonly sql: DatabaseSync;
   private readonly now: () => number;
+  private readonly seedDir: string;
 
   constructor(sql: DatabaseSync, opts: { seedDir?: string; now?: () => number } = {}) {
     this.sql = sql;
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS legal_settings (doc TEXT PRIMARY KEY, banner INTEGER)
 CREATE TABLE IF NOT EXISTS legal_vars (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS legal_acks (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, doc TEXT NOT NULL, version INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (uuid, doc));`);
     const dir = opts.seedDir ?? path.join(import.meta.dirname, 'seed');
+    this.seedDir = dir;
     for (const doc of Object.keys(DOCS)) {
       for (const lang of LANGS) {
         if (this.sql.prepare('SELECT 1 FROM legal_versions WHERE doc = ? AND lang = ?').get(doc, lang)) continue;
@@ -63,6 +65,15 @@ CREATE TABLE IF NOT EXISTS legal_acks (uuid TEXT NOT NULL REFERENCES users(uuid)
         const at = this.now();
         this.sql.prepare("INSERT INTO legal_versions (doc, lang, body, created_at, published_at, note) VALUES (?, ?, ?, ?, ?, 'Wersja początkowa')").run(doc, lang, body, at, at);
       }
+    }
+  }
+
+  /** The text this code ships for a document (seed/<doc>.<lang>.md): new wording reaches the site only when an admin publishes it. */
+  seed(doc: string, lang: Lang): string | undefined {
+    try {
+      return readFileSync(path.join(this.seedDir, `${doc}.${lang}.md`), 'utf8').replace(/\r\n?/g, '\n');
+    } catch {
+      return undefined;
     }
   }
 

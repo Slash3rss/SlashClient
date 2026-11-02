@@ -119,7 +119,7 @@ describe('legal pages', () => {
     assert.match(terms, /NOT AN OFFICIAL MINECRAFT PRODUCT/);
     assert.match(terms, /Ostatnia aktualizacja: <time/);
     // the support terms with the refund wording of the account page
-    assert.match((await site.call('GET', '/wsparcie/regulamin')).text, /Zwrot: <a href="\/konto#wsparcie">konto<\/a> → Wsparcie projektu → Poproś o zwrot/);
+    assert.match((await site.call('GET', '/wsparcie/regulamin')).text, /albo poprosić o zwrot: <a href="\/konto#wsparcie">konto<\/a> → Wsparcie projektu → Poproś o zwrot/);
   });
 
   it('leaves the banner out with LEGAL_DRAFT=0', async () => {
@@ -147,6 +147,17 @@ describe('legal documents in the admin panel', () => {
     assert.equal((await site.call('GET', '/v1/admin/legal', player)).status, 403);
     assert.equal((await site.call('POST', '/v1/admin/legal/terms/pl/publish', player, { body: '## x' })).status, 403);
     assert.equal((await site.call('POST', '/v1/admin/legal/vars', player, { vars: { 'admin.email': 'x@y.pl' } })).status, 403);
+    assert.equal((await site.call('GET', '/v1/admin/legal/terms/pl/seed', player)).status, 403);
+  });
+
+  it('gives the editor the text shipped in the code, without publishing it', async () => {
+    const boss = await site.login('Szef');
+    const seed = await site.call('GET', '/v1/admin/legal/support-terms/pl/seed', boss);
+    assert.equal(seed.status, 200);
+    assert.match(seed.body.body, /działalność nierejestrowaną/);
+    assert.doesNotMatch(seed.body.body, /\r/);
+    assert.equal((await site.call('GET', '/v1/admin/legal/nope/pl/seed', boss)).status, 404);
+    assert.equal((await site.call('GET', '/v1/admin/legal/terms/de/seed', boss)).status, 404);
   });
 
   it('keeps drafts off the site until published, with history, restore and the audit log', async () => {

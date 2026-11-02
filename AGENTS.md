@@ -111,6 +111,7 @@ Na VPS najpierw kopia bazy i aplikacji:
 T=$(date +%Y%m%d-%H%M%S)
 sqlite3 /var/lib/slashclient/social.db ".backup /root/backups/social-$T.db"
 tar czf /root/backups/app-$T.tgz -C /opt/slashclient app
+find /root/backups -type f -mtime +30 -delete   # polityka prywatności obiecuje najwyżej 30 dni
 ```
 Potem kod (tylko `src`, `web` i `package.json`):
 ```

@@ -3,7 +3,7 @@
 ## 1. General provisions {#general}
 
 1. These Terms set out the rules for using SlashClient: the Minecraft launcher for computers (Windows, macOS, Linux), the game modification ("mod", HUD), the website [slashclient.pl](https://slashclient.pl/) and the online services (SlashClient account, friends, chat, clans, achievements, Sparks, cosmetics, file sharing) — together the "Services".
-2. The Services are provided by {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} ("Provider", "we").
+2. The Services are provided by {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} ("Provider", "we"). The Services are free; the Provider runs voluntary support (section 12) as an unregistered activity.
 3. These Terms are the terms referred to in Art. 8 of the Polish Act of 18 July 2002 on providing services by electronic means. They are available free of charge at [/terms](/terms) and in the launcher (Settings → Legal information), and can be saved and printed.
 4. How we process personal data is described in the [Privacy Policy](/privacy). Voluntary financial support is governed by the separate [Support Terms](/support/terms).
 
@@ -40,7 +40,7 @@
 ## 6. Age and parental consent {#age}
 
 1. The Services are intended for people aged 16 or over. A person under 16 may use a SlashClient Account only with the consent of a parent or legal guardian who has read these Terms and the Privacy Policy.
-2. The parent or guardian gives consent by allowing the child to create the account after reading the documents. At our request (e.g. if we have doubts about age) they confirm consent by e-mail to {{admin.email}}. [UZUPEŁNIJ: whether and how parental consent is verified; a possible minimum age, e.g. 13 — to be decided with a lawyer]
+2. The parent or guardian gives consent by allowing the child to create the account after reading the documents. We do not check age when an account is created. If we have doubts about age, we may ask for the consent to be confirmed by e-mail to {{admin.email}} and block the account until then; an account without confirmed consent may be deleted.
 3. A parent or guardian may at any time request deletion of the child's account by writing to {{admin.email}} with the account name.
 4. Voluntary financial support (section 12) is only available to adults or with the consent of a parent or guardian, as set out in the Support Terms.
 
@@ -77,7 +77,14 @@
   - disable a Cosmetic, revoke its grant or adjust the Sparks balance;
   - sign the account out of all devices, block it (a blocked account cannot sign in and its profile is not visible) or delete it.
 2. Administrators' actions are recorded in an admin log. Where possible and where it does not hinder preventing abuse, we will inform you of the decision and the reason.
-3. You may appeal by writing to {{admin.email}} within 14 days of the decision. We will deal with the appeal within 14 days.
+3. You may appeal by writing to {{admin.email}} within 14 days of the decision. We will deal with the appeal within 14 days. Decisions are not made automatically; only anti-spam limits and the blocked-words filter for names work automatically.
+
+## 9a. Reporting illegal content and point of contact {#reporting}
+
+1. The point of contact for users and authorities (Articles 11 and 12 of Regulation (EU) 2022/2065, the "Digital Services Act") is {{admin.email}}. We write in Polish and English.
+2. Report content you believe is illegal or against these Terms to {{admin.email}}, via [/bugs](/bugs) or with the report button in community chat. A report should include: why the content is illegal, its exact location (a link, an account, clan or community name), your name and e-mail (not required for reports of child sexual abuse material) and a statement that you report in good faith.
+3. We confirm receipt, deal with the report without undue delay and tell you the decision. The author of content we restrict gets the reasons (section 9(2)), unless the report concerns content we must notify the authorities of.
+4. Content threatening people's life or safety is reported to law enforcement.
 
 ## 10. Sparks {#sparks}
 
@@ -119,14 +126,14 @@
 
 ## 16. Termination and account deletion {#termination}
 
-1. You may terminate the contract at any time by stopping using the Services and requesting deletion of your account: write to {{admin.email}} in a way that lets us confirm the account is yours. [UZUPEŁNIJ: once implemented, add "or with the Delete account button on /account"]
+1. You may terminate the contract at any time by stopping using the Services and requesting deletion of your account: write to {{admin.email}} in a way that lets us confirm the account is yours.
 2. Deleting the account permanently removes, among other things, the account, links to Minecraft accounts and sign-in providers, friends, messages, achievements, Sparks and Cosmetics — as described in the Privacy Policy. We may keep some data where the law requires it (e.g. payment records for accounting).
 3. We may terminate the contract with 14 days' notice for important reasons (e.g. ending the Services), and without notice in the event of serious or persistent breaches of these Terms (section 9).
 
 ## 17. Out-of-court dispute resolution {#disputes}
 
 1. Consumers may use out-of-court complaint and redress procedures, e.g. contact a municipal or district consumer ombudsman, a consumer organisation or the regional Trade Inspection for mediation or proceedings before a permanent consumer arbitration court. Information: [polubownie.uokik.gov.pl](https://polubownie.uokik.gov.pl/) and [uokik.gov.pl](https://uokik.gov.pl/).
-2. The EU ODR platform ceased operating on 20 July 2025. [UZUPEŁNIJ: to be verified by a lawyer — current information obligations]
+2. The EU ODR platform ceased operating on 20 July 2025, so we give no link to it. The Provider has not committed to out-of-court dispute resolution, but will consider any request for mediation.
 
 ## 18. Governing law {#law}
 

@@ -1,7 +1,7 @@
 ## 1. Postanowienia ogólne {#postanowienia-ogolne}
 
 1. Regulamin określa zasady korzystania z SlashClient: launchera Minecraft na komputery (Windows, macOS, Linux), modyfikacji gry („mod”, HUD), serwisu internetowego [slashclient.pl](https://slashclient.pl/) oraz usług online (konto SlashClient, znajomi, czat, klany, osiągnięcia, Iskry, kosmetyki, udostępnianie plików) — razem „Usługi”.
-2. Usługodawcą jest {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} („Usługodawca”, „my”).
+2. Usługodawcą jest {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} („Usługodawca”, „my”). Usługi są bezpłatne; dobrowolne wsparcie (pkt 12) Usługodawca prowadzi jako działalność nierejestrowaną. Usługi są bezpłatne; dobrowolne wsparcie (pkt 12) Usługodawca prowadzi jako działalność nierejestrowaną.
 3. Regulamin jest regulaminem, o którym mowa w art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną. Jest dostępny bezpłatnie pod adresem [/regulamin](/regulamin) i w launcherze (Ustawienia → Informacje prawne); można go zapisać i wydrukować.
 4. Zasady przetwarzania danych osobowych opisuje [Polityka prywatności](/polityka-prywatnosci). Zasady dobrowolnego wsparcia finansowego opisuje osobny [Regulamin wsparcia](/wsparcie/regulamin).
 5. Wersją wiążącą jest wersja polska. Wersja angielska ([/terms](/terms)) jest tłumaczeniem pomocniczym.
@@ -39,7 +39,7 @@
 ## 6. Wiek użytkowników i zgoda rodzica {#wiek}
 
 1. Usługi są przeznaczone dla osób, które ukończyły 16 lat. Osoba poniżej 16 lat może korzystać z Konta SlashClient tylko za zgodą rodzica lub opiekuna prawnego, który zapoznał się z tym Regulaminem i Polityką prywatności.
-2. Rodzic lub opiekun wyraża zgodę, pozwalając dziecku założyć konto po zapoznaniu się z dokumentami. Na naszą prośbę (np. gdy mamy wątpliwości co do wieku) potwierdza zgodę wiadomością na adres {{admin.email}}. [UZUPEŁNIJ: czy i jak weryfikujecie zgodę rodzica; ewentualny wiek minimalny, np. 13 lat — do decyzji z prawnikiem]
+2. Rodzic lub opiekun wyraża zgodę, pozwalając dziecku założyć konto po zapoznaniu się z dokumentami. Nie sprawdzamy wieku przy zakładaniu konta. Gdy mamy wątpliwości co do wieku, możemy poprosić o potwierdzenie zgody wiadomością na adres {{admin.email}}, a do tego czasu zablokować konto; konto bez potwierdzonej zgody możemy usunąć.
 3. Rodzic lub opiekun może w każdej chwili zażądać usunięcia konta dziecka, pisząc na {{admin.email}} z podaniem nazwy konta.
 4. Dobrowolne wsparcie finansowe (pkt 12) jest dostępne tylko dla osób pełnoletnich albo za zgodą rodzica lub opiekuna, zgodnie z Regulaminem wsparcia.
 
@@ -55,7 +55,7 @@
   - nadużywanie osiągnięć i Iskier: skrypty, boty, sztuczne nabijanie czasu gry lub liczników, wiele kont w celu zdobywania nagród, wykorzystywanie błędów;
   - ingerowanie w działanie Usług: obchodzenie limitów, ataki na serwer, obciążające automatyczne odpytywanie API, próby dostępu do cudzych kont lub danych;
   - sprzedaż, wynajem lub przekazywanie kont, Kosmetyków lub Iskier za pieniądze lub inne korzyści.
-3. Treści łamiące te zasady możesz zgłosić przez [/zgloszenia](/zgloszenia) albo na adres {{admin.email}}.
+3. Treści łamiące te zasady albo prawo możesz zgłosić zgodnie z pkt 9a.
 
 ## 8. Treści Użytkownika {#tresci}
 
@@ -76,7 +76,21 @@
   - wyłączyć Kosmetyk, cofnąć jego przyznanie lub skorygować saldo Iskier;
   - wylogować konto ze wszystkich urządzeń, zablokować je (konto zablokowane nie może się logować, a jego profil nie jest widoczny) albo usunąć.
 2. Działania administratorów są zapisywane w dzienniku administracyjnym. Jeśli to możliwe i nie utrudni to przeciwdziałania nadużyciom, poinformujemy Cię o decyzji i jej powodzie.
-3. Możesz się odwołać, pisząc na {{admin.email}} w ciągu 14 dni od decyzji. Rozpatrzymy odwołanie w ciągu 14 dni.
+3. Możesz się odwołać, pisząc na {{admin.email}} w ciągu 14 dni od decyzji. Rozpatrzymy odwołanie w ciągu 14 dni. Decyzji nie podejmujemy automatycznie; automatycznie działają tylko limity antyspamowe i filtr zakazanych słów w nazwach.
+
+## 9a. Zgłaszanie nielegalnych treści i punkt kontaktowy {#zglaszanie}
+
+1. Punktem kontaktowym dla użytkowników i organów (art. 11 i 12 rozporządzenia (UE) 2022/2065, „akt o usługach cyfrowych”) jest adres {{admin.email}}. Piszemy po polsku i po angielsku.
+2. Treść, którą uważasz za nielegalną albo sprzeczną z Regulaminem, zgłoś na {{admin.email}}, przez [/zgloszenia](/zgloszenia) albo przyciskiem zgłoszenia w czacie społeczności. Zgłoszenie powinno zawierać: wyjaśnienie, dlaczego treść jest nielegalna, dokładne miejsce (link, nazwę konta, klanu lub społeczności), Twoje imię i nazwisko lub nazwę oraz e-mail (nie dotyczy zgłoszeń treści przedstawiających wykorzystywanie dzieci) i oświadczenie, że zgłaszasz w dobrej wierze.
+3. Potwierdzimy otrzymanie zgłoszenia, rozpatrzymy je bez zbędnej zwłoki i poinformujemy Cię o decyzji. Autorowi treści, której dostęp ograniczymy, podamy uzasadnienie (pkt 9 ust. 2), chyba że zgłoszenie dotyczy treści, o której musimy powiadomić organy.
+4. Treści zagrażające życiu lub bezpieczeństwu osób zgłaszamy organom ścigania. Decyzji nie podejmujemy automatycznie; automatycznie działają tylko limity antyspamowe i filtr zakazanych słów w nazwach.
+
+## 9a. Zgłaszanie nielegalnych treści i punkt kontaktowy {#zglaszanie}
+
+1. Punktem kontaktowym dla użytkowników i organów (art. 11 i 12 rozporządzenia (UE) 2022/2065, „akt o usługach cyfrowych”) jest adres {{admin.email}}. Piszemy po polsku i po angielsku.
+2. Treść, którą uważasz za nielegalną albo sprzeczną z Regulaminem, zgłoś na {{admin.email}}, przez [/zgloszenia](/zgloszenia) albo przyciskiem zgłoszenia w czacie społeczności. Zgłoszenie powinno zawierać: wyjaśnienie, dlaczego treść jest nielegalna, dokładne miejsce (link, nazwę konta, klanu lub społeczności), Twoje imię i nazwisko lub nazwę oraz e-mail (nie dotyczy zgłoszeń treści przedstawiających wykorzystywanie dzieci) i oświadczenie, że zgłaszasz w dobrej wierze.
+3. Potwierdzimy otrzymanie zgłoszenia, rozpatrzymy je bez zbędnej zwłoki i poinformujemy Cię o decyzji. Autorowi treści, której dostęp ograniczymy, podamy uzasadnienie (pkt 9 ust. 2), chyba że zgłoszenie dotyczy treści, o której musimy powiadomić organy.
+4. Treści zagrażające życiu lub bezpieczeństwu osób zgłaszamy organom ścigania.
 
 ## 10. Iskry {#iskry}
 
@@ -118,14 +132,14 @@
 
 ## 16. Rozwiązanie umowy i usunięcie konta {#rozwiazanie}
 
-1. Możesz w każdej chwili rozwiązać umowę, przestając korzystać z Usług i żądając usunięcia konta: napisz na {{admin.email}} w sposób, który pozwoli nam potwierdzić, że konto należy do Ciebie. [UZUPEŁNIJ: po wdrożeniu dopisz „albo przyciskiem Usuń konto na stronie /konto”]
+1. Możesz w każdej chwili rozwiązać umowę, przestając korzystać z Usług i żądając usunięcia konta: napisz na {{admin.email}} w sposób, który pozwoli nam potwierdzić, że konto należy do Ciebie.
 2. Usunięcie konta trwale usuwa m.in. konto, powiązania z kontami Minecraft i dostawcami logowania, znajomych, wiadomości, osiągnięcia, Iskry i Kosmetyki — zgodnie z Polityką prywatności. Część danych możemy zachować, gdy wymaga tego prawo (np. dane płatności do celów rachunkowych).
 3. Możemy rozwiązać umowę z 14-dniowym wypowiedzeniem z ważnych powodów (np. zakończenie Usług), a bez wypowiedzenia — w razie rażącego lub uporczywego naruszania Regulaminu (pkt 9).
 
 ## 17. Pozasądowe rozwiązywanie sporów {#spory}
 
 1. Konsument może skorzystać z pozasądowych sposobów rozpatrywania reklamacji i dochodzenia roszczeń, m.in. zwrócić się do miejskiego lub powiatowego rzecznika konsumentów, organizacji konsumenckiej albo wojewódzkiego inspektora Inspekcji Handlowej o mediację lub postępowanie przed stałym polubownym sądem konsumenckim. Informacje: [polubownie.uokik.gov.pl](https://polubownie.uokik.gov.pl/) i [uokik.gov.pl](https://uokik.gov.pl/).
-2. Unijna platforma ODR zakończyła działalność 20 lipca 2025 r. [UZUPEŁNIJ: do weryfikacji przez prawnika — aktualne obowiązki informacyjne]
+2. Unijna platforma ODR zakończyła działalność 20 lipca 2025 r., więc nie podajemy do niej linku. Usługodawca nie zobowiązał się do korzystania z pozasądowych sposobów rozwiązywania sporów, ale każdą prośbę o mediację rozpatrzy.
 
 ## 18. Prawo właściwe {#prawo}
 

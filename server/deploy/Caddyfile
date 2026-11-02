@@ -7,6 +7,7 @@ slashclient.pl {
 		output file /var/log/caddy/slashclient.log {
 			roll_size 10MiB
 			roll_keep 5
+			roll_keep_for 720h
 		}
 	}
 }
@@ -32,6 +33,7 @@ client.slash3rss.dev {
 		output file /var/log/caddy/slashclient-old.log {
 			roll_size 10MiB
 			roll_keep 5
+			roll_keep_for 720h
 		}
 	}
 }

@@ -64,6 +64,13 @@ export interface SupportContext {
   /** The admin panel's settings for refunds (refunds.ts), read when used. */
   refundWindowDays?: () => number;
   refundsPerDay?: () => number;
+  /**
+   * The revenue limit of an unregistered business (the admin panel's settings, read when used): the
+   * most a quarter may bring in (PLN, 0 = no limit), the share of it after which new payments stop
+   * (renewals of monthly support still come in, so the rest is their room), and how many grosze a
+   * euro counts for.
+   */
+  revenueLimit?: () => { quarterPln: number; stopPercent: number; eurGrosze: number };
   notify?: (userId: string, event: Record<string, unknown>) => void;
   isAdmin?: (userId: string) => boolean;
   /** Tests: the fake providers' addresses and the clock. */
@@ -586,6 +593,35 @@ export function supportRoutes(ctx: SupportContext) {
   const grantOr404 = (raw: string) => store.grant(Number(raw)) ?? fail(404, 'not_found');
   const handleOf = (id: string) => ctx.user(id)?.handle ?? '';
 
+  /** When this quarter began, by the calendar in Poland (the limit is counted per quarter there). */
+  function quarterStart(at: number): number {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', year: 'numeric', month: 'numeric' })
+      .formatToParts(at).map((p) => [p.type, p.value]));
+    const year = Number(parts.year);
+    const month = Math.floor((Number(parts.month) - 1) / 3) * 3;
+    // midnight in Warsaw: UTC midnight moved back by Warsaw's offset on that day
+    const utc = Date.UTC(year, month, 1);
+    const local = new Date(new Date(utc).toLocaleString('en-US', { timeZone: 'Europe/Warsaw' })).getTime();
+    const shown = new Date(new Date(utc).toLocaleString('en-US', { timeZone: 'UTC' })).getTime();
+    return utc - (local - shown);
+  }
+  /** In grosze, euros counted at the panel's rate. */
+  const inPln = (amount: number, currency: string, eurGrosze: number) => (currency === 'EUR' ? Math.round((amount * eurGrosze) / 100) : amount);
+  /** This quarter against the limit, in the given mode (test payments count only while testing). */
+  function limitState(mode: 'test' | 'live') {
+    const l = ctx.revenueLimit?.() ?? { quarterPln: 0, stopPercent: 100, eurGrosze: 0 };
+    const from = quarterStart(now());
+    const taken = Object.entries(store.takenSince(from, mode)).reduce((sum, [currency, amount]) => sum + inPln(amount, currency, l.eurGrosze), 0);
+    const limit = l.quarterPln * 100;
+    const stopAt = Math.floor((limit * l.stopPercent) / 100);
+    return { on: limit > 0, from, taken, limit, stopAt, eurGrosze: l.eurGrosze };
+  }
+  /** Whether new payments in this mode have run into the limit (the page then shows a pause). */
+  const limitReached = (mode: 'test' | 'live') => {
+    const s = limitState(mode);
+    return s.on && s.taken >= s.stopAt;
+  };
+
   // ---------- routes ----------
 
   const routes: [string, RegExp, Handler][] = [
@@ -595,7 +631,9 @@ export function supportRoutes(ctx: SupportContext) {
         const p = ready(id);
         return p ? [{ id, monthly: id === 'stripe', test: p.mode === 'test' }] : [];
       });
-      return { tiers: store.tiers().filter((t) => t.enabled && (t.oneTimePln || t.oneTimeEur || t.monthlyPln || t.monthlyEur)).map(publicTier), providers, test: providers.some((p) => p.test) };
+      // the quarter's limit reached: no new payments until the next quarter (a page that does not know it gets "limit_reached" on paying)
+      const paused = providers.length > 0 && limitReached(providers.some((p) => p.test) ? 'test' : 'live');
+      return { tiers: store.tiers().filter((t) => t.enabled && (t.oneTimePln || t.oneTimeEur || t.monthlyPln || t.monthlyEur)).map(publicTier), providers, test: providers.some((p) => p.test), paused };
     }],
     // the supporters wall: only players who chose to be on it
     ['GET', /^\/v1\/support\/wall$/, () => {
@@ -665,6 +703,9 @@ export function supportRoutes(ctx: SupportContext) {
       // one subscription at a time: a change goes through the customer portal
       if (kind === 'monthly' && store.subscriptionsOf(me).some((s) => s.mode === p.mode && ['active', 'trialing', 'past_due'].includes(s.status))) fail(409, 'already_subscribed');
       const amount = price * quantity;
+      // an unregistered business may not bring in more than its limit in a quarter
+      const limit = limitState(p.mode);
+      if (limit.on && limit.taken + inPln(amount, currency, limit.eurGrosze) > limit.stopAt) fail(409, 'limit_reached');
       const days = kind === 'one_time' ? tier.days * quantity : 0;
       const customer = providerId === 'stripe' ? store.customer(me, 'stripe', p.mode) : '';
       const pay = store.newPayment({ provider: providerId, ref: '', user: me, tier: tier.id, kind, quantity, days, amount, currency, mode: p.mode, customer, consentAt: now() });
@@ -717,7 +758,7 @@ export function supportRoutes(ctx: SupportContext) {
       const subs = (ctx.sql.prepare("SELECT COUNT(*) AS n FROM support_subscriptions WHERE status IN ('active', 'trialing', 'past_due') AND mode = 'live'").get() as { n: number }).n;
       return {
         providers: PROVIDER_IDS.map(providerView), tiers: store.tiers(), graceDays: graceDays(),
-        keyReady: !!ctx.box, keyError: ctx.keyError ?? null, revenue: store.revenue(), activeSupporters, activeSubscriptions: subs, pendingRefunds: refunds.refunds.pendingCount(),
+        keyReady: !!ctx.box, keyError: ctx.keyError ?? null, revenue: store.revenue(), quarter: limitState('live'), activeSupporters, activeSubscriptions: subs, pendingRefunds: refunds.refunds.pendingCount(),
       };
     }],
     // a provider's settings; keys are write-only: '' or missing keeps one, null removes it

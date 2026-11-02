@@ -309,6 +309,18 @@ CREATE TABLE IF NOT EXISTS support_prefs (user TEXT PRIMARY KEY, wall INTEGER NO
     return { payments, total };
   }
 
+  /**
+   * Money kept from payments since `from` (ms) in one mode, per currency: paid ones, without the
+   * refunded or disputed ones and without the part of a payment given back.
+   */
+  takenSince(from: number, mode: string): Record<string, number> {
+    const rows = this.sql.prepare(`SELECT p.currency, SUM(MAX(0, p.amount - COALESCE(i.refunded_amount, 0))) AS kept
+      FROM support_payments p LEFT JOIN support_payment_info i ON i.payment = p.id
+      WHERE p.mode = ? AND p.paid_at >= ? AND p.status NOT IN ('refunded', 'disputed', 'mismatch', 'failed', 'pending', 'expired')
+      GROUP BY p.currency`).all(mode, from) as { currency: string; kept: number }[];
+    return Object.fromEntries(rows.map((r) => [r.currency, r.kept]));
+  }
+
   /** Money that came in (and went back) per month, live payments only. */
   revenue(): { month: string; currency: string; paid: number; refunded: number; count: number }[] {
     return this.sql.prepare(`SELECT strftime('%Y-%m', paid_at / 1000, 'unixepoch') AS month, currency,
