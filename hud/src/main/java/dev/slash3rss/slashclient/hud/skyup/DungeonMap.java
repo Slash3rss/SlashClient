@@ -343,7 +343,9 @@ public final class DungeonMap implements HudModule {
 						color = image.getPixel(ix, iz);
 						byte c = cell[iz * SIZE + ix];
 						// plain: one grey for the floor (green where the start room's is green), walls near black
-						if (c == 2) color = DungeonRooms.tint(ix, iz, cfg.dungeonBlockColors ? color : plain(color));
+						// a single block to stand on out in the rock (a sign on a ledge): not a room, not drawn
+						if (c == 2 && lone(ix, iz)) color = UNKNOWN;
+						else if (c == 2) color = DungeonRooms.tint(ix, iz, cfg.dungeonBlockColors ? color : plain(color));
 						// a wall one block thick, along the floor: the rock behind it is left out
 						else if (c == 1 && !byFloor(ix, iz)) color = UNKNOWN;
 						else if (c == 1 && !cfg.dungeonBlockColors) color = 0xFF0B0F17;
@@ -363,10 +365,19 @@ public final class DungeonMap implements HudModule {
 		for (int dz = -1; dz <= 1; dz++) {
 			for (int dx = -1; dx <= 1; dx++) {
 				int nx = x + dx, nz = z + dz;
-				if (nx >= 0 && nz >= 0 && nx < SIZE && nz < SIZE && cell[nz * SIZE + nx] == 2) return true;
+				if (nx >= 0 && nz >= 0 && nx < SIZE && nz < SIZE && cell[nz * SIZE + nx] == 2 && !lone(nx, nz)) return true;
 			}
 		}
 		return false;
+	}
+
+	/** Whether a floor pixel has no floor beside it (none of the four round it). */
+	private static boolean lone(int x, int z) {
+		return !(floor(x - 1, z) || floor(x + 1, z) || floor(x, z - 1) || floor(x, z + 1));
+	}
+
+	private static boolean floor(int x, int z) {
+		return x >= 0 && z >= 0 && x < SIZE && z < SIZE && cell[z * SIZE + x] == 2;
 	}
 
 	/** The part of the map seen (x, z, width, height), with a margin, or null before anything was seen. */
