@@ -180,7 +180,13 @@ public class SlashHud implements ClientModInitializer {
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
 		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
 		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, category));
+		// H switches its view only where the partner servers' dungeons are (26.3); before, a key takes only one
+		// action, and H would steal it from whatever the player set on it
+		//#if MC >= 26.3
 		DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.KEY_H, category));
+		//#else
+		//$ DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.UNKNOWN.getValue(), category));
+		//#endif
 		// minecraft.wiki: the window, and the article about the thing in hand (no keys by default)
 		dev.slash3rss.slashclient.hud.wiki.McWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWiki", InputConstants.UNKNOWN.getValue(), category));
 		dev.slash3rss.slashclient.hud.wiki.McWiki.lookupKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWikiLookup", InputConstants.UNKNOWN.getValue(), category));
