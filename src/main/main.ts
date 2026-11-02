@@ -4,7 +4,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
+import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
@@ -2218,21 +2218,22 @@ const lan = new LanTunnels({
   send: (message) => social.send(message),
 });
 
-/** The account the running game plays as (it can change from the game's menu). */
+/** The account of the last game started (it can change from the game's menu); older games' sessions follow it. */
 let gameAccountId: string | undefined;
-/** When the game last asked for its session to be renewed at once (a server refused it). */
-let lastForcedRenew: number | undefined;
+/** When a game last asked for its session to be renewed at once (a server refused it), by account. */
+const lastForcedRenew = new Map<string, number>();
 /** The last renewal asked for: the game's timer and its join may ask at the same moment, they go one after another (the second finds the fresh token). */
 let renewing: Promise<unknown> | undefined;
 
 /** The running game's session with a token that lasts (bridge `/session`); offline accounts need nothing. */
-async function gameSession(force: boolean) {
-  const account = store.accounts.find((a) => a.id === gameAccountId);
+async function gameSession(force: boolean, uuid?: string) {
+  const account = gameSessionAccount(store.accounts, uuid, gameAccountId);
   if (!account) return undefined;
   if (account.type !== 'msa') return { type: 'offline' as const };
   const now = Date.now();
-  const margin = gameSessionMargin(force, lastForcedRenew, now);
-  if (margin === Infinity) lastForcedRenew = now;
+  // per account: one game's refused session does not hold back another game's on another account
+  const margin = gameSessionMargin(force, lastForcedRenew.get(account.id), now);
+  if (margin === Infinity) lastForcedRenew.set(account.id, now);
   const run = (renewing ?? Promise.resolve()).catch(() => undefined).then(() => freshMsa(account.id, margin));
   renewing = run;
   const fresh = await run;
@@ -2249,7 +2250,7 @@ const bridge = new GameBridge({
   },
   accounts: () => store.accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, current: a.id === gameAccountId })),
   // the game renews its own Minecraft token before it runs out (about a day), with no restart
-  session: (force) => gameSession(force),
+  session: (force, uuid) => gameSession(force, uuid),
   lanHost: (port) => lan.setHost(port),
   lanJoin: (host) => lan.join(host),
   // switching accounts in the game's menu: the game gets this one account's session, nothing else
