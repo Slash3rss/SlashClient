@@ -654,7 +654,7 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	/** How a mob class is drawn: "head", "dot", "skull" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss, 4 minion). */
+	/** How a mob class is drawn: "head", "dot" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss, 4 minion). */
 	private static String mobStyle(int kind) {
 		HudConfig cfg = SlashHud.config;
 		return switch (kind) {
@@ -666,7 +666,7 @@ public final class DungeonMap implements HudModule {
 		};
 	}
 
-	public static final String[] MOB_STYLES = { "head", "dot", "skull", "hidden" };
+	public static final String[] MOB_STYLES = { "head", "dot", "hidden" };
 
 	/** One mob on the map in its style, framed in its class's colour. */
 	private static void mob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size, int frame, String style) {
@@ -676,10 +676,6 @@ public final class DungeonMap implements HudModule {
 				int r = size >= 12 ? 3 : 2;
 				g.fill(x - r - 1, y - r - 1, x + r + 1, y + r + 1, 0xFF000000);
 				g.fill(x - r, y - r, x + r, y + r, frame | 0xFF000000);
-			}
-			case "skull" -> {
-				g.fill(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1, frame);
-				item(g, new ItemStack(size >= 12 ? Items.WITHER_SKELETON_SKULL : Items.SKELETON_SKULL), x, y, size);
 			}
 			default -> {
 				// its face: a head it wears (servers dress mobs in player heads), an NPC's skin, its own face, else a dot
@@ -693,10 +689,10 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	/** A mob on a room's tile of the simple map, as its class is set to be drawn, framed in its class's colour. */
+	/** A mob on a room's tile of the simple map, as its class is set to be drawn, framed in its class's colour (a mini boss unframed: its room is red). */
 	static void tileMob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size) {
 		int kind = mobKind(e);
-		mob(g, e, x, y, size, FRAMES[kind], mobStyle(kind));
+		mob(g, e, x, y, size, kind == 3 ? 0 : FRAMES[kind], mobStyle(kind));
 	}
 
 	/** Whether a mob is drawn at all (its class not set to hidden, mobs on the map switched on). */
@@ -977,7 +973,7 @@ public final class DungeonMap implements HudModule {
 		int top = y;
 		if (simple()) {
 			// tiles in a grid: the start room, the one you are in, one with mobs, the rest; doors between them
-			int[][] tiles = { { 0, 0, 0xFF8B95A5 }, { 1, 0, 0xFF2E3440 }, { 2, 0, 0xFF8B95A5 }, { 0, 1, 0xFF8B95A5 }, { 1, 1, 0xFF6EE86E }, { 2, 1, 0xFF5B6475 }, { 1, 2, 0xFF0EA30E } };
+			int[][] tiles = { { 0, 0, 0xFF8B95A5 }, { 1, 0, 0xFF2E3440 }, { 2, 0, 0xFF8B95A5 }, { 0, 1, 0xFF8B95A5 }, { 1, 1, 0xFF8B95A5 }, { 2, 1, 0xFF5B6475 }, { 1, 2, 0xFF0EA30E } };
 			for (int[] t : tiles) {
 				int tx = x + 8 + t[0] * 36, ty = top + 6 + t[1] * 36;
 				g.fill(tx, ty, tx + 32, ty + 32, 0xFF000000 | (t[2] & 0xFEFEFE) >> 1);

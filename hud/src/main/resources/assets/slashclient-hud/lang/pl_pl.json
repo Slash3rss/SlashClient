@@ -1237,7 +1237,6 @@
 	"slashclient-hud.dungeon.mobOther": "Inne moby i NPC",
 	"slashclient-hud.dungeon.mobStyle.head": "Główka",
 	"slashclient-hud.dungeon.mobStyle.dot": "Kropka",
-	"slashclient-hud.dungeon.mobStyle.skull": "Czaszka",
 	"slashclient-hud.dungeon.mobStyle.hidden": "Ukryte",
 	"slashclient-hud.dungeon.containers": "Łupy na mapie (kropki)",
 	"slashclient-hud.dungeon.counters": "Liczniki łupów pokoju pod mapą",

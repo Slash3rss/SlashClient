@@ -1190,8 +1190,8 @@ public final class DungeonRooms {
 	/**
 	 * The simple map: each room a tile in the colour of what is going on in it, with an icon in the
 	 * middle, and a small yellow square on each door between two rooms. The start room is dark green
-	 * with a campfire, the room the player is in light green, a room with mobs dark grey with their
-	 * heads (so a mini boss's red frame shows), a cleared one green with the time until its mobs come back, the rest grey (darker
+	 * with a campfire, a room with a mini boss red, one with other mobs dark grey,
+	 * both with their heads, a cleared one green with the time until its mobs come back, the rest grey (darker
 	 * when not visited yet) with the loot still to take in it.
 	 */
 	static void drawTiles(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h, float viewX, float viewZ, float scale) {
@@ -1203,7 +1203,10 @@ public final class DungeonRooms {
 			int x1 = ox + Math.round((t.x1 + 1 - viewX) * scale) - 1, z1 = oy + Math.round((t.z1 + 1 - viewZ) * scale) - 1;
 			if (x1 - x0 < 2 || z1 - z0 < 2) continue;
 			boolean mobs = t.mobs > 0 || t.remembered > 0 || t.left > 0, cleared = t.respawnAt > now;
-			int color = t.start ? 0xFF0EA30E : t.current ? 0xFF6EE86E : mobs ? 0xFF2E3440 : cleared ? 0xFF3E9E5A : t.visited ? 0xFF8B95A5 : 0xFF5B6475;
+			// a mini boss in it (seen or remembered): the whole room red
+			boolean boss = false;
+			for (Entity m : t.mobList) boss |= m instanceof net.minecraft.world.entity.LivingEntity e && DungeonMap.mobShown(e) && DungeonMap.mobKind(e) == 3;
+			int color = t.start ? 0xFF0EA30E : boss ? 0xFFA30E0E : mobs ? 0xFF2E3440 : cleared ? 0xFF3E9E5A : t.visited ? 0xFF8B95A5 : 0xFF5B6475;
 			// a rim a shade darker, as on a tile; zoomed in, cut at the map's edge
 			box(g, x0, z0, x1, z1, ox, oy, w, h, mix(color, 0x000000, 0.3f));
 			box(g, x0 + 1, z0 + 1, x1 - 1, z1 - 1, ox, oy, w, h, color);

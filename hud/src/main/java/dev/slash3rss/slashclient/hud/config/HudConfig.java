@@ -191,7 +191,7 @@ public final class HudConfig {
 	public boolean emoteCamera = true;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
-	/** How each mob class shows on the dungeon map: "head", "dot", "skull" or "hidden". */
+	/** How each mob class shows on the dungeon map: "head", "dot" or "hidden". */
 	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobMinion = "head", dungeonMobOther = "head";
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
 	public boolean dungeonContainers = true;
@@ -846,11 +846,11 @@ public final class HudConfig {
 		dungeonStartArrow = other.dungeonStartArrow;
 		emoteCamera = other.emoteCamera;
 		dungeonMobs = other.dungeonMobs;
-		dungeonMobNormal = other.dungeonMobNormal;
-		dungeonMobElite = other.dungeonMobElite;
-		dungeonMobBoss = other.dungeonMobBoss;
-		dungeonMobMinion = other.dungeonMobMinion;
-		dungeonMobOther = other.dungeonMobOther;
+		dungeonMobNormal = "skull".equals(other.dungeonMobNormal) ? "head" : other.dungeonMobNormal;
+		dungeonMobElite = "skull".equals(other.dungeonMobElite) ? "head" : other.dungeonMobElite;
+		dungeonMobBoss = "skull".equals(other.dungeonMobBoss) ? "head" : other.dungeonMobBoss;
+		dungeonMobMinion = "skull".equals(other.dungeonMobMinion) ? "head" : other.dungeonMobMinion;
+		dungeonMobOther = "skull".equals(other.dungeonMobOther) ? "head" : other.dungeonMobOther;
 		dungeonContainers = other.dungeonContainers;
 		dungeonBlockColors = other.dungeonBlockColors;
 		dungeonChests = other.dungeonChests;
