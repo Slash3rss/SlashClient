@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ensureFreshAccount, FORCED_RENEW_GAP_MS, GAME_RENEW_MS, gameSessionAccount, gameSessionMargin, needsRefresh } from '../src/main/auth';
+import { ensureFreshAccount, FORCED_RENEW_GAP_MS, GAME_RENEW_MS, gameSessionAccount, LAUNCH_RENEW_MS, gameSessionMargin, needsRefresh } from '../src/main/auth';
 import { secrets, type MicrosoftAccount } from '../src/main/store';
 import { setLang } from '../src/shared/i18n';
 
@@ -38,6 +38,16 @@ describe('Microsoft sign-in', () => {
     assert.equal(needsRefresh(now + 20 * hour, now, gameSessionMargin(true, undefined, now)), true);
     assert.equal(gameSessionMargin(true, now - 1000, now), GAME_RENEW_MS);
     assert.equal(gameSessionMargin(true, now - FORCED_RENEW_GAP_MS, now), Infinity);
+  });
+
+  it('starts a game with a token for many hours, renewing one with only a few left', () => {
+    const now = 1_000_000_000;
+    const hour = 3_600_000;
+    // a day-old sign-in with five hours left: renewed before the start, not hours later on a server
+    assert.equal(needsRefresh(now + 5 * hour, now, LAUNCH_RENEW_MS), true);
+    assert.equal(needsRefresh(now + 20 * hour, now, LAUNCH_RENEW_MS), false);
+    // longer than the running game's margin, so a fresh start never renews again soon after
+    assert.ok(LAUNCH_RENEW_MS > GAME_RENEW_MS);
   });
 
   it('gives each running game the session of its own account, also with two games on two accounts', () => {

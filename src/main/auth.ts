@@ -167,6 +167,12 @@ export async function completeMicrosoftLogin(tokens: MsTokens, clientId: string)
 
 /** How long before its end a running game's token is renewed (the HUD asks the launcher through the bridge). */
 export const GAME_RENEW_MS = 2 * 60 * 60_000;
+/**
+ * How much time a token must still have when a game starts (or switches to it), else it is renewed first:
+ * a game may stay on one server for hours, where it can't renew it, and the game's own friends list
+ * keeps asking Mojang with it (an expired one gets "invalid token" every few minutes).
+ */
+export const LAUNCH_RENEW_MS = 12 * 60 * 60_000;
 /** A forced renewal (a server said "invalid session") at most this often, so a broken server can't make us hammer Microsoft. */
 export const FORCED_RENEW_GAP_MS = 5 * 60_000;
 

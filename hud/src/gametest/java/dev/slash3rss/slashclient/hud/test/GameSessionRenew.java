@@ -56,6 +56,12 @@ public class GameSessionRenew implements FabricClientGameTest {
 			context.setScreen(TitleScreen::new);
 			String t1 = token(24, "one");
 			next = t1;
+			// a player hidden in the social screen; the game's friends (26.2+) made with the old token
+			java.util.UUID hidden = java.util.UUID.fromString("00000000-0000-4000-8000-000000000001");
+			Object socialBefore = context.computeOnClient(mc -> {
+				mc.getPlayerSocialManager().hidePlayer(hidden);
+				return mc.getPlayerSocialManager();
+			});
 			context.runOnClient(mc -> {
 				SessionRenew.expiresForTest(System.currentTimeMillis() + HOUR);
 				SessionRenew.checkSoon();
@@ -63,6 +69,9 @@ public class GameSessionRenew implements FabricClientGameTest {
 			context.waitTicks(20);
 			expect(context, t1, "in the menu");
 			if (!SessionRenew.asked.equals(List.of("timer"))) throw new AssertionError("Asked: " + SessionRenew.asked);
+			// the social parts made anew with the new token, and the hidden player still hidden
+			if (context.computeOnClient(mc -> mc.getPlayerSocialManager() == socialBefore)) throw new AssertionError("The social manager kept the old token");
+			if (!context.computeOnClient(mc -> mc.getPlayerSocialManager().isHidden(hidden))) throw new AssertionError("The hidden player is shown again after the renewal");
 			// a day left now: no more asking
 			context.runOnClient(mc -> SessionRenew.checkSoon());
 			context.waitTicks(10);
