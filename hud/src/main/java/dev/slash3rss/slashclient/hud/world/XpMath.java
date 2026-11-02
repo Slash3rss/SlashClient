@@ -41,18 +41,34 @@ public final class XpMath {
 	/** A bottle XP suggestion for mending a pickaxe by a stone generator: safe, the usual range, and the most. */
 	public record Mending(int safe, int low, int high, int max) {}
 
-	public static final String[] GENERATORS = { "8x", "16x" };
-	public static final String[] UNBREAKING = { "III", "IV", "V", "VI" };
+	/** The usual choices, offered next to the boxes. */
+	public static final int[] GENERATORS = { 8, 16 }, UNBREAKING = { 3, 4, 5, 6 };
 
-	/** What a bottle should hold to keep the pickaxe mended (as measured on SkyUp, from the website). */
-	public static Mending mending(String generators, String unbreaking) {
-		boolean many = "16x".equals(generators);
-		return switch (unbreaking) {
-			case "IV" -> many ? new Mending(82, 78, 84, 86) : new Mending(42, 38, 42, 44);
-			case "V" -> many ? new Mending(68, 64, 70, 72) : new Mending(34, 32, 34, 36);
-			case "VI" -> many ? new Mending(58, 56, 60, 62) : new Mending(30, 26, 30, 32);
-			default -> many ? new Mending(102, 96, 104, 106) : new Mending(52, 48, 52, 54);
-		};
+	/**
+	 * XP a generator wears off a pickaxe between two throws of a 12 s clock, without Unbreaking: the
+	 * low end, safe, the high end and the most. Fitted to what was measured on SkyUp (8 and 16
+	 * generators, Unbreaking III–VI, the website's table): safe and the high end give exactly its numbers.
+	 */
+	private static final double LOW = 24.1, SAFE = 25.7, HIGH = 26, MAX = 27.1;
+
+	/**
+	 * What a bottle should hold to keep the pickaxe mended: the wear grows with the generators and the
+	 * clock between throws, and Unbreaking n lets only one use in n + 1 cost durability. Even numbers,
+	 * as the measurements were.
+	 */
+	public static Mending mending(int generators, int unbreaking, int clock) {
+		double per = Math.max(1, generators) * Math.max(1, clock) / 12.0 / (Math.max(0, unbreaking) + 1);
+		return new Mending(even(per * SAFE), even(per * LOW), even(per * HIGH), even(per * MAX));
+	}
+
+	private static int even(double xp) {
+		return (int) Math.max(2, Math.min(1_000_000, 2 * Math.round(xp / 2)));
+	}
+
+	/** "VI" for 6; plain digits past 10 or below 1. */
+	public static String roman(int n) {
+		String[] r = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" };
+		return n >= 1 && n <= 10 ? r[n - 1] : String.valueOf(n);
 	}
 
 	/**

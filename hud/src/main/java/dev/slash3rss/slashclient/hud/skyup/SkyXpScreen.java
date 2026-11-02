@@ -30,7 +30,7 @@ public class SkyXpScreen extends Screen {
 
 	private final Screen parent;
 	private final List<Hit> hits = new ArrayList<>();
-	private EditBox level, qty, bottle, clock;
+	private EditBox level, qty, bottle, clock, gens, unbreaking;
 	private int px, py, pw, ph;
 	/** When the command was copied (ms), for "Copied". */
 	private long copiedAt;
@@ -55,6 +55,12 @@ public class SkyXpScreen extends Screen {
 		qty = box(x2 + 58, fy + 6, 34, 5, String.valueOf(cfg().skyXpBottles), v -> cfg().skyXpBottles = Math.max(1, v));
 		bottle = box(x2 + 58, fy + 30, 34, 5, String.valueOf(cfg().skyXpBottle), v -> cfg().skyXpBottle = Math.max(1, v));
 		clock = box(x2 + 58, fy + 54, 34, 5, String.valueOf(cfg().skyXpInterval), v -> cfg().skyXpInterval = Math.max(1, v));
+		// the mending assistant's own numbers: any count of generators and level of Unbreaking
+		int x1 = px + 10;
+		gens = box(x1 + 4, py + 56, 18, 3, String.valueOf(cfg().skyXpGens), v -> cfg().skyXpGens = Math.max(1, v));
+		unbreaking = box(x1 + 4, py + 56, 18, 3, String.valueOf(cfg().skyXpUnbreakingLevel), v -> cfg().skyXpUnbreakingLevel = v);
+		gens.setHint(Ui.tr("slashclient-hud.skyXp.generators"));
+		unbreaking.setHint(Ui.tr("slashclient-hud.skyXp.unbreaking"));
 	}
 
 	private int colW() {
@@ -116,12 +122,16 @@ public class SkyXpScreen extends Screen {
 
 		// ---- the mending assistant ----
 		int y = py + 38;
-		Ui.draw(g, Ui.trBold("slashclient-hud.skyXp.mending"), x1, y, Ui.TEXT_2);
-		int cx = x1;
-		for (String gen : XpMath.GENERATORS) cx = chip(g, "gen:" + gen, Ui.text(gen), cx, y + 13, gen.equals(c.skyXpGenerators), x1 + cw, mx, my, () -> c.skyXpGenerators = gen);
-		cx += 6;
-		for (String u : XpMath.UNBREAKING) cx = chip(g, "unb:" + u, Ui.text(u), cx, y + 13, u.equals(c.skyXpUnbreaking), x1 + cw, mx, my, () -> c.skyXpUnbreaking = u);
-		XpMath.Mending m = XpMath.mending(c.skyXpGenerators, c.skyXpUnbreaking);
+		Component title = Ui.trBold("slashclient-hud.skyXp.mending");
+		Ui.draw(g, title, x1, y, Ui.TEXT_2);
+		// how it is counted, with the player's numbers, beside the heading
+		int hw = Ui.width(title) + 8;
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.skyXp.formula", Math.max(1, c.skyXpGens), Math.max(1, c.skyXpInterval), Math.max(0, c.skyXpUnbreakingLevel) + 1), cw - hw), x1 + hw, y, Ui.MUTED);
+		// any number of generators and level of Unbreaking, the usual ones a click away
+		int nx = small(g, gens, x1, y + 12, XpMath.GENERATORS, "x", mx, my);
+		small(g, unbreaking, nx + 6, y + 12, XpMath.UNBREAKING, null, mx, my);
+		XpMath.Mending m = XpMath.mending(c.skyXpGens, c.skyXpUnbreakingLevel, c.skyXpInterval);
+		y += 2;
 		int sw = (cw - 6) / 3;
 		// what a bottle should hold: safe, the usual range (a click takes its low end), the most
 		Object[][] picks = { { "safe", m.safe(), m.safe() }, { "range", m.low(), m.low() + "–" + m.high() }, { "max", m.max(), m.max() } };
@@ -134,7 +144,7 @@ public class SkyXpScreen extends Screen {
 		}
 
 		// ---- what it comes to ----
-		y = py + 96;
+		y = py + 98;
 		Ui.draw(g, Ui.trBold("slashclient-hud.skyXp.result"), x1, y, Ui.TEXT_2);
 		int perBottle = Math.max(1, c.skyXpBottle);
 		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.skyXp.cost", perBottle * 2), cw), x1, y + 13, Ui.TEXT);
@@ -218,6 +228,16 @@ public class SkyXpScreen extends Screen {
 		Ui.button(g, "skyxp:" + id, x, y, w, 16, label, on, mx, my);
 		hits.add(new Hit(x, y, w, 16, pick));
 		return x + w + 3;
+	}
+
+	/** One of the mending assistant's numbers: a narrow box and the usual choices (Unbreaking's as "IV"); returns where the next goes. */
+	private int small(GuiGraphicsExtractor g, EditBox box, int x, int y, int[] presets, String unit, int mx, int my) {
+		XpCalcScreen.field(g, box, x, y, 26);
+		box.setX(x + 4);
+		box.setY(y + 6);
+		int cx = x + 29, now = XpCalcScreen.number(box);
+		for (int p : presets) cx = chip(g, unit + p, Ui.text(unit == null ? XpMath.roman(p) : p + unit), cx, y + 2, now == p, px + 10 + colW(), mx, my, () -> box.setValue(String.valueOf(p)));
+		return cx;
 	}
 
 	/** One setting: its name, its box and the presets that fit after it. */

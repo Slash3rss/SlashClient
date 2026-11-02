@@ -41,8 +41,8 @@ public final class XpTestHooks {
 		c.skyXpBottle = 52;
 		c.skyXpInterval = 12;
 		c.skyXpFromLevel = true;
-		c.skyXpGenerators = "8x";
-		c.skyXpUnbreaking = "III";
+		c.skyXpGens = 8;
+		c.skyXpUnbreakingLevel = 3;
 		c.skyXpMuted = true;
 		c.placement("skyxp").enabled = true;
 		SkyXp.reset();
@@ -51,6 +51,17 @@ public final class XpTestHooks {
 		mc.setScreenAndShow(screen);
 		XpMath.Bottling b = XpMath.bottling(30, 52);
 		return screen.command() + " | " + b.bottles() + " " + b.left() + " " + b.leftLevel().level() + "/" + b.leftLevel().into() + "/" + b.leftLevel().next() + " " + b.tax();
+	}
+
+	/** The mending assistant's safe and high numbers for 8 and 16 generators, Unbreaking III–VI, a 12 s clock; then 10 generators, Unbreaking II, 20 s. */
+	public static String mending() {
+		StringBuilder out = new StringBuilder();
+		for (int gens : XpMath.GENERATORS) for (int u : XpMath.UNBREAKING) {
+			XpMath.Mending m = XpMath.mending(gens, u, 12);
+			out.append(m.safe()).append('/').append(m.high()).append(' ');
+		}
+		XpMath.Mending own = XpMath.mending(10, 2, 20);
+		return out.append(own.low()).append('-').append(own.max()).toString();
 	}
 
 	/** The countdown started as the calculator's Start would, a session of `seconds` with a clock of `clock`. */

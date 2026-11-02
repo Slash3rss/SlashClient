@@ -27,6 +27,9 @@ public class GameXpCalc implements FabricClientGameTest {
 			//#if MC >= 26.3
 			String sky = context.computeOnClient(mc -> XpTestHooks.openSky());
 			if (!sky.equals("/schowajexp 52 13 | 13 43 4/3/15 676")) throw new AssertionError("SkyUp XP: " + sky);
+			// the assistant's formula gives the website's measured table back, and takes the player's own numbers
+			String mending = context.computeOnClient(mc -> XpTestHooks.mending());
+			if (!mending.equals("52/52 42/42 34/34 30/30 102/104 82/84 68/70 58/60 134-150")) throw new AssertionError("SkyUp mending: " + mending);
 			context.waitTicks(5);
 			context.takeScreenshot("skyxpcalc");
 			//#endif

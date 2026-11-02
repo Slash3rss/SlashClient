@@ -311,7 +311,9 @@ public final class HudConfig {
 	 */
 	public int skyXpLevel = 30, skyXpBottles = 64, skyXpBottle = 52, skyXpInterval = 12;
 	public boolean skyXpFromLevel = true, skyXpMuted = false;
-	public String skyXpGenerators = "8x", skyXpUnbreaking = "III";
+	public int skyXpGens = 8, skyXpUnbreakingLevel = 3;
+	/** The assistant's old choice ("16x", "IV"), read once into the numbers above. */
+	public String skyXpGenerators, skyXpUnbreaking;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
@@ -792,6 +794,14 @@ public final class HudConfig {
 		}
 	}
 
+	/** The mending assistant's choice from before it took any numbers ("16x", "IV"), kept once over. */
+	private static void skyXpOld(HudConfig c) {
+		if (c.skyXpGenerators != null) c.skyXpGens = "16x".equals(c.skyXpGenerators) ? 16 : 8;
+		int old = java.util.List.of("III", "IV", "V", "VI").indexOf(c.skyXpUnbreaking);
+		if (old >= 0) c.skyXpUnbreakingLevel = old + 3;
+		c.skyXpGenerators = c.skyXpUnbreaking = null;
+	}
+
 	/** Settings from an older version or a share code: whatever is missing gets its default. */
 	public static HudConfig fillMissing(HudConfig read) {
 		HudConfig defaults = defaults();
@@ -819,6 +829,7 @@ public final class HudConfig {
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
 		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		read.spotify = read.spotify == null ? defaults.spotify : read.spotify.checked();
+		skyXpOld(read);
 		return read;
 	}
 
@@ -938,8 +949,9 @@ public final class HudConfig {
 		skyXpInterval = Math.max(1, Math.min(99_999, other.skyXpInterval));
 		skyXpFromLevel = other.skyXpFromLevel;
 		skyXpMuted = other.skyXpMuted;
-		skyXpGenerators = "16x".equals(other.skyXpGenerators) ? "16x" : "8x";
-		skyXpUnbreaking = java.util.List.of("III", "IV", "V", "VI").contains(other.skyXpUnbreaking) ? other.skyXpUnbreaking : "III";
+		skyXpOld(other);
+		skyXpGens = Math.max(1, Math.min(999, other.skyXpGens));
+		skyXpUnbreakingLevel = Math.max(0, Math.min(255, other.skyXpUnbreakingLevel));
 		skyPackLocal = other.skyPackLocal;
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;
