@@ -179,7 +179,7 @@ public final class HudConfig {
 	public float dungeonZoom = 1f;
 	/** Other players on the dungeon map. */
 	public boolean dungeonPlayers = true;
-	/** The dungeon map's size on screen, in pixels (80–240): more map, the text and icons as they are. */
+	/** The dungeon map's size on screen, in pixels (80–400): more map, the text and icons as they are. */
 	public int dungeonSize = 120;
 	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
 	public boolean dungeonPlan = false;

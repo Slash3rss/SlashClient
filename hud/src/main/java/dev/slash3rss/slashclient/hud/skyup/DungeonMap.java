@@ -544,7 +544,7 @@ public final class DungeonMap implements HudModule {
 
 	/** The size from the settings; the picture is made anew when it changes. */
 	private static void resize() {
-		int size = Math.max(80, Math.min(240, SlashHud.config.dungeonSize));
+		int size = Math.max(80, Math.min(400, SlashHud.config.dungeonSize));
 		if (size == W) return;
 		W = H = size;
 		if (view == null) return;

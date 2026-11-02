@@ -485,8 +485,10 @@ public final class DungeonRooms {
 
 		// rooms that had mobs and have none now, seen from close: cleared
 		long now = System.currentTimeMillis();
-		// the holograms first: what the server says; one read half a minute ago is old for the count
-		holograms.values().removeIf(h -> h[3] > 0 ? h[3] < now : now - h[4] > 30_000);
+		// the holograms first: what the server says. A count far off stays as last read (the game does not
+		// send holograms that far), as long as mobs are remembered; close by, one not read for half a minute is gone
+		holograms.values().removeIf(h -> h[3] > 0 ? h[3] < now
+			: now - h[4] > REMEMBER_MS || now - h[4] > 30_000 && Math.abs(h[0] - px) < SEES && Math.abs(h[1] - pz) < SEES);
 		for (long[] h : holograms.values()) {
 			// a spawner's hologram floats over it, maybe up on a ledge: its room may be a few blocks off
 			int r = roomAt((int) h[0], (int) h[1], 12);

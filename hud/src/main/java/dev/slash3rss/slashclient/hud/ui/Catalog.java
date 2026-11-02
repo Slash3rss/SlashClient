@@ -286,7 +286,7 @@ public final class Catalog {
 					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					hideWhen("dungeonmap", settings, simple);
-					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
+					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 400f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
 					hideWhen("dungeonmap", settings, simple);
