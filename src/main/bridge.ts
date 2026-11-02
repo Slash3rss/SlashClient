@@ -34,7 +34,7 @@ export interface BridgeOptions {
    * offline account, nothing when the launcher started no game. Refreshed through Microsoft when under
    * two hours are left, or at once with `force` (a server refused the session).
    */
-  session?: (force: boolean) => Promise<{ type: 'msa'; name: string; uuid: string; accessToken: string; xuid: string; expiresAt: number } | { type: 'offline' } | undefined>;
+  session?: (force: boolean, uuid?: string) => Promise<{ type: 'msa'; name: string; uuid: string; accessToken: string; xuid: string; expiresAt: number } | { type: 'offline' } | undefined>;
   /** Sends a screenshot to a friend (encrypted by the launcher); rejects paths that are not a profile's screenshot. */
   sendImage?: (friendId: string, file: string) => Promise<unknown>;
   /** The same to a group (or clan) chat the player is in. */
@@ -302,7 +302,10 @@ export class GameBridge {
     if (method === 'GET' && session) {
       if (!this.opts.session) return this.send(res, 404, { error: 'not_found' });
       try {
-        const answer = await this.opts.session(!!session[1]);
+        // the game's own player (HUD 0.9.68+), so two games on two accounts each get their own token
+        const account = req.headers['x-slashclient-account'];
+        const uuid = typeof account === 'string' && /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(account) ? account : undefined;
+        const answer = await this.opts.session(!!session[1], uuid);
         return answer ? this.send(res, 200, answer) : this.send(res, 404, { error: 'no_game_account' });
       } catch (err) {
         return this.fail(res, 502, err);

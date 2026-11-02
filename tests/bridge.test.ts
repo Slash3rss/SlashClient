@@ -90,12 +90,14 @@ describe('game bridge', () => {
   it('hands the game its own session for renewal, only with the key', async () => {
     type Answer = Awaited<ReturnType<NonNullable<ConstructorParameters<typeof GameBridge>[0]['session']>>>;
     const asked: boolean[] = [];
+    const uuids: (string | undefined)[] = [];
     let answer: Answer = { type: 'msa', name: 'Steve', uuid: 'u-1', accessToken: 'fake.jwt.token', xuid: '1', expiresAt: 123 };
     const bridge = new GameBridge({
       call: async () => ({}),
       state: () => ({}),
-      session: async (force) => {
+      session: async (force, uuid) => {
         asked.push(force);
+        uuids.push(uuid);
         if (force && answer?.type === 'msa') throw new Error('Sesja Microsoft wygasła');
         return answer;
       },
@@ -116,6 +118,12 @@ describe('game bridge', () => {
     answer = undefined;
     assert.equal((await req('/session')).status, 404);
     assert.deepEqual(asked, [false, true, false, false]);
+    // a game says which player it is (two games on two accounts); anything but a UUID is not passed on
+    answer = { type: 'offline' };
+    const as = (account: string) => fetch(url + '/session', { headers: { Authorization: `Bearer ${key}`, 'X-SlashClient-Account': account } });
+    await as('11111111-2222-3333-4444-555555555555');
+    await as('../accounts');
+    assert.deepEqual(uuids, [undefined, undefined, undefined, undefined, '11111111-2222-3333-4444-555555555555', undefined]);
     bridge.stop();
 
     // a launcher without the option: the game keeps its token as before

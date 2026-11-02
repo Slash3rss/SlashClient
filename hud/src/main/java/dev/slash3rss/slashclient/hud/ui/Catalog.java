@@ -311,7 +311,8 @@ public final class Catalog {
 							if ("apart".equals(v)) cfg.placement("dungeonloot").enabled = true;
 						}));
 					hideWhen("dungeonmap", settings, () -> !cfg.dungeonCounters);
-					settings.add(new Toggle("slashclient-hud.dungeon.debug", () -> cfg.dungeonDebug, v -> cfg.dungeonDebug = v));
+					if (dev.slash3rss.slashclient.hud.skyup.DungeonMap.DEBUG_ALLOWED)
+						settings.add(new Toggle("slashclient-hud.dungeon.debug", () -> cfg.dungeonDebug, v -> cfg.dungeonDebug = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.dungeonChests, v -> cfg.dungeonChests = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.barrel", () -> cfg.dungeonBarrels, v -> cfg.dungeonBarrels = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.pot", () -> cfg.dungeonPots, v -> cfg.dungeonPots = v));

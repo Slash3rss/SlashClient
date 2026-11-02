@@ -179,6 +179,21 @@ export function needsRefresh(expiresAt: number, now: number, marginMs = 0): bool
  * How much time a game's token must still have, else the launcher renews it: two hours normally, or
  * "renew now" when the game was refused by a server (unless that happened a moment ago already).
  */
+export type Account = MicrosoftAccount | OfflineAccount;
+
+/**
+ * The account a running game plays as, for its session renewal. A game says its own player's UUID (HUD
+ * 0.9.68+): with two games on two accounts, each must get its own token, not the last started one's.
+ * Older games say nothing and get the account of the last game started, as before.
+ */
+export function gameSessionAccount(accounts: Account[], uuid: string | undefined, lastGameAccountId: string | undefined): Account | undefined {
+  if (uuid === undefined) return accounts.find((a) => a.id === lastGameAccountId);
+  const plain = (u: string) => u.replace(/-/g, '').toLowerCase();
+  const wanted = plain(uuid);
+  // a Microsoft account first: an offline one may have been made with the same name
+  return accounts.find((a) => a.type === 'msa' && plain(a.uuid) === wanted) ?? accounts.find((a) => plain(a.uuid) === wanted);
+}
+
 export function gameSessionMargin(force: boolean, lastForcedAt: number | undefined, now: number): number {
   return force && (lastForcedAt === undefined || now - lastForcedAt >= FORCED_RENEW_GAP_MS) ? Infinity : GAME_RENEW_MS;
 }

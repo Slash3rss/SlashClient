@@ -215,10 +215,15 @@ public final class Social {
 	// ---------- talking to the launcher ----------
 
 	private static JsonObject request(String method, String path, JsonObject body, int timeoutSec) throws Exception {
+		return request(method, path, body, timeoutSec, null);
+	}
+
+	private static JsonObject request(String method, String path, JsonObject body, int timeoutSec, String account) throws Exception {
 		HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(URL + path))
 			.timeout(Duration.ofSeconds(timeoutSec))
 			.header("Authorization", "Bearer " + KEY)
 			.header("Content-Type", "application/json");
+		if (account != null) b.header("X-SlashClient-Account", account);
 		b.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(GSON.toJson(body)));
 		HttpResponse<String> res = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofString());
 		if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode() + " " + res.body());
@@ -1109,12 +1114,14 @@ public final class Social {
 
 	/**
 	 * The game's own session from the launcher (`force`: renewed now, a server refused it), for SessionRenew;
-	 * null from a launcher that has none for this game (an older one, or the game started elsewhere).
+	 * null from a launcher that has none for this game (an older one, or the game started elsewhere). The game
+	 * says which player it is: with two games on two accounts, the launcher's last started one is not this one
+	 * (an older launcher ignores it and answers for its last started game).
 	 */
-	public static JsonObject session(boolean force) throws Exception {
+	public static JsonObject session(boolean force, java.util.UUID player) throws Exception {
 		if (!bridged()) return null;
 		try {
-			return request("GET", force ? "/session?force=1" : "/session", null, 30);
+			return request("GET", force ? "/session?force=1" : "/session", null, 30, player.toString());
 		} catch (IllegalStateException e) {
 			if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) return null;
 			throw e;

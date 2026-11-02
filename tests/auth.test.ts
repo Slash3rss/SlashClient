@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ensureFreshAccount, FORCED_RENEW_GAP_MS, GAME_RENEW_MS, gameSessionMargin, needsRefresh } from '../src/main/auth';
+import { ensureFreshAccount, FORCED_RENEW_GAP_MS, GAME_RENEW_MS, gameSessionAccount, gameSessionMargin, needsRefresh } from '../src/main/auth';
 import { secrets, type MicrosoftAccount } from '../src/main/store';
 import { setLang } from '../src/shared/i18n';
 
@@ -38,6 +38,22 @@ describe('Microsoft sign-in', () => {
     assert.equal(needsRefresh(now + 20 * hour, now, gameSessionMargin(true, undefined, now)), true);
     assert.equal(gameSessionMargin(true, now - 1000, now), GAME_RENEW_MS);
     assert.equal(gameSessionMargin(true, now - FORCED_RENEW_GAP_MS, now), Infinity);
+  });
+
+  it('gives each running game the session of its own account, also with two games on two accounts', () => {
+    const msa = (id: string, uuid: string) => ({ id, type: 'msa', name: id, uuid, accessToken: 't', refreshToken: 'r', xuid: '', expiresAt: 0 }) as unknown as MicrosoftAccount;
+    const guardes = msa('a1', '11111111-2222-3333-4444-555555555555');
+    const slash = msa('a2', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+    const offline = { id: 'a3', type: 'offline' as const, name: 'Guardes', uuid: '11111111-2222-3333-4444-555555555555' };
+    const accounts = [offline, guardes, slash];
+    // the game on Guardes asks while the last game started plays as Slash3rss
+    assert.equal(gameSessionAccount(accounts, '11111111222233334444555555555555', 'a2'), guardes);
+    assert.equal(gameSessionAccount(accounts, 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE', 'a1'), slash);
+    // an account the launcher does not have: nothing, not another account's token
+    assert.equal(gameSessionAccount(accounts, '99999999-2222-3333-4444-555555555555', 'a1'), undefined);
+    // an older game says nothing: the last started game's account, as before
+    assert.equal(gameSessionAccount(accounts, undefined, 'a2'), slash);
+    assert.equal(gameSessionAccount(accounts, undefined, undefined), undefined);
   });
 
   it('keeps a token with enough time left and refreshes one with too little', async () => {
