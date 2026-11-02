@@ -75,12 +75,13 @@ public class GamePresets implements FabricClientGameTest {
 			// every preset on the HUD of a usual screen (1920×1080, the game's GUI scale 3), with nothing lying on anything else
 			context.getInput().resizeWindow(1920, 1080);
 			context.runOnClient(mc -> TestHooks.guiScale(3));
+			StringBuilder overlapping = new StringBuilder();
 			for (String id : HudPresets.IDS) {
 				context.runOnClient(mc -> HudPresets.apply(id));
 				context.setScreen(() -> null);
 				context.waitTicks(5);
 				List<String> overlaps = context.computeOnClient(mc -> PresetTestHooks.overlaps());
-				if (!overlaps.isEmpty()) throw new AssertionError("Modules lie on each other in the preset " + id + ": " + overlaps);
+				if (!overlaps.isEmpty()) overlapping.append("\n").append(id).append(": ").append(overlaps);
 				context.takeScreenshot("presets-hud-" + id);
 				// in the editor every module shows, with a sample where the world has nothing to show yet
 				context.setScreen(HudEditScreen::new);
@@ -90,6 +91,7 @@ public class GamePresets implements FabricClientGameTest {
 			}
 			context.getInput().resizeWindow(854, 480);
 			context.runOnClient(mc -> TestHooks.guiScale(2));
+			if (!overlapping.isEmpty()) throw new AssertionError("Modules lie on each other or on the game's parts:" + overlapping);
 
 			// PvP saved under a name, then put back from its card
 			context.runOnClient(mc -> HudPresets.apply("pvp"));

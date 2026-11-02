@@ -18,8 +18,11 @@ import java.util.Set;
 public final class PresetTestHooks {
 	private PresetTestHooks() {}
 
-	/** Places that two modules share on purpose: they never show at once (no summons in a dungeon). */
-	private static final Set<String> SHARED = Set.of("dungeonmap|skyshaman", "dungeonloot|skyshaman", "dungeonloot|dungeonmap");
+	/**
+	 * Places that two modules share on purpose: they never show at once (no summons in a dungeon), or a
+	 * toast for a moment over the effects is all right.
+	 */
+	private static final Set<String> SHARED = Set.of("dungeonmap|skyshaman", "dungeonloot|skyshaman", "dungeonloot|dungeonmap", "effects|toasts");
 
 	public static void reset() {
 		HudPresets.clearForTest();
@@ -55,8 +58,9 @@ public final class PresetTestHooks {
 	}
 
 	/**
-	 * The switched-on modules whose boxes lie on each other or on the game's chat (always there, unlike
-	 * the toasts or the titles) on this screen, as "a|b" and their boxes; empty when none.
+	 * The switched-on modules whose boxes lie on each other or on one of the game's parts (the chat, the
+	 * scoreboard, the player list, the titles, …: as big as the editor's samples of them) on this
+	 * screen, as "a|b" and their boxes; empty when none. The game's parts among themselves are the game's.
 	 */
 	public static List<String> overlaps() {
 		Minecraft mc = Minecraft.getInstance();
@@ -64,7 +68,7 @@ public final class PresetTestHooks {
 		List<String> ids = new ArrayList<>();
 		List<int[]> boxes = new ArrayList<>();
 		for (HudModule m : SlashHud.MODULES) {
-			if ((GameParts.IDS.contains(m.id()) && !m.id().equals("chat")) || !enabled(m.id())) continue;
+			if (!enabled(m.id())) continue;
 			HudConfig.Placement p = SlashHud.config.placement(m.id());
 			int[] size = SlashHud.size(m, mc, p);
 			if (size[0] <= 0 || size[1] <= 0) continue;
@@ -77,7 +81,8 @@ public final class PresetTestHooks {
 			int[] a = boxes.get(i), b = boxes.get(j);
 			boolean over = a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
 			String pair = ids.get(i).compareTo(ids.get(j)) < 0 ? ids.get(i) + "|" + ids.get(j) : ids.get(j) + "|" + ids.get(i);
-			if (over && !SHARED.contains(pair)) out.add(pair + " " + java.util.Arrays.toString(a) + java.util.Arrays.toString(b));
+			boolean game = GameParts.IDS.contains(ids.get(i)) && GameParts.IDS.contains(ids.get(j));
+			if (over && !game && !SHARED.contains(pair)) out.add(pair + " " + java.util.Arrays.toString(a) + java.util.Arrays.toString(b));
 		}
 		return out;
 	}

@@ -234,7 +234,7 @@ public final class HudPresets {
 				m.put("effects", at(1, 0, -2, 2));
 			}
 			case "pvp" -> {
-				// numbers on the left, the fight around the crosshair, the gear on the right
+				// numbers on the left, the fight around the crosshair (clear of the titles over it), the gear low on the right
 				m.put("fps", at(0, 0, 2, 2));
 				m.put("ping", at(0, 0, 2, 17));
 				m.put("cps", at(0, 0, 2, 32));
@@ -242,44 +242,45 @@ public final class HudPresets {
 				// the keystrokes a little higher than usual, clear of the chat, and sprinting and sneaking over them
 				m.put("movement", at(0, 0.5f, 2, -60));
 				m.put("keystrokes", at(0, 0.5f, 2, -10));
-				// the combo and the reach under the crosshair beside the attack indicator; the target at the top, clear of the chat
 				m.put("target", at(0.5f, 0, 0, 28));
-				m.put("attackindicator", at(0.5f, 0.5f, 0, 17));
-				m.put("hits", at(0.5f, 0.5f, 0, -22));
-				m.put("combo", at(0.5f, 0.5f, 40, 24));
-				m.put("reach", at(0.5f, 0.5f, -40, 24));
-				m.put("durability", at(0.5f, 0.5f, 60, 0));
-				m.put("ammo", at(0.5f, 0.5f, -60, 0));
+				m.put("hits", at(0.5f, 0.5f, 0, -40));
+				m.put("attackindicator", at(0.5f, 0.5f, 0, 36));
+				m.put("combo", at(0.5f, 0.5f, 40, 36));
+				m.put("reach", at(0.5f, 0.5f, -40, 36));
+				m.put("durability", at(0.5f, 0.5f, 140, 0));
+				m.put("ammo", at(0.5f, 0.5f, -140, 0));
 				m.put("effects", at(1, 0, -2, 2));
-				m.put("armor", at(1, 0.5f, -2, 20));
+				m.put("armor", at(1, 1, -2, -26));
 				m.put("items", at(1, 1, -2, -2));
 			}
 			case "survival" -> {
-				// where you are and what time it is on the left, the map in the corner with the effects under it
-				m.put("fps", at(0, 0, 2, 2));
-				m.put("coords", at(0, 0, 2, 17));
-				m.put("nethercoords", at(0, 0, 2, 44));
-				m.put("biome", at(0, 0, 2, 59));
-				m.put("daytime", at(0, 0, 2, 74));
-				m.put("light", at(0, 0, 2, 89));
-				m.put("compass", at(0.5f, 0, 0, 2));
-				m.put("block", at(0.5f, 0.5f, 0, -45));
-				m.put("durability", at(0.5f, 0.5f, 60, 0));
-				// the food and the flight under the compass (low in the middle they would lie on the chat)
-				m.put("elytra", at(0.5f, 0, 0, 34));
-				m.put("saturation", at(0.5f, 0, 0, 50));
-				HudConfig.Placement map = at(1, 0, -2, 2);
+				// the map in the top left corner and under it where you are and what time it is, all above the chat;
+				// the compass under the player list and the boss bar, the food and the flight under it
+				HudConfig.Placement map = at(0, 0, 2, 2);
 				map.background = false;
 				m.put("minimap", map);
 				// the map's box is a little taller than the map (the place's name under it)
-				m.put("effects", at(1, 0, -2, Math.max(40, cfg.minimapSize) + 16));
-				m.put("armor", at(1, 0.5f, -2, 20));
+				int top = Math.max(40, cfg.minimapSize) + 16;
+				m.put("fps", at(0, 0, 2, top));
+				m.put("coords", at(0, 0, 2, top + 15));
+				m.put("nethercoords", at(0, 0, 2, top + 42));
+				m.put("biome", at(0, 0, 2, top + 57));
+				m.put("daytime", at(0, 0, 2, top + 72));
+				m.put("light", at(0, 0, 2, top + 87));
+				m.put("compass", at(0.5f, 0, 0, 24));
+				m.put("elytra", at(0.5f, 0, 0, 54));
+				m.put("saturation", at(0.5f, 0, 0, 70));
+				m.put("block", at(0.5f, 0.5f, 0, -45));
+				m.put("durability", at(0.5f, 0.5f, 140, 0));
+				// on the right under the toasts, and the gear low, clear of the scoreboard
+				m.put("effects", at(1, 0, -2, 68));
+				m.put("armor", at(1, 1, -2, -26));
 				m.put("items", at(1, 1, -2, -2));
 			}
 			case "partner" -> {
 				// on the left the numbers and under them the dungeon map with its loot, all above the chat (the
 				// shamanism recipes in the map's place: no summons in a dungeon), the tasks beside them; on the
-				// right one column from the top
+				// right the plan under the toasts, the wardrobe beside the scoreboard, the counters under it
 				m.put("fps", at(0, 0, 2, 2));
 				m.put("ping", at(0, 0, 2, 17));
 				m.put("coords", at(0, 0, 2, 32));
@@ -289,10 +290,10 @@ public final class HudPresets {
 				m.put("skytasks", at(0, 0, 158, 62));
 				m.put("skyxp", at(0.5f, 0, 0, 26));
 				m.put("effects", at(1, 0, -2, 2));
-				m.put("skyplan", at(1, 0, -2, 30));
-				m.put("skywardrobe", at(1, 0, -2, 78));
-				m.put("skycase", at(1, 0, -2, 133));
-				m.put("skyfish", at(1, 0, -2, 221));
+				m.put("skyplan", at(1, 0, -2, 68));
+				m.put("skywardrobe", at(1, 0, -104, 116));
+				m.put("skycase", at(1, 0, -2, 228));
+				m.put("skyfish", at(1, 0, -135, 228));
 			}
 			case "streamer" -> {
 				// what viewers like to see: the keys and clicks, the music, the time on stream, the chats of the set channels
@@ -305,7 +306,7 @@ public final class HudPresets {
 				m.put("keystrokes", keys);
 				m.put("spotify", at(1, 0.3f, -2, 0));
 				m.put("effects", at(1, 0, -2, 2));
-				m.put("armor", at(1, 0.5f, -2, 20));
+				m.put("armor", at(1, 1, -2, -2));
 				if (cfg.twitchChat != null && cfg.twitchChat.channel != null && !cfg.twitchChat.channel.isBlank()) m.put("twitchchat", at(0, 0, 104, 2));
 				if (cfg.kickChat != null && cfg.kickChat.channel != null && !cfg.kickChat.channel.isBlank()) m.put("kickchat", at(1, 0.75f, -2, 0));
 			}
