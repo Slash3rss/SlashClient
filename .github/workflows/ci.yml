@@ -26,10 +26,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+          # the game files of every version from Mojang, kept between runs (macOS runners often drop those downloads)
+          cache: gradle
       - name: Mod SlashClient (Fabric, every game version)
         working-directory: hud
         shell: bash
-        run: ./build-all.sh
+        # once more when a download from Mojang breaks off; what came through the first time stays
+        run: ./build-all.sh || ./build-all.sh
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

@@ -2121,6 +2121,10 @@ export function createApp(cfg: Config) {
       else res.destroy();
     });
   });
+  // idle connections kept open longer than a client or Caddy keeps them (Node's own 5 s is shorter): else a
+  // connection reused for the next request can be closed under it, and the request fails (ECONNRESET, a 502)
+  server.keepAliveTimeout = 180_000;
+  server.headersTimeout = 181_000;
 
   // ---- WebSocket: /v1/ws, the first message must be { type: 'auth', token } ----
 
