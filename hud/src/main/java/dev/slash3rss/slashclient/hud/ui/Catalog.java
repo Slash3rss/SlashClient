@@ -158,6 +158,8 @@ public final class Catalog {
 		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
+	/** The accents to pick from: the launcher's blue first. */
+	static final int[] ACCENTS = { Season.BLUE, 0xFF06B6D4, 0xFF22C55E, 0xFFEAB308, 0xFFF97316, 0xFFEF4444, 0xFFEC4899, 0xFFA855F7 };
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 	/** The block outline's colours: the game's black first. */
 	static final int[] OUTLINE_COLORS = { 0xFF000000, 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
@@ -583,6 +585,12 @@ public final class Catalog {
 			new Toggle("slashclient-hud.hideArmor.boots", () -> cfg.hideOwnBoots, v -> cfg.hideOwnBoots = v),
 			new Toggle("slashclient-hud.hideArmor.elytra", () -> cfg.hideOwnElytra, v -> cfg.hideOwnElytra = v)), null));
 		out.add(new Entry("appearance", "slashclient-hud.set.appearance", "extras", "m-appearance", null, null, List.of(
+			// SlashClient's windows' accent: one of these, or any colour typed as #RRGGBB
+			new Colors("slashclient-hud.set.accent", ACCENTS, () -> cfg.accentColor | 0xFF000000, v -> cfg.accentColor = v),
+			new Text("slashclient-hud.set.accentOwn", "slashclient-hud.set.accentOwnHint", 7, () -> String.format("#%06X", cfg.accentColor & 0xFFFFFF), v -> {
+				String hex = v.trim().replace("#", "");
+				if (hex.matches("[0-9a-fA-F]{6}")) cfg.accentColor = 0xFF000000 | Integer.parseInt(hex, 16);
+			}),
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),
 			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v),

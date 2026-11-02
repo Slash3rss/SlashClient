@@ -109,6 +109,16 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.waitTicks(4);
 		context.takeScreenshot("menu-independence");
 		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = "");
+		// the player's own accent (HUD look settings): violet buttons and frames instead of the blue
+		context.runOnClient(mc -> SlashHud.config.accentColor = 0xFFA855F7);
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
+		context.waitTicks(4);
+		if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Ui.ACCENT) != 0xFFA855F7) throw new AssertionError("The own accent is not used");
+		context.takeScreenshot("menu-accent");
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("appearance"));
+		context.waitTicks(6);
+		context.takeScreenshot("hud-accent");
+		context.runOnClient(mc -> SlashHud.config.accentColor = dev.slash3rss.slashclient.hud.ui.Season.BLUE);
 		context.setScreen(GameLoadingScreens::levelLoading);
 		context.waitTicks(2);
 		context.runOnClient(mc -> {

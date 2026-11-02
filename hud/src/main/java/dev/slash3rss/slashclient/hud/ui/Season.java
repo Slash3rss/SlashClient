@@ -40,18 +40,31 @@ public final class Season {
 		return INDEPENDENCE.equals(current());
 	}
 
-	/** The accent's colours: orange for Halloween, red for Independence Day, the launcher's blue otherwise. */
+	/** The launcher's blue: the accent unless the player picked their own. */
+	public static final int BLUE = 0xFF3B82F6;
+
+	/** The player's own accent (HUD look settings), or 0 while it is the usual blue. */
+	private static int own() {
+		if (SlashHud.config == null) return 0;
+		int c = SlashHud.config.accentColor | 0xFF000000;
+		return c == BLUE ? 0 : c;
+	}
+
+	/** The accent's colours: the player's own, else orange for Halloween, red for Independence Day, the launcher's blue otherwise. */
 	public static int accent() {
+		if (own() != 0) return own();
 		String s = current();
 		return HALLOWEEN.equals(s) ? 0xFFF97316 : INDEPENDENCE.equals(s) ? 0xFFDC2626 : 0xFF3B82F6;
 	}
 
 	public static int accentLight() {
+		if (own() != 0) return Ui.blend(own(), 0xFFFFFFFF, 0.25f);
 		String s = current();
 		return HALLOWEEN.equals(s) ? 0xFFFB923C : INDEPENDENCE.equals(s) ? 0xFFF87171 : 0xFF60A5FA;
 	}
 
 	public static int accentDark() {
+		if (own() != 0) return Ui.blend(own(), 0xFF000000, 0.35f);
 		String s = current();
 		return HALLOWEEN.equals(s) ? 0xFFC2410C : INDEPENDENCE.equals(s) ? 0xFFB91C1C : 0xFF1D4ED8;
 	}
@@ -62,7 +75,7 @@ public final class Season {
 		Ui.ACCENT = accent();
 		Ui.ACCENT_LIGHT = accentLight();
 		Ui.ACCENT_DARK = accentDark();
-		Ui.ACCENT_PALE = HALLOWEEN.equals(s) ? 0xFFFDBA74 : INDEPENDENCE.equals(s) ? 0xFFFECACA : 0xFF93C5FD;
+		Ui.ACCENT_PALE = own() != 0 ? Ui.blend(own(), 0xFFFFFFFF, 0.55f) : HALLOWEEN.equals(s) ? 0xFFFDBA74 : INDEPENDENCE.equals(s) ? 0xFFFECACA : 0xFF93C5FD;
 	}
 
 	private static final net.minecraft.resources.Identifier LOGO = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud", "icon-halloween.png");

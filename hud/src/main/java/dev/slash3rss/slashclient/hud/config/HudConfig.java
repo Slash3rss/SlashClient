@@ -152,6 +152,8 @@ public final class HudConfig {
 	public int textColor = 0xFFFFFFFF;
 	/** The modules' boxes (their see-through is each module's own) and outlines. */
 	public int backgroundColor = 0xFF000000, outlineColor = 0xFF60A5FA;
+	/** SlashClient's windows' accent (buttons, switches, frames): the launcher's blue, or the player's own colour (ui/Season). */
+	public int accentColor = 0xFF3B82F6;
 	public boolean background = true;
 	/** How rounded the modules' backgrounds (and the keystrokes' keys) are, in pixels; 0 = square, as always. */
 	public int cornerRadius = 0;
@@ -824,6 +826,7 @@ public final class HudConfig {
 		textColor = other.textColor;
 		backgroundColor = other.backgroundColor;
 		outlineColor = other.outlineColor;
+		accentColor = other.accentColor | 0xFF000000;
 		background = other.background;
 		cornerRadius = Math.max(0, Math.min(MAX_RADIUS, other.cornerRadius));
 		textShadow = other.textShadow;
