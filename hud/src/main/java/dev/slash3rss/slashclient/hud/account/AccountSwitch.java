@@ -6,14 +6,13 @@ import com.mojang.authlib.minecraft.UserApiService;
 import dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
-//#if MC < 26.2
-//$ import net.minecraft.client.gui.screens.social.PlayerSocialManager;
-//#endif
+import net.minecraft.client.gui.screens.social.PlayerSocialManager;
 import net.minecraft.client.multiplayer.ProfileKeyPairManager;
 import net.minecraft.client.multiplayer.chat.report.ReportEnvironment;
 import net.minecraft.client.multiplayer.chat.report.ReportingContext;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -82,12 +81,35 @@ public final class AccountSwitch {
 		//#endif
 		access.slashclient$setProfileKeyPairManager(ProfileKeyPairManager.create(api, user, mc.gameDirectory.toPath()));
 		access.slashclient$setReportingContext(ReportingContext.create(ReportEnvironment.local(), api));
-		//#if MC < 26.2
+		// the players hidden in this game's social screen stay hidden with the new session
+		Set<UUID> hidden = Set.copyOf(mc.getPlayerSocialManager().getHiddenPlayers());
+		//#if MC >= 26.2
+		// from 26.2 the block list also runs the game's own friends, which ask Mojang with the token
+		// they were made with: with the old one they get "invalid token" once it runs out
+		swapFriends(mc, access, api, token);
+		//#else
 		//$ access.slashclient$setPlayerSocialManager(new PlayerSocialManager(mc, api));
 		//#endif
-		// from 26.2 the block list also runs the game's own friends: it stays until the next start
+		hidden.forEach(mc.getPlayerSocialManager()::hidePlayer);
 		//#if MC >= 1.20.2
 		if (newProfile) access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(uuid, true)));
 		//#endif
 	}
+
+	//#if MC >= 26.2
+	/** The game's friends anew with this token, as the game makes them at start; the old ones stop asking. */
+	private static void swapFriends(Minecraft mc, MinecraftAccessor access, UserApiService api, String token) {
+		//#if MC >= 26.3
+		var friends = ((com.mojang.authlib.services.MinecraftServicesDiscoveryService) authService).createFriendsService(token);
+		//#else
+		//$ var friends = ((com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService) authService).createFriendsService(token);
+		//#endif
+		var updates = new net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler(friends, mc);
+		access.slashclient$remoteFriendListUpdateHandler().close();
+		access.slashclient$setRemoteFriendListUpdateHandler(updates);
+		PlayerSocialManager manager = new PlayerSocialManager(mc, api, friends, updates);
+		access.slashclient$setPlayerSocialManager(manager);
+		if (manager.isFriendListEnabled()) updates.start();
+	}
+	//#endif
 }

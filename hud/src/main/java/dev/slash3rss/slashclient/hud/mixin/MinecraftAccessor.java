@@ -56,6 +56,16 @@ public interface MinecraftAccessor {
 	@Accessor("playerSocialManager")
 	void slashclient$setPlayerSocialManager(PlayerSocialManager manager);
 
+	// the game's own friends, from 26.2: polled with the token they were made with
+	//#if MC >= 26.2
+	@Accessor("remoteFriendListUpdateHandler")
+	net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler slashclient$remoteFriendListUpdateHandler();
+
+	@Mutable
+	@Accessor("remoteFriendListUpdateHandler")
+	void slashclient$setRemoteFriendListUpdateHandler(net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler handler);
+	//#endif
+
 	// not in 1.20.1
 	//#if MC >= 1.20.2
 	@SuppressWarnings("rawtypes")
