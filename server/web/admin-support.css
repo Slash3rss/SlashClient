@@ -25,7 +25,9 @@
 
 /* "Zwroty": the refund requests (adminRefunds.js) */
 .sup-h .chip { margin-left: 10px; vertical-align: middle; }
-.sup-refunds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+/* the filter row, then the requests or the empty card, apart from it */
+#sup-refunds { display: flex; flex-direction: column; gap: 10px; }
+.sup-refunds { display: flex; flex-direction: column; gap: 10px; }
 .sup-refund { display: flex; flex-direction: column; gap: 6px; }
 .sup-refund .row { gap: 8px; flex-wrap: wrap; }
 .sup-refund.pending { border-left: 3px solid var(--gold); }
