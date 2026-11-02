@@ -172,6 +172,17 @@ public class GameDungeon implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-spawner-times");
 			context.runOnClient(mc -> TestHooks.dungeonFull(false));
+			// the loot counters (of the room the player is in: the one with the ores) over the map and on it, along its bottom edge
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 10, y, z0 + 10));
+			context.waitTicks(20);
+			context.takeScreenshot("dungeon-map-counters-below");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonCountersAt = "above");
+			context.waitTicks(2);
+			context.takeScreenshot("dungeon-map-counters-above");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonCountersAt = "inside");
+			context.waitTicks(2);
+			context.takeScreenshot("dungeon-map-counters-inside");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonCountersAt = "below");
 			// a spawner block up on a ledge in the room south-east: visited, it is a room with a spawner
 			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 15, y, z0 + 15, x0 + 16, y + 2, z0 + 16));
 			server.runCommand(String.format("setblock %d %d %d spawner", x0 + 15, y + 3, z0 + 15));

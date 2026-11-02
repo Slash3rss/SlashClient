@@ -587,8 +587,7 @@ public final class DungeonMap implements HudModule {
 
 	@Override
 	public int height(Minecraft mc) {
-		java.util.List<int[]> counters = counters();
-		return H + (counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2);
+		return H + countersHeight(mc, false);
 	}
 
 	@Override
@@ -596,11 +595,21 @@ public final class DungeonMap implements HudModule {
 		if (!visible(mc)) return;
 		// following the player: the picture made again for this frame, where they are now
 		if (viewTexture == null || following()) render(mc);
-		int ox = x, oy = y;
+		// the loot counters above the map, under it, or on it along its bottom edge (as set)
+		int over = countersHeight(mc, true);
+		int ox = x, oy = "above".equals(SlashHud.config.dungeonCountersAt) ? y + over : y;
 		// the simple map has no picture of its own: the module's background (or none) under its tiles
 		if (!simple()) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
-		drawCounters(g, mc, ox, oy + H, counters());
 		drawOver(g, mc, ox, oy, W, H, viewX, viewZ, viewScale, SHOWN);
+		switch (SlashHud.config.dungeonCountersAt) {
+			case "above" -> drawCounters(g, mc, ox, y, counters());
+			case "inside" -> {
+				// a dark strip under them, so they read over the map
+				if (over > 0) g.fill(ox, oy + H - over, ox + W, oy + H, 0xA0000000);
+				drawCounters(g, mc, ox, oy + H - over, counters());
+			}
+			default -> drawCounters(g, mc, ox, oy + H, counters());
+		}
 	}
 
 	/** What goes over the map's picture (w×h at ox, oy): room marks, loot, mobs, players and you. */
@@ -905,6 +914,13 @@ public final class DungeonMap implements HudModule {
 	}
 
 	private static final int ROW = 11;
+
+	/** The counters' height: what they add to the module's (`all`: also when they lie on the map). */
+	private static int countersHeight(Minecraft mc, boolean all) {
+		if (!all && "inside".equals(SlashHud.config.dungeonCountersAt)) return 0;
+		java.util.List<int[]> counters = counters();
+		return counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2;
+	}
 
 	/** How many rows the counters take, laid out left to right and wrapped at the map's width. */
 	private static int counterRows(Minecraft mc, java.util.List<int[]> counters) {

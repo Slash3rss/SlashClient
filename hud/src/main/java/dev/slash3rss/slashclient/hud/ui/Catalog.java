@@ -304,6 +304,9 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
+					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside" }, "slashclient-hud.dungeon.countersAt.",
+						() -> cfg.dungeonCountersAt, v -> cfg.dungeonCountersAt = v));
+					hideWhen("dungeonmap", settings, () -> !cfg.dungeonCounters);
 					settings.add(new Toggle("slashclient-hud.dungeon.debug", () -> cfg.dungeonDebug, v -> cfg.dungeonDebug = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.dungeonChests, v -> cfg.dungeonChests = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.barrel", () -> cfg.dungeonBarrels, v -> cfg.dungeonBarrels = v));
