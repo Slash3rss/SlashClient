@@ -17,7 +17,7 @@ public class GameMapEntities implements FabricClientGameTest {
 	/** Every mob with a face, for the picture of them all. */
 	private static final String[] ALL = { "zombie", "husk", "drowned", "skeleton", "stray", "wither_skeleton", "bogged", "creeper", "spider",
 		"cave_spider", "enderman", "slime", "magma_cube", "blaze", "phantom", "guardian", "elder_guardian", "warden",
-		"witch", "pillager", "vindicator", "evoker", "illusioner", "piglin", "zombified_piglin", "piglin_brute", "vex",
+		"witch", "pillager", "vindicator", "evoker", "illusioner", "piglin", "zombified_piglin", "piglin_brute", "hoglin", "zoglin", "vex",
 		"villager", "wandering_trader", "zombie_villager", "iron_golem", "snow_golem", "cow", "mooshroom", "pig", "sheep",
 		"chicken", "horse", "donkey", "mule", "wolf", "cat", "ocelot", "fox", "rabbit", "bee", "axolotl", "turtle",
 		"frog", "llama", "goat", "polar_bear", "panda", "squid", "glow_squid", "ghast" };

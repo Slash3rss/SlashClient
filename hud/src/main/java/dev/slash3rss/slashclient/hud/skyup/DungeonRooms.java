@@ -339,6 +339,11 @@ public final class DungeonRooms {
 	}
 
 	/** For the test: each tile's mobs shown, as class/level in the order drawn ("[3/5, 1/9, 1/2]"). */
+	/** With a mini boss among a tile's mobs (the strongest first), only the mini bosses: the weaker ones would only hide them. */
+	private static void bossesOnly(List<net.minecraft.world.entity.LivingEntity> mobs) {
+		if (!mobs.isEmpty() && DungeonMap.mobKind(mobs.get(0)) == 3) mobs.removeIf(e -> DungeonMap.mobKind(e) != 3);
+	}
+
 	public static String shownMobs() {
 		List<String> out = new ArrayList<>();
 		for (Tile t : gridTiles) {
@@ -346,6 +351,7 @@ public final class DungeonRooms {
 			for (Entity m : t.mobList) if (m instanceof net.minecraft.world.entity.LivingEntity e && DungeonMap.mobShown(e)) mobs.add(e);
 			if (mobs.isEmpty()) continue;
 			strongestFirst(mobs);
+			bossesOnly(mobs);
 			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(e -> DungeonMap.mobKind(e) + "/" + mobRank.getOrDefault(e.getId(), 0) % 10_000).toList().toString());
 		}
 		return String.join(" ", out);
@@ -1231,6 +1237,7 @@ public final class DungeonRooms {
 				}
 				// the strongest four (class, then level), always in the same places, not as the game happens to list them
 				strongestFirst(seen);
+				bossesOnly(seen);
 				if (seen.size() > 4) seen = new ArrayList<>(seen.subList(0, 4));
 				// heads smaller than the other icons, so a few fit side by side with room around them
 				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));

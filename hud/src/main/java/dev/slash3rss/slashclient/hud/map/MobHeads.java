@@ -55,6 +55,12 @@ public final class MobHeads {
 			return this;
 		}
 
+		/** A part of a texture as it is (the top of a head bowed towards the viewer). */
+		Builder plain(int u, int v, float x, float y, float z, int w, int h) {
+			parts.add(new Part(u, v, w, h, x, y, z));
+			return this;
+		}
+
 		Face done() {
 			Part[] all = parts.toArray(new Part[0]);
 			// the farthest first, so what sticks out (a snout, a nose) lies on top
@@ -112,6 +118,8 @@ public final class MobHeads {
 		put(tex(64, 128).box(0, 0, -4, -10, -4, 8, 10, 8).box(24, 0, -1, -3, -6, 2, 4, 2).done(), "witch");
 		put(tex(64, 64).box(0, 0, -5, -8, -4, 10, 8, 8).box(31, 1, -2, -4, -5, 4, 4, 1).box(2, 4, 2, -2, -5, 1, 2, 1).box(2, 0, -3, -2, -5, 1, 2, 1).done(),
 			"piglin", "piglin_brute", "zombified_piglin");
+		// a hoglin's head is bowed: the front of its top over the snout's end, the tusks standing up at its sides
+		put(tex(128, 64).plain(80, 10, -7, -13, -18, 14, 10).box(61, 1, -7, -3, -19, 14, 6, 19).box(10, 13, -11, -8, -20, 2, 11, 2).box(1, 13, 9, -8, -20, 2, 11, 2).done(), "hoglin", "zoglin");
 		put(tex(128, 128).box(0, 0, -4, -12, -5.5f, 8, 10, 8).box(24, 0, -1, -5, -7.5f, 2, 4, 2).done(), "iron_golem");
 		put(tex(64, 64).box(0, 0, -4, -8, -4, 8, 8, 8).done(), "snow_golem");
 
