@@ -80,7 +80,7 @@ describe('inviting friends in the launcher', () => {
       for (const text of texts) assert.ok(text in REFERRALS_EN, `no English for: ${text}`);
     }
     const tab = readFileSync('src/renderer/achievements.ts', 'utf8');
-    for (const text of ['Zaproś', ' Zaproszenie: {0}', 'Zaproszenia są teraz wyłączone.']) {
+    for (const text of ['Poleć', ' Zaproszenie: {0}', 'Zaproszenia są teraz wyłączone.']) {
       assert.ok(tab.includes(`t('${text}'`), text);
       assert.ok(text in REFERRALS_EN, text);
     }

@@ -311,7 +311,7 @@ export function createReferrals(deps: ReferralsDeps) {
     const linkText = r.link.replace(/^https?:\/\/(www\.)?/, '');
     const hero = el('div', { className: 'card glass-panel ref-hero' },
       el('div', { className: 'ref-hero-text' },
-        el('h3', {}, icon('fa-user-plus'), ` ${t('Zaproś znajomych')}`),
+        el('h3', {}, icon('fa-gift'), ` ${t('Poleć SlashClient znajomym')}`),
         el('p', { className: 'muted', textContent: rulesText(r) })),
       el('div', { className: 'ref-share' },
         el('div', { className: 'ref-share-item' },

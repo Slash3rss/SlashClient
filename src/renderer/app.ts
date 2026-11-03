@@ -2067,23 +2067,21 @@ const achievements = createAchievements($('#achievements-root'), {
   slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),
 });
 document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
-// inviting friends is also a button in Friends (only in Achievements nobody looked for it): it opens
-// the code, the link and the invited friends above the list; shown only when the server has invites
+// recommending SlashClient is also a button in Friends (only in Achievements nobody looked for it), named
+// so it is not taken for a friend request: a window with the code, the link and the friends who joined;
+// shown only when the server has invites
 const inviteBtn = $('#friends-invite-btn');
-const invitePane = $('#friends-invite');
-async function drawInvites() {
-  const res = await invites.load().catch(() => undefined);
-  if (!res) return void invitePane.classList.add('hidden');
-  invitePane.replaceChildren(...invites.render(res, () => void drawInvites()));
-}
-inviteBtn.addEventListener('click', () => {
-  const open = invitePane.classList.toggle('hidden') === false;
-  if (open) void drawInvites();
+inviteBtn.addEventListener('click', async () => {
+  const pane = el('div', { className: 'ach-root' });
+  const draw = async () => {
+    const res = await invites.load().catch(() => undefined);
+    if (!res) return void close();
+    pane.replaceChildren(...invites.render(res, () => void draw()));
+  };
+  const close = modalWindow(t('Poleć SlashClient'), [pane], [], undefined, 'ref-share-modal');
+  await draw();
 });
-invites.onChange(() => {
-  inviteBtn.classList.toggle('hidden', !invites.available());
-  if (!invites.available()) invitePane.classList.add('hidden');
-});
+invites.onChange(() => inviteBtn.classList.toggle('hidden', !invites.available()));
 
 // ---------- servers (lista.slash3rss.dev) ----------
 

@@ -205,7 +205,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     const bar = el('div', { className: 'ach-tabs' });
     const all = [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][];
     // inviting friends: only when the server has it (an older one, or switched off, has no tab)
-    if (deps.invites?.available() || tab === 'invite') all.push(['invite', t('Zaproś'), 'fa-user-plus']);
+    if (deps.invites?.available() || tab === 'invite') all.push(['invite', t('Poleć'), 'fa-gift']);
     for (const [key, label, iconName] of all) {
       const b = el('button', { type: 'button', className: `ach-tab${tab === key ? ' active' : ''}` }, icon(iconName), ` ${label}`);
       b.addEventListener('click', () => {

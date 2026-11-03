@@ -6,6 +6,9 @@ export const REFERRALS_EN: Record<string, string> = {
   // the tab and its parts
   'Zaproś': 'Invite',
   'Zaproś znajomych': 'Invite friends',
+  'Poleć': 'Recommend',
+  'Poleć SlashClient': 'Recommend SlashClient',
+  'Poleć SlashClient znajomym': 'Recommend SlashClient to friends',
   'Znajomy wpisuje Twój kod w ciągu kilku dni od założenia konta. Gdy połączy konto Minecraft i pogra {0} h w co najmniej {1}, dostaniesz {2}, a on {3}.':
     'Your friend enters your code within a few days of making their account. Once they link a Minecraft account and play {0} h on at least {1}, you get {2} and they get {3}.',
   'Twój kod': 'Your code',
