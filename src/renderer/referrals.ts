@@ -120,7 +120,9 @@ export function createReferrals(deps: ReferralsDeps) {
   const { api } = deps;
   /** Whether the server has invites for this account; undefined until asked. */
   let available: boolean | undefined;
-  let changed: (() => void) | undefined;
+  /** Told when that changes: the Achievements tab and the side menu entry. */
+  const changed = new Set<() => void>();
+  const tell = () => changed.forEach((fn) => fn());
   /** The question is asked at most once per launch. */
   let asked = false;
   /** The account signed in, as the last 'state' event said. */
@@ -129,7 +131,7 @@ export function createReferrals(deps: ReferralsDeps) {
   function setAvailable(on: boolean) {
     if (available === on) return;
     available = on;
-    changed?.();
+    tell();
   }
 
   /** The player's invites, or undefined when the server has none (older server: 404) or they are switched off. */
@@ -218,7 +220,7 @@ export function createReferrals(deps: ReferralsDeps) {
         el('div', { className: 'ref-success' }, icon('fa-handshake'), el('span', { textContent: connectedText(inviter.name, r!) })),
         el('div', { className: 'row join-actions' }, ok));
       ok.focus();
-      changed?.();
+      tell();
     });
     // the field on its own line, the two buttons under it as in the launcher's other questions
     form.append(el('div', { className: 'row join-actions' }, later, submit));
@@ -242,7 +244,7 @@ export function createReferrals(deps: ReferralsDeps) {
     if (user !== account) {
       account = user;
       available = undefined;
-      if (!user) changed?.();
+      if (!user) tell();
     }
     if (user && e.state?.connected) {
       // a moment after connecting, so it does not open in the middle of the start
@@ -368,7 +370,7 @@ export function createReferrals(deps: ReferralsDeps) {
     available: () => available === true,
     /** Called when that changes (the tab appears or goes) or a code was entered. */
     onChange(fn: () => void) {
-      changed = fn;
+      changed.add(fn);
     },
   };
 }

@@ -2067,6 +2067,23 @@ const achievements = createAchievements($('#achievements-root'), {
   slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),
 });
 document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
+// inviting friends is also a button in Friends (only in Achievements nobody looked for it): it opens
+// the code, the link and the invited friends above the list; shown only when the server has invites
+const inviteBtn = $('#friends-invite-btn');
+const invitePane = $('#friends-invite');
+async function drawInvites() {
+  const res = await invites.load().catch(() => undefined);
+  if (!res) return void invitePane.classList.add('hidden');
+  invitePane.replaceChildren(...invites.render(res, () => void drawInvites()));
+}
+inviteBtn.addEventListener('click', () => {
+  const open = invitePane.classList.toggle('hidden') === false;
+  if (open) void drawInvites();
+});
+invites.onChange(() => {
+  inviteBtn.classList.toggle('hidden', !invites.available());
+  if (!invites.available()) invitePane.classList.add('hidden');
+});
 
 // ---------- servers (lista.slash3rss.dev) ----------
 
