@@ -9,7 +9,7 @@ import { after, before, describe, it } from 'node:test';
 import WebSocket from 'ws';
 import { createApp } from '../src/app.ts';
 import { ACHIEVEMENTS, TOTAL_SPARKS, anniversaryYears, createAchievements, dayOf, specialDays, weekends } from '../src/achievements.ts';
-import { ITEMS } from '../src/cosmetics.ts';
+import { FORMERLY_FREE_CAPES, ITEMS } from '../src/cosmetics.ts';
 import { sparksText } from '../src/economy.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-economy-'));
@@ -88,16 +88,18 @@ describe('sparks and achievements', () => {
     assert.ok(shop.length >= 12);
     const total = shop.reduce((n, i) => n + i.price!, 0);
     assert.ok(TOTAL_SPARKS < total && TOTAL_SPARKS > total * 0.5, `${TOTAL_SPARKS} of ${total}`);
-    // nothing free became paid, nothing earned is sold
-    for (const i of shop) assert.equal(i.since, '0.9.22');
+    // nothing free became paid (but the capes free until 0.9.69, which every account from before keeps), nothing earned is sold
+    for (const i of shop) assert.ok(i.since === '0.9.22' || (FORMERLY_FREE_CAPES as readonly string[]).includes(i.id), i.id);
     assert.ok(!shop.some((i) => i.achievement || i.rank));
   });
 
   it('counts weekends, special days and anniversaries from the days played', () => {
     // Saturday 2026-10-17 and Sunday 2026-10-18 are one weekend; Sunday 2026-10-25 another
     assert.equal(weekends(['2026-10-17', '2026-10-18', '2026-10-25', '2026-10-20']), 2);
-    assert.deepEqual(specialDays(['2027-01-01', '2026-11-13']), { newyear: 1, halloween: 0, friday13: 1 });
-    assert.deepEqual(specialDays(['2026-10-31', '2026-10-13']), { newyear: 0, halloween: 1, friday13: 0 });
+    assert.deepEqual(specialDays(['2027-01-01', '2026-11-13']), { newyear: 1, halloween: 0, friday13: 1, christmas: 0 });
+    assert.deepEqual(specialDays(['2026-10-31', '2026-10-13']), { newyear: 0, halloween: 1, friday13: 0, christmas: 0 });
+    assert.deepEqual(specialDays(['2026-12-23']).christmas, 0);
+    assert.deepEqual(specialDays(['2026-12-26']).christmas, 1);
     const created = Date.UTC(2025, 9, 20, 12);
     assert.equal(anniversaryYears(['2026-10-19'], created), 0);
     assert.equal(anniversaryYears(['2026-10-20'], created), 1);

@@ -32,7 +32,8 @@ export function sparksText(n: number, lang: 'pl' | 'en' = 'pl'): string {
 }
 
 /** Why the balance changed. */
-export type Reason = 'achievement' | 'purchase' | 'admin' | 'challenge';
+/** 'referral': a friend invited with one's code counted, or joining with a friend's code (referrals.ts), and taking it back. */
+export type Reason = 'achievement' | 'purchase' | 'admin' | 'challenge' | 'referral';
 
 export interface LedgerEntry { id: number; amount: number; reason: Reason; ref: string; note: string; by: string; balance: number; at: number }
 
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS sparks_ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, 
   reason TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', by_uuid TEXT NOT NULL DEFAULT '', balance INTEGER NOT NULL, at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS sparks_ledger_user ON sparks_ledger(uuid, id);
 CREATE UNIQUE INDEX IF NOT EXISTS sparks_ledger_achievement ON sparks_ledger(uuid, ref) WHERE reason = 'achievement';
+CREATE UNIQUE INDEX IF NOT EXISTS sparks_ledger_referral ON sparks_ledger(uuid, ref) WHERE reason = 'referral';
 CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK (price IS NULL OR price > 0));
 `);
   }
@@ -82,7 +84,8 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK
     return inTransaction(this.sql, () => {
       const next = this.balance(uuid) + amount;
       if (next < 0) return undefined;
-      const added = this.sql.prepare(`INSERT ${reason === 'achievement' || reason === 'challenge' ? 'OR IGNORE ' : ''}INTO sparks_ledger (uuid, amount, reason, ref, note, by_uuid, balance, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      // the payouts of achievements, challenges and invites are once each (unique indexes on their ledger rows)
+      const added = this.sql.prepare(`INSERT ${reason === 'achievement' || reason === 'challenge' || reason === 'referral' ? 'OR IGNORE ' : ''}INTO sparks_ledger (uuid, amount, reason, ref, note, by_uuid, balance, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(uuid, amount, reason, ref, note.slice(0, 200), by, next, at).changes > 0;
       if (!added) return undefined;
       this.sql.prepare('INSERT INTO sparks_wallets (uuid, balance) VALUES (?, ?) ON CONFLICT (uuid) DO UPDATE SET balance = excluded.balance').run(uuid, next);

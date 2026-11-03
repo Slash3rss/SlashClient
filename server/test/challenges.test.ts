@@ -217,7 +217,12 @@ describe('challenges: counting and paying', () => {
     app.challenges.played(credit(me, 60 * 60), thu + 120_000);
     app.challenges.check(me, thu + 180_000);
     assert.equal(ledger(me).length, 4);
-    assert.equal(app.wallet.balance(me), 15 + 7 + 100 + 9);
+    // and the achievements for challenges unlocked at once: the first challenge, a week's whole set (its cape)
+    const have = app.achievements.store.unlocked(me);
+    assert.ok(have.has('challenges_1') && have.has('challenge_week'));
+    assert.ok(app.db.grants(me).includes('mint'));
+    const achievementSparks = (app.db.sql.prepare("SELECT COALESCE(SUM(amount), 0) AS n FROM sparks_ledger WHERE uuid = ? AND reason = 'achievement'").get(me) as { n: number }).n;
+    assert.equal(app.wallet.balance(me), 15 + 7 + 100 + 9 + achievementSparks);
     // the ledger says what it was for
     const wallet = app.db.sql.prepare("SELECT note FROM sparks_ledger WHERE uuid = ? AND ref = 'd:2025-11-13:d_play_30'").get(me) as { note: string };
     assert.equal(wallet.note, 'Wyzwanie: Graj 30 min');

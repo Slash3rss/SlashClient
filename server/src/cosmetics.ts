@@ -46,7 +46,7 @@ export interface Item {
 }
 
 export const ITEMS: Item[] = [
-  // capes: the original eight, the animated ones, and one in each rank's colour
+  // capes: the original eight (free for everyone), the animated ones, and one in each rank's colour
   { id: 'slash', slot: 'cape', name: 'SlashClient' },
   { id: 'ocean', slot: 'cape', name: 'Ocean' },
   { id: 'ember', slot: 'cape', name: 'Ember' },
@@ -55,25 +55,27 @@ export const ITEMS: Item[] = [
   { id: 'rose', slot: 'cape', name: 'Rose' },
   { id: 'gold', slot: 'cape', name: 'Gold' },
   { id: 'mono', slot: 'cape', name: 'Mono' },
-  { id: 'aurora', slot: 'cape', name: 'Zorza', frames: 8 },
-  { id: 'inferno', slot: 'cape', name: 'Inferno', frames: 8 },
-  { id: 'waves', slot: 'cape', name: 'Fale', frames: 8 },
-  { id: 'pulse', slot: 'cape', name: 'Puls', frames: 8 },
-  { id: 'sakura', slot: 'cape', name: 'Sakura', since: '0.9.1' },
-  { id: 'night', slot: 'cape', name: 'Noc', since: '0.9.1' },
-  { id: 'rainbow', slot: 'cape', name: 'Tęcza', since: '0.9.1' },
-  { id: 'ice', slot: 'cape', name: 'Lód', since: '0.9.1' },
-  { id: 'toxic', slot: 'cape', name: 'Toksyczna', since: '0.9.1' },
-  { id: 'checker', slot: 'cape', name: 'Szachownica', since: '0.9.1' },
-  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8, since: '0.9.1' },
-  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8, since: '0.9.1' },
-  { id: 'lava', slot: 'cape', name: 'Lawa', since: '0.9.2' },
-  { id: 'desert', slot: 'cape', name: 'Pustynia', since: '0.9.2' },
-  { id: 'cyber', slot: 'cape', name: 'Cyber', since: '0.9.2' },
-  { id: 'honey', slot: 'cape', name: 'Miód', since: '0.9.2' },
-  { id: 'mint', slot: 'cape', name: 'Mięta', since: '0.9.2' },
-  { id: 'vortex', slot: 'cape', name: 'Wir', frames: 8, since: '0.9.2' },
-  { id: 'starfall', slot: 'cape', name: 'Gwiezdny deszcz', frames: 8, since: '0.9.2' },
+  // free for everyone until 0.9.69, now earned (achievements) or bought (the shop); every account from
+  // before keeps all of them (FORMERLY_FREE_CAPES, granted once by db.ts)
+  { id: 'aurora', slot: 'cape', name: 'Zorza', frames: 8, achievement: 'invites_3' },
+  { id: 'inferno', slot: 'cape', name: 'Inferno', frames: 8, achievement: 'days_30' },
+  { id: 'waves', slot: 'cape', name: 'Fale', frames: 8, price: 300 },
+  { id: 'pulse', slot: 'cape', name: 'Puls', frames: 8, price: 300 },
+  { id: 'sakura', slot: 'cape', name: 'Sakura', since: '0.9.1', achievement: 'invites_1' },
+  { id: 'night', slot: 'cape', name: 'Noc', since: '0.9.1', achievement: 'night_owl' },
+  { id: 'rainbow', slot: 'cape', name: 'Tęcza', since: '0.9.1', achievement: 'invites_5' },
+  { id: 'ice', slot: 'cape', name: 'Lód', since: '0.9.1', achievement: 'friends_5' },
+  { id: 'toxic', slot: 'cape', name: 'Toksyczna', since: '0.9.1', achievement: 'challenges_50' },
+  { id: 'checker', slot: 'cape', name: 'Szachownica', since: '0.9.1', achievement: 'challenges_10' },
+  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8, since: '0.9.1', achievement: 'challenges_200' },
+  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8, since: '0.9.1', achievement: 'hours_10' },
+  { id: 'lava', slot: 'cape', name: 'Lawa', since: '0.9.2', achievement: 'servers_10' },
+  { id: 'desert', slot: 'cape', name: 'Pustynia', since: '0.9.2', price: 200 },
+  { id: 'cyber', slot: 'cape', name: 'Cyber', since: '0.9.2', price: 250 },
+  { id: 'honey', slot: 'cape', name: 'Miód', since: '0.9.2', achievement: 'sparks_1000' },
+  { id: 'mint', slot: 'cape', name: 'Mięta', since: '0.9.2', achievement: 'challenge_week' },
+  { id: 'vortex', slot: 'cape', name: 'Wir', frames: 8, since: '0.9.2', achievement: 'invites_10' },
+  { id: 'starfall', slot: 'cape', name: 'Gwiezdny deszcz', frames: 8, since: '0.9.2', achievement: 'invites_25' },
   // earned with achievements only
   { id: 'veteran', slot: 'cape', name: 'Weteran', since: '0.9.14', achievement: 'hours_100' },
   { id: 'streak30', slot: 'cape', name: 'Seria 30 dni', since: '0.9.14', achievement: 'streak_30' },
@@ -365,6 +367,14 @@ export const item = (id: string): Item | undefined => BY_ID.get(id);
 /** The capes, by the old names the rest still uses. */
 export const CAPES = ITEMS.filter((i) => i.slot === 'cape').map((i) => i.id);
 export const CAPE_NAMES: Record<string, string> = Object.fromEntries(ITEMS.map((i) => [i.id, i.name]));
+
+/**
+ * The capes everyone could wear before 0.9.69, which are now earned or bought (see ITEMS). Nothing a
+ * player could wear is taken away: every account that existed then is granted all of them once
+ * (db.ts `keepFormerlyFree`), so it keeps them for good, the one it wears too.
+ */
+export const FORMERLY_FREE_CAPES = ['aurora', 'inferno', 'waves', 'pulse', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker', 'matrix', 'storm',
+  'lava', 'desert', 'cyber', 'honey', 'mint', 'vortex', 'starfall'] as const;
 export const EMOTES = ['wave', 'heart', 'laugh', 'gg', 'like', 'angry', 'question', 'fire', 'sixseven'];
 
 /** What the admin set for an item; items never touched are on and for everyone. */
