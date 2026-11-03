@@ -44,8 +44,8 @@ export const REFERRALS_EN: Record<string, string> = {
   'Jeśli ktoś zaprosił Cię do SlashClient, wpisz jego kod. Gdy pograsz {0} h w {1}, oboje dostaniecie {2}.':
     'If someone invited you to SlashClient, enter their code. Once you play {0} h on {1}, you both get {2}.',
   'Gdy pograsz {0} h w {1}, oboje dostaniecie {2}.': 'Once you play {0} h on {1}, you both get {2}.',
-  'Kod możesz wpisać do {0}. Później znajdziesz go też w Osiągnięcia → Zaproś.': 'You can enter a code until {0}. Later you will also find it in Achievements → Invite.',
-  'Kod możesz wpisać też później w Osiągnięcia → Zaproś.': 'You can also enter a code later in Achievements → Invite.',
+  'Kod możesz wpisać do {0}. Później znajdziesz go też w Znajomi → Poleć SlashClient.': 'You can enter a code until {0}. Later you will also find it in Friends → Recommend SlashClient.',
+  'Kod możesz wpisać też później w Znajomi → Poleć SlashClient.': 'You can also enter a code later in Friends → Recommend SlashClient.',
   'Możesz wpisać jeden kod do {0}. Gdy pograsz {1} h w {2}, oboje dostaniecie {3}.': 'You can enter one code until {0}. Once you play {1} h on {2}, you both get {3}.',
   'Możesz wpisać jeden kod. Gdy pograsz {0} h w {1}, oboje dostaniecie {2}.': 'You can enter one code. Once you play {0} h on {1}, you both get {2}.',
   'Połączono z {0}. Gdy pograsz {1} h w {2}, oboje dostaniecie {3}.': 'Connected with {0}. Once you play {1} h on {2}, you both get {3}.',

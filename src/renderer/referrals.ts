@@ -224,7 +224,7 @@ export function createReferrals(deps: ReferralsDeps) {
     });
     // the field on its own line, the two buttons under it as in the launcher's other questions
     form.append(el('div', { className: 'row join-actions' }, later, submit));
-    const until = r!.redeemUntil ? t('Kod możesz wpisać do {0}. Później znajdziesz go też w Osiągnięcia → Zaproś.', new Date(r!.redeemUntil).toLocaleDateString(locale(), { day: 'numeric', month: 'long' })) : t('Kod możesz wpisać też później w Osiągnięcia → Zaproś.');
+    const until = r!.redeemUntil ? t('Kod możesz wpisać do {0}. Później znajdziesz go też w Znajomi → Poleć SlashClient.', new Date(r!.redeemUntil).toLocaleDateString(locale(), { day: 'numeric', month: 'long' })) : t('Kod możesz wpisać też później w Znajomi → Poleć SlashClient.');
     const body = el('div', { className: 'ref-prompt' },
       el('p', { textContent: s ? t('{0} zaprosił Cię do SlashClient – użyć kodu {1}?', s.name, s.code) : t('Jeśli ktoś zaprosił Cię do SlashClient, wpisz jego kod. Gdy pograsz {0} h w {1}, oboje dostaniecie {2}.', num(r!.hoursGoal), daysText(r!.daysGoal), currencyName()) }),
       s ? el('p', { className: 'muted', textContent: t('Gdy pograsz {0} h w {1}, oboje dostaniecie {2}.', num(r!.hoursGoal), daysText(r!.daysGoal), currencyName()) }) : '',
