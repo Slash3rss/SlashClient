@@ -6,7 +6,7 @@ import { $, confirmModal, cosmeticEl, el, fmtDate, guard, icon, api, toast } fro
 import { sparks } from './sparks.js';
 
 const CATEGORY_NAMES = {
-  play: 'Gra', streak: 'Serie', social: 'Znajomi', community: 'Grupy i klany', explore: 'Serwery', skyup: 'SkyUp.pl', sharing: 'Udostępnianie', style: 'Styl', secret: 'Ukryte',
+  play: 'Gra', streak: 'Serie', social: 'Znajomi', invites: 'Zaproszenia', community: 'Grupy i klany', explore: 'Serwery', skyup: 'SkyUp.pl', sharing: 'Udostępnianie', style: 'Styl', secret: 'Ukryte',
 };
 const SLOT_NAMES = {
   cape: 'Peleryna', wings: 'Skrzydła', elytra: 'Elytra', trail: 'Ślad', aura: 'Aura', pet: 'Zwierzak', hat: 'Czapka', top: 'Góra', shoes: 'Buty', hands: 'Rękawice',

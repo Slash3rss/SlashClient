@@ -367,6 +367,8 @@ interface Deps {
   partyMates?: (uuid: string) => string[];
   /** Whether a metric can be done on this server now (voting needs the server list set up). */
   available?: (metric: Metric) => boolean;
+  /** After challenges were completed or a period's bonus paid (the achievements for challenges look again). */
+  completed?: (uuid: string) => void;
 }
 
 /** Requests that count once they succeed. */
@@ -434,6 +436,7 @@ export function createChallenges(deps: Deps) {
   function check(uuid: string, now = Date.now()) {
     if (!on()) return [];
     const fresh: ReturnType<typeof view>[] = [];
+    let bonusPaid = false;
     for (const kind of PERIODS) {
       const { period, rows } = setOf(uuid, kind, now);
       if (!rows.length) continue;
@@ -460,9 +463,11 @@ export function createChallenges(deps: Deps) {
           return true;
         });
         if (paid && bonus > 0) deps.push(uuid, { type: 'challenges-bonus', period: kind, sparks: bonus });
+        if (paid) bonusPaid = true;
       }
     }
     if (fresh.length) deps.push(uuid, { type: 'wallet', balance: wallet.balance(uuid), change: fresh.reduce((n, v) => n + v.sparks, 0), reason: 'challenge', ref: '' });
+    if (fresh.length || bonusPaid) deps.completed?.(uuid);
     return fresh;
   }
 

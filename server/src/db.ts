@@ -238,6 +238,39 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
     if (!iconColumns.some((c) => c.name === 'aliases')) this.db.exec("ALTER TABLE partners ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'");
     // the owners after the first one (who stays in `owner`, for what reads only that), as a JSON list
     if (!iconColumns.some((c) => c.name === 'co_owners')) this.db.exec("ALTER TABLE partners ADD COLUMN co_owners TEXT NOT NULL DEFAULT '[]'");
+    // one-time changes to the data, each written down once it is done (so a restart never repeats one)
+    this.db.exec(`
+CREATE TABLE IF NOT EXISTS data_migrations (id TEXT PRIMARY KEY, at INTEGER NOT NULL, detail TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
+`);
+  }
+
+  /**
+   * Capes that were free for everyone and no longer are (cosmetics.ts FORMERLY_FREE_CAPES): every
+   * account there is when this first runs gets a grant of each, all in one transaction, and the run is
+   * written down, so it happens once (a later start, a new account: nothing). Accounts made after it
+   * earn or buy them like everyone else. The grants it added are also listed in cape_grants_kept, so
+   * the collection's achievements count only what a player got themselves (an achievement that gives
+   * one of them later takes it off that list). Returns how many grants it added (0 when done before).
+   */
+  keepFormerlyFree(capes: readonly string[], id = 'free-capes-0.9.69', now = Date.now()): number {
+    if (this.db.prepare('SELECT 1 FROM data_migrations WHERE id = ?').get(id)) return 0;
+    let added = 0;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const cape of capes) {
+        // an admin's grant from before stays the player's own (it counts for the collection)
+        this.db.prepare('INSERT OR IGNORE INTO cape_grants_kept (uuid, cape) SELECT u.uuid, ? FROM users u WHERE NOT EXISTS (SELECT 1 FROM cape_grants g WHERE g.uuid = u.uuid AND g.cape = ?)').run(cape, cape);
+        added += Number(this.db.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) SELECT uuid, ? FROM users').run(cape).changes);
+      }
+      const users = (this.db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
+      this.db.prepare('INSERT INTO data_migrations (id, at, detail) VALUES (?, ?, ?)').run(id, now, `${users} kont, ${added} przyznań`);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+    return added;
   }
 
   close() {

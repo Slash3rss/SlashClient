@@ -14,7 +14,9 @@ import { MessageCounter } from './chatLimits.ts';
  * Everything counted is what this server sees or checks itself, never a number a client sends (the
  * sparks would make cheating worth it): play time from its own ticks, friends from its tables,
  * messages as they are sent (chatLimits.ts: real conversations only, 30 a day at most), shared
- * screenshots, profiles, waypoints, parties and sprays from requests it accepted.
+ * screenshots, profiles, waypoints, parties and sprays from requests it accepted; challenges done,
+ * friends invited, sparks earned and cosmetics got from the tables of those features (challenges.ts,
+ * referrals.ts, the sparks' ledger, the grants).
  *
  * Play time: every minute (`tick`) each account whose launcher is connected (WebSocket answering
  * pings), whose game reported in the last minutes (/v1/mc/link, which the launcher sends every 4
@@ -41,15 +43,26 @@ export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers'
   | 'community_joined' | 'community_founded' | 'community_size'
   | 'waypoints' | 'parties_created' | 'parties_joined' | 'media' | 'shares' | 'cloud'
   | 'sprays' | 'worn' | 'bought' | 'spent'
+  /** Friends invited with one's code who counted (referrals.ts); 1 when one joined with a friend's code that counted. */
+  | 'invites' | 'invited'
+  /** Daily and weekly challenges completed (challenges.ts), and weeks with all of the week's set done. */
+  | 'challenges' | 'challenge_weeks'
+  /** Sparks earned in total (achievements, challenges, invites; not admins' gifts), cosmetics got (earned, bought, given). */
+  | 'earned' | 'owned'
+  /** Played early in the morning (5:00–7:00 UTC); played at Christmas (24–26 December). */
+  | 'early' | 'christmas'
   /** On one server (`server`: its address and its subdomains): hours, days with 10+ minutes, been there at all. */
   | 'server_hours' | 'server_days' | 'server_visit'
   /** Given by an admin by hand (achievements made in the admin panel), never counted. */
   | 'manual';
 
 /** Where the pages put it. */
-export type Category = 'play' | 'streak' | 'social' | 'community' | 'explore' | 'skyup' | 'sharing' | 'style' | 'secret';
-/** In the pages' order ('skyup': the partner server SkyUp.pl; launchers before 0.9.24 show it as "Other"). */
-export const CATEGORIES: Category[] = ['play', 'streak', 'social', 'community', 'explore', 'skyup', 'sharing', 'style', 'secret'];
+export type Category = 'play' | 'streak' | 'social' | 'invites' | 'community' | 'explore' | 'skyup' | 'sharing' | 'style' | 'secret';
+/**
+ * In the pages' order ('skyup': the partner server SkyUp.pl; launchers before 0.9.24 show it as "Other";
+ * 'invites': friends invited with one's code, older launchers put it last, as they do any category they do not know).
+ */
+export const CATEGORIES: Category[] = ['play', 'streak', 'social', 'invites', 'community', 'explore', 'skyup', 'sharing', 'style', 'secret'];
 
 export interface Achievement {
   id: string;
@@ -86,13 +99,13 @@ const of = (category: Category, list: Def[]): Achievement[] => list.map((a) => (
 export const ACHIEVEMENTS: Achievement[] = [
   ...of('play', [
     { id: 'hours_1', group: 'hours', goal: 1, sparks: 10, name: 'Pierwsza godzina', nameEn: 'First hour', description: 'Zagraj godzinę ze SlashClient.', descriptionEn: 'Play one hour with SlashClient.' },
-    { id: 'hours_10', group: 'hours', goal: 10, sparks: 40, name: 'Rozgrzewka', nameEn: 'Warming up', description: 'Zagraj 10 godzin ze SlashClient.', descriptionEn: 'Play 10 hours with SlashClient.' },
+    { id: 'hours_10', group: 'hours', goal: 10, sparks: 40, name: 'Rozgrzewka', nameEn: 'Warming up', description: 'Zagraj 10 godzin ze SlashClient.', descriptionEn: 'Play 10 hours with SlashClient.', reward: 'storm' },
     { id: 'hours_50', group: 'hours', goal: 50, sparks: 100, name: 'Stały bywalec', nameEn: 'Regular', description: 'Zagraj 50 godzin ze SlashClient.', descriptionEn: 'Play 50 hours with SlashClient.' },
     { id: 'hours_100', group: 'hours', goal: 100, sparks: 200, name: 'Weteran', nameEn: 'Veteran', description: 'Zagraj 100 godzin ze SlashClient.', descriptionEn: 'Play 100 hours with SlashClient.', reward: 'veteran' },
     { id: 'hours_250', group: 'hours', goal: 250, sparks: 300, name: 'Zaprawiony w boju', nameEn: 'Battle-hardened', description: 'Zagraj 250 godzin ze SlashClient.', descriptionEn: 'Play 250 hours with SlashClient.' },
     { id: 'hours_500', group: 'hours', goal: 500, sparks: 500, name: 'Legenda', nameEn: 'Legend', description: 'Zagraj 500 godzin ze SlashClient.', descriptionEn: 'Play 500 hours with SlashClient.' },
     { id: 'hours_1000', group: 'hours', goal: 1000, sparks: 1000, name: 'Tysiąc godzin', nameEn: 'A thousand hours', description: 'Zagraj 1000 godzin ze SlashClient.', descriptionEn: 'Play 1000 hours with SlashClient.' },
-    { id: 'days_30', group: 'days', goal: 30, sparks: 100, name: 'Miesiąc gry', nameEn: 'A month of play', description: 'Graj co najmniej 10 minut w 30 różnych dniach (nie muszą być pod rząd).', descriptionEn: 'Play at least 10 minutes on 30 different days (not necessarily in a row).' },
+    { id: 'days_30', group: 'days', goal: 30, sparks: 100, name: 'Miesiąc gry', nameEn: 'A month of play', description: 'Graj co najmniej 10 minut w 30 różnych dniach (nie muszą być pod rząd).', descriptionEn: 'Play at least 10 minutes on 30 different days (not necessarily in a row).', reward: 'inferno' },
     { id: 'days_100', group: 'days', goal: 100, sparks: 250, name: 'Sto dni', nameEn: 'A hundred days', description: 'Graj co najmniej 10 minut w 100 różnych dniach.', descriptionEn: 'Play at least 10 minutes on 100 different days.' },
     { id: 'days_365', group: 'days', goal: 365, sparks: 600, name: 'Rok w grze', nameEn: 'A year in the game', description: 'Graj co najmniej 10 minut w 365 różnych dniach.', descriptionEn: 'Play at least 10 minutes on 365 different days.' },
     { id: 'longday_4', group: 'longday', goal: 4, sparks: 40, name: 'Długi dzień', nameEn: 'A long day', description: 'Zagraj 4 godziny w ciągu jednego dnia.', descriptionEn: 'Play 4 hours in one day.' },
@@ -100,6 +113,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'weekends_10', group: 'weekends', goal: 10, sparks: 120, name: 'Weekendowy wojownik', nameEn: 'Weekend warrior', description: 'Graj w 10 różnych weekendów.', descriptionEn: 'Play on 10 different weekends.' },
     { id: 'anniversary_1', group: 'anniversary', goal: 1, sparks: 300, name: 'Rocznica', nameEn: 'Anniversary', description: 'Zagraj, gdy Twoje konto SlashClient ma co najmniej rok.', descriptionEn: 'Play when your SlashClient account is at least a year old.' },
     { id: 'anniversary_2', group: 'anniversary', goal: 2, sparks: 500, name: 'Druga rocznica', nameEn: 'Second anniversary', description: 'Zagraj, gdy Twoje konto SlashClient ma co najmniej dwa lata.', descriptionEn: 'Play when your SlashClient account is at least two years old.' },
+    { id: 'days_7', group: 'days', goal: 7, sparks: 15, name: 'Tydzień gry', nameEn: 'A week of play', description: 'Graj co najmniej 10 minut w 7 różnych dniach (nie muszą być pod rząd).', descriptionEn: 'Play at least 10 minutes on 7 different days (not necessarily in a row).' },
+    { id: 'longday_8', group: 'longday', goal: 8, sparks: 40, name: 'Cały dzień w grze', nameEn: 'A whole day in the game', description: 'Zagraj 8 godzin w ciągu jednego dnia.', descriptionEn: 'Play 8 hours in one day.' },
+    // the daily and weekly challenges (challenges.ts): the ones completed, and weeks with all of the week's set done
+    { id: 'challenges_1', group: 'challenges', goal: 1, sparks: 5, name: 'Wyzwanie przyjęte', nameEn: 'Challenge accepted', description: 'Ukończ pierwsze wyzwanie dzienne lub tygodniowe.', descriptionEn: 'Complete your first daily or weekly challenge.' },
+    { id: 'challenges_10', group: 'challenges', goal: 10, sparks: 20, name: 'Łowca wyzwań', nameEn: 'Challenge hunter', description: 'Ukończ 10 wyzwań dziennych lub tygodniowych.', descriptionEn: 'Complete 10 daily or weekly challenges.', reward: 'checker' },
+    { id: 'challenges_50', group: 'challenges', goal: 50, sparks: 50, name: 'Nie ma rzeczy niemożliwych', nameEn: 'Nothing is impossible', description: 'Ukończ 50 wyzwań dziennych lub tygodniowych.', descriptionEn: 'Complete 50 daily or weekly challenges.', reward: 'toxic' },
+    { id: 'challenges_200', group: 'challenges', goal: 200, sparks: 100, name: 'Mistrz wyzwań', nameEn: 'Challenge master', description: 'Ukończ 200 wyzwań dziennych lub tygodniowych.', descriptionEn: 'Complete 200 daily or weekly challenges.', reward: 'matrix' },
+    { id: 'challenge_week', group: 'challenge_weeks', goal: 1, sparks: 25, name: 'Komplet tygodnia', nameEn: 'A full week', description: 'Ukończ wszystkie wyzwania tygodniowe w jednym tygodniu.', descriptionEn: 'Complete all of the weekly challenges in one week.', reward: 'mint' },
+    { id: 'challenge_weeks_10', group: 'challenge_weeks', goal: 10, sparks: 75, name: 'Niezawodny', nameEn: 'Reliable', description: 'Ukończ wszystkie wyzwania tygodniowe w 10 różnych tygodniach.', descriptionEn: 'Complete all of the weekly challenges in 10 different weeks.' },
   ]),
   ...of('streak', [
     { id: 'streak_3', group: 'streak', goal: 3, sparks: 25, name: 'Trzy dni z rzędu', nameEn: 'Three in a row', description: 'Graj co najmniej 10 minut dziennie przez 3 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 3 days in a row.' },
@@ -112,7 +134,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   ]),
   ...of('social', [
     { id: 'friend_1', group: 'friends', goal: 1, sparks: 10, name: 'Pierwszy znajomy', nameEn: 'First friend', description: 'Dodaj pierwszego znajomego.', descriptionEn: 'Add your first friend.' },
-    { id: 'friends_5', group: 'friends', goal: 5, sparks: 25, name: 'Piątka', nameEn: 'High five', description: 'Miej 5 znajomych.', descriptionEn: 'Have 5 friends.' },
+    { id: 'friends_5', group: 'friends', goal: 5, sparks: 25, name: 'Piątka', nameEn: 'High five', description: 'Miej 5 znajomych.', descriptionEn: 'Have 5 friends.', reward: 'ice' },
     { id: 'friends_10', group: 'friends', goal: 10, sparks: 50, name: 'Paczka znajomych', nameEn: 'The squad', description: 'Miej 10 znajomych.', descriptionEn: 'Have 10 friends.' },
     { id: 'friends_25', group: 'friends', goal: 25, sparks: 100, name: 'Dusza towarzystwa', nameEn: 'Life of the party', description: 'Miej 25 znajomych.', descriptionEn: 'Have 25 friends.' },
     { id: 'friends_50', group: 'friends', goal: 50, sparks: 200, name: 'Wszyscy mnie znają', nameEn: 'Everyone knows me', description: 'Miej 50 znajomych.', descriptionEn: 'Have 50 friends.' },
@@ -124,6 +146,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'waypoints_25', group: 'waypoints', goal: 25, sparks: 40, name: 'Kartograf', nameEn: 'Cartographer', description: 'Wyślij znajomym 25 punktów nawigacyjnych.', descriptionEn: 'Send 25 waypoints to friends.' },
     { id: 'party_create', group: 'parties_created', goal: 1, sparks: 15, name: 'Zbiórka!', nameEn: 'Assemble!', description: 'Zaproś znajomych do drużyny.', descriptionEn: 'Invite friends to a party.' },
     { id: 'party_join', group: 'parties_joined', goal: 1, sparks: 15, name: 'Dołączam', nameEn: 'Count me in', description: 'Przyjmij zaproszenie do drużyny.', descriptionEn: 'Accept a party invite.' },
+  ]),
+  // friends invited with one's own code (referrals.ts): only invites that counted (the friend linked a Minecraft
+  // account and played long enough), so a second account of one's own does not get them
+  ...of('invites', [
+    { id: 'invites_1', group: 'invites', goal: 1, sparks: 25, icon: 'fa-user-plus', name: 'Ktoś z polecenia', nameEn: 'Word of mouth', description: 'Zaproś znajomego swoim kodem (liczy się, gdy pogra trochę ze SlashClient).', descriptionEn: 'Invite a friend with your code (it counts once they have played a while with SlashClient).', reward: 'sakura' },
+    { id: 'invites_3', group: 'invites', goal: 3, sparks: 50, icon: 'fa-user-plus', name: 'Werbownik', nameEn: 'Recruiter', description: 'Zaproś swoim kodem 3 znajomych.', descriptionEn: 'Invite 3 friends with your code.', reward: 'aurora' },
+    { id: 'invites_5', group: 'invites', goal: 5, sparks: 75, icon: 'fa-users', name: 'Ekipa z polecenia', nameEn: 'Referral crew', description: 'Zaproś swoim kodem 5 znajomych.', descriptionEn: 'Invite 5 friends with your code.', reward: 'rainbow' },
+    { id: 'invites_10', group: 'invites', goal: 10, sparks: 100, icon: 'fa-bullhorn', name: 'Influencer', nameEn: 'Influencer', description: 'Zaproś swoim kodem 10 znajomych.', descriptionEn: 'Invite 10 friends with your code.', reward: 'vortex' },
+    { id: 'invites_25', group: 'invites', goal: 25, sparks: 200, icon: 'fa-crown', name: 'Ambasador SlashClient', nameEn: 'SlashClient ambassador', description: 'Zaproś swoim kodem 25 znajomych.', descriptionEn: 'Invite 25 friends with your code.', reward: 'starfall' },
   ]),
   ...of('community', [
     { id: 'group_join', group: 'groups_joined', goal: 1, sparks: 10, name: 'W grupie raźniej', nameEn: 'Better together', description: 'Bądź w czacie grupowym kogoś innego.', descriptionEn: 'Be in someone else\'s group chat.' },
@@ -140,9 +171,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   ]),
   ...of('explore', [
     { id: 'servers_5', group: 'servers', goal: 5, sparks: 30, name: 'Podróżnik', nameEn: 'Traveller', description: 'Zagraj na 5 różnych serwerach.', descriptionEn: 'Play on 5 different servers.' },
-    { id: 'servers_10', group: 'servers', goal: 10, sparks: 50, name: 'Turysta', nameEn: 'Tourist', description: 'Zagraj na 10 różnych serwerach.', descriptionEn: 'Play on 10 different servers.' },
+    { id: 'servers_10', group: 'servers', goal: 10, sparks: 50, name: 'Turysta', nameEn: 'Tourist', description: 'Zagraj na 10 różnych serwerach.', descriptionEn: 'Play on 10 different servers.', reward: 'lava' },
     { id: 'servers_20', group: 'servers', goal: 20, sparks: 80, name: 'Obieżyświat', nameEn: 'Globetrotter', description: 'Zagraj na 20 różnych serwerach.', descriptionEn: 'Play on 20 different servers.' },
     { id: 'servers_50', group: 'servers', goal: 50, sparks: 200, name: 'Odkrywca', nameEn: 'Explorer', description: 'Zagraj na 50 różnych serwerach.', descriptionEn: 'Play on 50 different servers.' },
+    { id: 'servers_100', group: 'servers', goal: 100, sparks: 100, name: 'Kartograf serwerów', nameEn: 'Server cartographer', description: 'Zagraj na 100 różnych serwerach.', descriptionEn: 'Play on 100 different servers.' },
   ]),
   // the partner server SkyUp.pl (and its subdomains); time there is recorded from the version that brought these (0.9.24) on,
   // the visit also from before (play_servers); the rewards are its capes (cosmetics.ts, earned only here)
@@ -172,14 +204,26 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'wear_10', group: 'worn', goal: 10, sparks: 60, name: 'Ikona stylu', nameEn: 'Style icon', description: 'Noś kosmetyki SlashClient w 10 miejscach naraz.', descriptionEn: 'Wear SlashClient cosmetics in 10 slots at once.' },
     { id: 'shop_1', group: 'bought', goal: 1, sparks: 20, name: 'Pierwszy zakup', nameEn: 'First purchase', description: 'Kup coś w sklepie za Iskry.', descriptionEn: 'Buy something in the shop with Sparks.' },
     { id: 'shop_5', group: 'bought', goal: 5, sparks: 75, name: 'Kolekcjoner', nameEn: 'Collector', description: 'Kup 5 rzeczy w sklepie.', descriptionEn: 'Buy 5 things in the shop.' },
+    // sparks earned (achievements, challenges, invites) and cosmetics got (earned, bought or given by the admins, not the free ones)
+    { id: 'sparks_1000', group: 'earned', goal: 1000, sparks: 20, name: 'Iskra nadziei', nameEn: 'A spark of hope', description: 'Zdobądź łącznie 1000 Iskier (za osiągnięcia, wyzwania i zaproszenia).', descriptionEn: 'Earn 1000 Sparks in total (from achievements, challenges and invites).', reward: 'honey' },
+    { id: 'sparks_5000', group: 'earned', goal: 5000, sparks: 50, name: 'Płonący skarbiec', nameEn: 'Blazing treasury', description: 'Zdobądź łącznie 5000 Iskier.', descriptionEn: 'Earn 5000 Sparks in total.' },
+    { id: 'sparks_20000', group: 'earned', goal: 20_000, sparks: 100, name: 'Ognisty magnat', nameEn: 'Fire tycoon', description: 'Zdobądź łącznie 20 000 Iskier.', descriptionEn: 'Earn 20,000 Sparks in total.' },
+    { id: 'collector_5', group: 'owned', goal: 5, sparks: 10, name: 'Mała kolekcja', nameEn: 'A small collection', description: 'Zdobądź 5 kosmetyków (z osiągnięć, sklepu lub od administracji; darmowe się nie liczą).', descriptionEn: 'Get 5 cosmetics (from achievements, the shop or the admins; free ones do not count).' },
+    { id: 'collector_10', group: 'owned', goal: 10, sparks: 20, name: 'Zbieracz', nameEn: 'Gatherer', description: 'Zdobądź 10 kosmetyków (z osiągnięć, sklepu lub od administracji).', descriptionEn: 'Get 10 cosmetics (from achievements, the shop or the admins).' },
+    { id: 'collector_25', group: 'owned', goal: 25, sparks: 50, name: 'Garderoba pełna', nameEn: 'A full wardrobe', description: 'Zdobądź 25 kosmetyków (z osiągnięć, sklepu lub od administracji).', descriptionEn: 'Get 25 cosmetics (from achievements, the shop or the admins).' },
+    { id: 'collector_50', group: 'owned', goal: 50, sparks: 100, name: 'Muzeum mody', nameEn: 'Fashion museum', description: 'Zdobądź 50 kosmetyków (z osiągnięć, sklepu lub od administracji).', descriptionEn: 'Get 50 cosmetics (from achievements, the shop or the admins).' },
   ]),
   ...of('secret', [
-    { id: 'night_owl', group: 'night', goal: 1, sparks: 50, hidden: true, name: 'Nocny marek', nameEn: 'Night owl', description: 'Graj między północą a 4:00 UTC.', descriptionEn: 'Play between midnight and 4:00 UTC.' },
+    { id: 'night_owl', group: 'night', goal: 1, sparks: 50, hidden: true, name: 'Nocny marek', nameEn: 'Night owl', description: 'Graj między północą a 4:00 UTC.', descriptionEn: 'Play between midnight and 4:00 UTC.', reward: 'night' },
     { id: 'full_day', group: 'longday', goal: 12, sparks: 150, hidden: true, name: 'Maraton', nameEn: 'Marathon', description: 'Zagraj 12 godzin w ciągu jednego dnia.', descriptionEn: 'Play 12 hours in one day.' },
     { id: 'new_year', group: 'newyear', goal: 1, sparks: 100, hidden: true, name: 'Szczęśliwego Nowego Roku', nameEn: 'Happy New Year', description: 'Zagraj 1 stycznia.', descriptionEn: 'Play on the 1st of January.' },
     { id: 'halloween', group: 'halloween', goal: 1, sparks: 100, hidden: true, name: 'Cukierek albo psikus', nameEn: 'Trick or treat', description: 'Zagraj 31 października.', descriptionEn: 'Play on the 31st of October.' },
     { id: 'friday13', group: 'friday13', goal: 1, sparks: 100, hidden: true, name: 'Piątek trzynastego', nameEn: 'Friday the 13th', description: 'Zagraj w piątek trzynastego.', descriptionEn: 'Play on a Friday the 13th.' },
     { id: 'big_spender', group: 'spent', goal: 1000, sparks: 100, hidden: true, name: 'Rozrzutny', nameEn: 'Big spender', description: 'Wydaj w sklepie 1000 Iskier.', descriptionEn: 'Spend 1000 Sparks in the shop.' },
+    { id: 'invited_by_friend', group: 'invited', goal: 1, sparks: 25, hidden: true, name: 'Z polecenia', nameEn: 'Referred', description: 'Dołącz z kodem zaproszenia znajomego i pograj trochę ze SlashClient.', descriptionEn: 'Join with a friend\'s invite code and play a while with SlashClient.' },
+    { id: 'early_bird', group: 'early', goal: 1, sparks: 25, hidden: true, name: 'Ranny ptaszek', nameEn: 'Early bird', description: 'Graj między 5:00 a 7:00 UTC.', descriptionEn: 'Play between 5:00 and 7:00 UTC.' },
+    { id: 'christmas', group: 'christmas', goal: 1, sparks: 50, hidden: true, name: 'Wesołych Świąt', nameEn: 'Merry Christmas', description: 'Zagraj w Boże Narodzenie (24–26 grudnia).', descriptionEn: 'Play at Christmas (24–26 December).' },
+    { id: 'invites_50', group: 'invites', goal: 50, sparks: 150, hidden: true, name: 'Legenda polecenia', nameEn: 'Referral legend', description: 'Zaproś swoim kodem 50 znajomych.', descriptionEn: 'Invite 50 friends with your code.' },
   ]),
 ];
 
@@ -196,6 +240,8 @@ export const DEFAULT_ICONS: Record<Group, string> = {
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
   sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
   server_hours: 'fa-cloud-sun', server_days: 'fa-calendar-days', server_visit: 'fa-plane-arrival',
+  invites: 'fa-user-plus', invited: 'fa-handshake', challenges: 'fa-list-check', challenge_weeks: 'fa-calendar-week',
+  earned: 'fa-coins', owned: 'fa-box-open', early: 'fa-mug-hot', christmas: 'fa-gift',
 };
 
 /**
@@ -253,6 +299,14 @@ export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: s
   worn: { name: 'Kosmetyki noszone naraz', nameEn: 'Cosmetics worn at once', max: 20 },
   bought: { name: 'Przedmioty kupione w sklepie', nameEn: 'Items bought in the shop', max: 1000 },
   spent: { name: 'Iskry wydane w sklepie', nameEn: 'Sparks spent in the shop', max: 1_000_000 },
+  invites: { name: 'Zaproszeni znajomi (policzeni)', nameEn: 'Friends invited (counted)', max: 1000 },
+  invited: { name: 'Dołączył z kodem znajomego (policzony)', nameEn: 'Joined with a friend\'s code (counted)', max: 1 },
+  challenges: { name: 'Ukończone wyzwania', nameEn: 'Challenges completed', max: 100_000 },
+  challenge_weeks: { name: 'Tygodnie z kompletem wyzwań tygodniowych', nameEn: 'Weeks with every weekly challenge done', max: 520 },
+  earned: { name: 'Iskry zdobyte łącznie (osiągnięcia, wyzwania, zaproszenia)', nameEn: 'Sparks earned in total (achievements, challenges, invites)', max: 10_000_000 },
+  owned: { name: 'Zdobyte kosmetyki (bez darmowych)', nameEn: 'Cosmetics got (not the free ones)', max: 1000 },
+  early: { name: 'Gra rano (5:00–7:00 UTC)', nameEn: 'Played early (5–7 UTC)', max: 1 },
+  christmas: { name: 'Gra w Boże Narodzenie (24–26 grudnia)', nameEn: 'Played at Christmas (24–26 December)', max: 1 },
 };
 
 /** What the admin may change in an achievement of this file (kept apart, so "back to default" is deleting it). */
@@ -374,6 +428,9 @@ export const SPRAY_COUNT_GAP_MS = 30_000;
 const MESSAGES_CAP = 1000;
 /** Night play counts from midnight to this hour, UTC. */
 const NIGHT_UNTIL_HOUR = 4;
+/** Early play counts from this hour to the next one below, UTC (6–8 a.m. in Poland in winter). */
+const EARLY_FROM_HOUR = 5;
+const EARLY_UNTIL_HOUR = 7;
 const DAY_MS = 86_400_000;
 const YEAR_MS = 365 * DAY_MS;
 
@@ -411,15 +468,16 @@ export function weekends(days: string[]): number {
   return seen.size;
 }
 
-/** The special days among the days played: New Year's Day, Halloween, a Friday the 13th. */
-export function specialDays(days: string[]): { newyear: number; halloween: number; friday13: number } {
-  let newyear = 0, halloween = 0, friday13 = 0;
+/** The special days among the days played: New Year's Day, Halloween, a Friday the 13th, Christmas (24–26 December). */
+export function specialDays(days: string[]): { newyear: number; halloween: number; friday13: number; christmas: number } {
+  let newyear = 0, halloween = 0, friday13 = 0, christmas = 0;
   for (const d of days) {
     if (d.endsWith('-01-01')) newyear = 1;
     if (d.endsWith('-10-31')) halloween = 1;
     if (d.endsWith('-13') && new Date(`${d}T00:00:00Z`).getUTCDay() === 5) friday13 = 1;
+    if (/-12-2[456]$/.test(d)) christmas = 1;
   }
-  return { newyear, halloween, friday13 };
+  return { newyear, halloween, friday13, christmas };
 }
 
 /** How many whole years old the account was on the latest day played. */
@@ -473,12 +531,13 @@ export interface Stats {
   communityJoined: number; communityFounded: number; communitySize: number;
   waypoints: number; partiesCreated: number; partiesJoined: number; media: number; shares: number; cloud: number;
   sprays: number; worn: number; bought: number; spent: number;
+  invites: number; invited: number; challenges: number; challengeWeeks: number; earned: number; owned: number; early: number; christmas: number;
   /** One server's numbers (`server_*` groups), asked when needed. */
   onServer: (rule: string) => ServerStats;
 }
 
 /** Counters kept by events (they only grow). */
-export type Counter = 'media' | 'shares' | 'cloud' | 'parties_created' | 'parties_joined' | 'sprays' | 'night';
+export type Counter = 'media' | 'shares' | 'cloud' | 'parties_created' | 'parties_joined' | 'sprays' | 'night' | 'early';
 
 /** The tables (added on start, nothing else changes) and their queries. */
 export class AchievementStore {
@@ -576,6 +635,19 @@ CREATE TABLE IF NOT EXISTS play_server_days (uuid TEXT NOT NULL REFERENCES users
     return best;
   }
 
+  /**
+   * The cosmetics a player got (earned, bought, given by an admin), as grants of items that exist; the
+   * capes every account from before 0.9.69 was given so as not to lose them (db.ts) do not count.
+   */
+  private owned(uuid: string): number {
+    try {
+      const rows = this.sql.prepare('SELECT g.cape FROM cape_grants g WHERE g.uuid = ? AND NOT EXISTS (SELECT 1 FROM cape_grants_kept k WHERE k.uuid = g.uuid AND k.cape = g.cape)').all(uuid) as { cape: string }[];
+      return rows.filter((r) => item(r.cape)).length;
+    } catch {
+      return 0;
+    }
+  }
+
   stats(uuid: string, now: number, wallet?: Wallet): Stats {
     const today = dayOf(now);
     const total = this.sql.prepare('SELECT COALESCE(SUM(seconds), 0) AS s, COALESCE(MAX(seconds), 0) AS m FROM play_days WHERE uuid = ?').get(uuid) as { s: number; m: number };
@@ -622,6 +694,20 @@ CREATE TABLE IF NOT EXISTS play_server_days (uuid TEXT NOT NULL REFERENCES users
       worn: this.worn(uuid),
       bought: shop.count,
       spent: shop.spent,
+      // invites that counted (referrals.ts): a second account of one's own does not get that far
+      invites: count("SELECT COUNT(*) AS n FROM referrals WHERE inviter = ? AND status = 'counted'", uuid),
+      invited: count("SELECT COUNT(*) AS n FROM referrals WHERE invitee = ? AND status = 'counted'", uuid),
+      // the ledger keeps every paid challenge for good, the challenges' own rows go after a year: the larger of the two
+      challenges: Math.max(
+        count("SELECT COUNT(*) AS n FROM sparks_ledger WHERE uuid = ? AND reason = 'challenge' AND ref NOT LIKE '%:*'", uuid),
+        count('SELECT COUNT(*) AS n FROM challenge_assigned WHERE uuid = ? AND done_at IS NOT NULL', uuid)),
+      challengeWeeks: Math.max(
+        count("SELECT COUNT(*) AS n FROM sparks_ledger WHERE uuid = ? AND reason = 'challenge' AND ref LIKE 'w:%:*'", uuid),
+        count("SELECT COUNT(*) AS n FROM challenge_bonus WHERE uuid = ? AND period LIKE 'w:%'", uuid)),
+      // earned by playing: not the admins' gifts, not what came back
+      earned: count("SELECT COALESCE(SUM(amount), 0) AS n FROM sparks_ledger WHERE uuid = ? AND amount > 0 AND reason IN ('achievement', 'challenge', 'referral')", uuid),
+      owned: this.owned(uuid),
+      early: this.counter(uuid, 'early'),
       onServer: (rule) => {
         let v = perServer.get(rule);
         if (!v) perServer.set(rule, (v = this.serverStats(uuid, rule)));
@@ -638,6 +724,14 @@ CREATE TABLE IF NOT EXISTS play_server_days (uuid TEXT NOT NULL REFERENCES users
   unlock(uuid: string, a: Achievement, at: number): boolean {
     const added = this.sql.prepare('INSERT OR IGNORE INTO achievements (uuid, id, unlocked_at) VALUES (?, ?, ?)').run(uuid, a.id, at).changes > 0;
     if (a.reward) this.sql.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) VALUES (?, ?)').run(uuid, a.reward);
+    if (a.reward && added) {
+      // a cape the player kept from when it was free (db.ts) is now earned too: it counts for the collection
+      try {
+        this.sql.prepare('DELETE FROM cape_grants_kept WHERE uuid = ? AND cape = ?').run(uuid, a.reward);
+      } catch {
+        // no such table (a test with the achievements' tables only)
+      }
+    }
     return added;
   }
 
@@ -703,6 +797,14 @@ export function value(a: Achievement, s: Stats): number {
     case 'worn': return s.worn;
     case 'bought': return s.bought;
     case 'spent': return s.spent;
+    case 'invites': return s.invites;
+    case 'invited': return Math.min(1, s.invited);
+    case 'challenges': return s.challenges;
+    case 'challenge_weeks': return s.challengeWeeks;
+    case 'earned': return s.earned;
+    case 'owned': return s.owned;
+    case 'early': return Math.min(1, s.early);
+    case 'christmas': return s.christmas;
     case 'server_hours': return a.server ? Math.floor(s.onServer(a.server).seconds / 360) / 10 : 0;
     case 'server_days': return a.server ? s.onServer(a.server).days : 0;
     case 'server_visit': return a.server ? s.onServer(a.server).visited : 0;
@@ -818,14 +920,20 @@ export function createAchievements(deps: Deps) {
    * once (old players after an update) also come as one summary, which new launchers show instead.
    */
   function check(userId: string, now = Date.now()) {
-    const s = store.stats(userId, now, wallet);
-    const have = store.unlocked(userId);
     const list = registry.active();
     const fresh = [];
-    for (const a of list) {
-      if (have.has(a.id) || !reached(a, s)) continue;
-      if (!unlock(userId, a, now)) continue;
-      fresh.push(view(a, now, s, list));
+    // what an unlock pays and gives counts too (sparks earned, cosmetics got): looked at again, a few times at most
+    for (let round = 0; round < 3; round++) {
+      const s = store.stats(userId, now, wallet);
+      const have = store.unlocked(userId);
+      let more = false;
+      for (const a of list) {
+        if (have.has(a.id) || !reached(a, s)) continue;
+        if (!unlock(userId, a, now)) continue;
+        fresh.push(view(a, now, s, list));
+        more = true;
+      }
+      if (!more) break;
     }
     announce(userId, fresh);
     return fresh;
@@ -878,7 +986,9 @@ export function createAchievements(deps: Deps) {
       // the time since the last tick goes to the server only when the player was there then too (not singleplayer, not a LAN world)
       if (server && before.server === server) store.addServerPlay(userId, server, dayOf(now), credited);
       if (server && ticks >= SERVER_MIN_TICKS) store.addServer(userId, server, now);
-      if (new Date(now).getUTCHours() < NIGHT_UNTIL_HOUR && !store.counter(userId, 'night')) store.bump(userId, 'night');
+      const hour = new Date(now).getUTCHours();
+      if (hour < NIGHT_UNTIL_HOUR && !store.counter(userId, 'night')) store.bump(userId, 'night');
+      if (hour >= EARLY_FROM_HOUR && hour < EARLY_UNTIL_HOUR && !store.counter(userId, 'early')) store.bump(userId, 'early');
       check(userId, now);
     }
     deps.played?.(credits, now);

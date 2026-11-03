@@ -159,8 +159,8 @@ describe('achievements', () => {
     for (let d = 0; d < 10; d++) app.achievements.store.addPlay(jan.user.id, dayOf(now - d * 86_400_000), 10 * 3600);
     const fresh = app.achievements.check(jan.user.id, now);
     // the special days' ones (played on 31 October, a Friday the 13th…) depend on the day the test runs
-    const special = new Set(['halloween', 'new_year', 'friday13']);
-    assert.deepEqual(fresh.map((a) => a.id).filter((id) => !special.has(id)).sort(), ['hours_1', 'hours_10', 'hours_100', 'hours_50', 'longday_4', 'streak_3', 'streak_7', 'weekend_1']);
+    const special = new Set(['halloween', 'new_year', 'friday13', 'christmas']);
+    assert.deepEqual(fresh.map((a) => a.id).filter((id) => !special.has(id)).sort(), ['days_7', 'hours_1', 'hours_10', 'hours_100', 'hours_50', 'longday_4', 'longday_8', 'streak_3', 'streak_7', 'weekend_1']);
     const event = await live.waitFor((e) => e.type === 'achievement' && e.achievement.id === 'hours_100');
     assert.equal(event.achievement.name, 'Weteran');
     assert.deepEqual(event.achievement.reward, { id: 'veteran', slot: 'cape', name: 'Weteran' });
