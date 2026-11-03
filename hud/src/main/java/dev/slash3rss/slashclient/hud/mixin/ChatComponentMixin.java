@@ -23,16 +23,18 @@ abstract class ChatComponentMixin {
 		message = dev.slash3rss.slashclient.hud.players.NickHider.apply(message);
 		// coordinates in the line: underlined, a click saves them as a waypoint
 		message = dev.slash3rss.slashclient.hud.chat.ChatCoords.mark(message);
-		ChatTabs.onMessage(message.getString());
-		dev.slash3rss.slashclient.hud.skyup.DungeonMap.onChat(message.getString());
+		// the line's text, made once: building it walks the whole line, and busy chats send many
+		String line = message.getString();
+		ChatTabs.onMessage(line);
+		dev.slash3rss.slashclient.hud.skyup.DungeonMap.onChat(line);
 		//#if MC >= 26.3
 		dev.slash3rss.slashclient.hud.skyup.SkyCounters.onChat(message);
 		dev.slash3rss.slashclient.hud.skyup.SkyTasks.onChat(message);
-		dev.slash3rss.slashclient.hud.skyup.SkyCase.onChat(message.getString());
-		dev.slash3rss.slashclient.hud.skyup.SkyPlan.onChat(message);
+		dev.slash3rss.slashclient.hud.skyup.SkyCase.onChat(line);
+		dev.slash3rss.slashclient.hud.skyup.SkyPlan.onChat(line);
 		//#endif
-		Component shown = ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
-		dev.slash3rss.slashclient.hud.chat.ChatWindows.onLine(message.getString(), shown);
+		Component shown = ChatExtras.stack((ChatComponent) (Object) this, line, Extras.timestamp(message));
+		dev.slash3rss.slashclient.hud.chat.ChatWindows.onLine(line, shown);
 		return shown;
 	}
 }

@@ -545,7 +545,7 @@ public final class DungeonRooms {
 	static String label(Entity e) {
 		String text = e instanceof net.minecraft.world.entity.Display.TextDisplay display && display.textRenderState() != null ? display.textRenderState().text().getString()
 			: e instanceof Mob || e instanceof net.minecraft.world.entity.player.Player || !e.hasCustomName() ? null : e.getCustomName().getString();
-		return text == null ? null : text.replaceAll("§.", "");
+		return text == null ? null : DungeonMap.uncoloured(text);
 	}
 
 	/** The "Spawner" line of a spawner's hologram (the first line of a text display, or a name of its own). */
@@ -801,6 +801,19 @@ public final class DungeonRooms {
 		if (cfg.dungeonNoSpawner && edge[z * size + x] && room.visited && room.spawners == 0 && r != startRoom()) return 0xFF60A5FA;
 		if (cfg.dungeonCleared && room.respawnAt > System.currentTimeMillis()) return mix(color, 0x22C55E, 0.45f);
 		return color;
+	}
+
+	/**
+	 * What the tints (tint) hang on besides the rooms themselves: the settings, and which rooms are
+	 * cleared right now, as that runs out with time. The map's picture is painted again when it changes.
+	 */
+	static int tintKey() {
+		HudConfig cfg = SlashHud.config;
+		int key = (cfg.dungeonNoSpawner ? 1 : 0) | (cfg.dungeonCleared ? 2 : 0);
+		if (!cfg.dungeonCleared) return key;
+		long now = System.currentTimeMillis();
+		for (int r = 0; r < rooms.size(); r++) if (rooms.get(r).respawnAt > now) key = key * 31 + r + 1;
+		return key;
 	}
 
 	private static int mix(int argb, int rgb, float t) {

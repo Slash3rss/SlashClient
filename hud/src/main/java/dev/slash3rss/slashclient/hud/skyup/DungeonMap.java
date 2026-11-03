@@ -55,6 +55,13 @@ public final class DungeonMap implements HudModule {
 	private static final int FAR_COLUMNS_PER_TICK = 320;
 	private static final int UNKNOWN = 0, WALL = 0xFF0E131C;
 	private static final Pattern LEVEL = Pattern.compile("Dungeon\\s+poz\\.?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+	/** Compiled once: every chat line and every name on the map goes through these. */
+	private static final Pattern COLOR_CODE = Pattern.compile("§."), DUNGEON_PREFIX = Pattern.compile("^Dungeon\\s*(»|>>)\\s*");
+
+	/** A text without its colour codes; most have none, and those cost nothing. */
+	static String uncoloured(String text) {
+		return text.indexOf('§') < 0 ? text : COLOR_CODE.matcher(text).replaceAll("");
+	}
 
 	private static boolean active;
 	private static ClientLevel level;
@@ -150,9 +157,9 @@ public final class DungeonMap implements HudModule {
 
 	/** The server's lines: the hint on entering starts a map, leaving ends it. */
 	public static void onChat(String line) {
-		String plain = line.replaceAll("§.", "").trim();
+		String plain = uncoloured(line).trim();
 		if (!plain.startsWith("Dungeon")) return;
-		String rest = plain.replaceFirst("^Dungeon\\s*(»|>>)\\s*", "");
+		String rest = DUNGEON_PREFIX.matcher(plain).replaceFirst("");
 		if (rest.startsWith("Opuszczono Dungeon") || rest.startsWith("Opuściłeś")) {
 			stop();
 			hintedAt = 0;
@@ -197,6 +204,7 @@ public final class DungeonMap implements HudModule {
 		maxX = maxZ = Integer.MIN_VALUE;
 		for (int y = 0; y < SIZE; y++) for (int x = 0; x < SIZE; x++) image.setPixel(x, y, UNKNOWN);
 		java.util.Arrays.fill(cell, (byte) 0);
+		changes++;
 	}
 
 	public static void stop() {
@@ -234,6 +242,7 @@ public final class DungeonMap implements HudModule {
 
 	public static void tick(Minecraft mc) {
 		tickAt = System.nanoTime();
+		looks.clear();
 		if (mc.level == null || mc.player == null) {
 			if (active) stop();
 			return;
@@ -276,8 +285,11 @@ public final class DungeonMap implements HudModule {
 		scan(mc);
 		if (tick % 10 == 0) {
 			DungeonRooms.update(mc, cell, plan, minX, minZ, maxX, maxZ, originX, originZ);
+			// the rooms anew: their tints (no spawner, cleared) may have changed
+			changes++;
 		}
-		render(mc);
+		// a map following the player is drawn each frame anyway (draw)
+		if (!following()) render(mc);
 	}
 
 	/** = and - zoom the map in and out, a quarter at a time. */
@@ -325,9 +337,36 @@ public final class DungeonMap implements HudModule {
 		}
 		// the simple map draws its tiles straight on screen: no picture
 		if (simple()) return;
-		paint(view, W, H, viewX, viewZ, viewScale, circle);
+		// following the player, the picture is placed to a whole pixel: it moves only when they have
+		// moved a pixel's worth (the marks over it stay where the player is exactly)
+		float px = viewX, pz = viewZ;
+		if (following()) {
+			px = Math.round(viewX * viewScale) / viewScale;
+			pz = Math.round(viewZ * viewScale) / viewScale;
+		}
+		// painting up to 400×400 pixels and sending them to the graphics card costs frames: only when
+		// something in it changed (the map read, the place or size shown, the look set, a room's tint)
+		int flags = (circle ? 1 : 0) | (cfg.dungeonBlockColors ? 2 : 0) | (cfg.dungeonPlan ? 4 : 0);
+		long key = (long) Float.floatToIntBits(px) << 32 | Float.floatToIntBits(pz) & 0xFFFFFFFFL;
+		int tints = DungeonRooms.tintKey();
+		if (view == paintedView && key == paintedAt && Float.floatToIntBits(viewScale) == paintedScale && flags == paintedFlags
+				&& changes == paintedChanges && tints == paintedTints) return;
+		paint(view, W, H, px, pz, viewScale, circle);
 		viewTexture.upload();
+		paintedView = view;
+		paintedAt = key;
+		paintedScale = Float.floatToIntBits(viewScale);
+		paintedFlags = flags;
+		paintedChanges = changes;
+		paintedTints = tints;
 	}
+
+	/** Counts each change to what the map has read (floor, walls, the map above, the rooms). */
+	private static int changes;
+	/** What the picture on screen was last painted from (render): the same again needs no painting. */
+	private static NativeImage paintedView;
+	private static long paintedAt;
+	private static int paintedScale, paintedFlags, paintedChanges, paintedTints;
 
 	/** The map into a picture: `w`×`h` pixels from (vx, vz) on the map, `scale` pixels per block. */
 	static void paint(NativeImage view, int w, int h, float vx, float vz, float scale, boolean circle) {
@@ -427,6 +466,7 @@ public final class DungeonMap implements HudModule {
 			for (int y = PLAN_HIGH; y >= PLAN_LOW && kind == 0; y--) kind = planKind(world.getBlockState(pos.set(x, y, z)));
 			if (kind == 0) continue;
 			plan[iz * SIZE + ix] = kind;
+			changes++;
 			minX = Math.min(minX, ix);
 			minZ = Math.min(minZ, iz);
 			maxX = Math.max(maxX, ix);
@@ -528,8 +568,13 @@ public final class DungeonMap implements HudModule {
 		if (color == WALL && !anySolid(world, pos, x, near, z)) return;
 		if (image.getPixel(ix, iz) != color) {
 			image.setPixel(ix, iz, color);
+			changes++;
 		}
-		cell[iz * SIZE + ix] = (byte) (color == WALL ? 1 : 2);
+		byte c = (byte) (color == WALL ? 1 : 2);
+		if (cell[iz * SIZE + ix] != c) {
+			cell[iz * SIZE + ix] = c;
+			changes++;
+		}
 		minX = Math.min(minX, ix);
 		minZ = Math.min(minZ, iz);
 		maxX = Math.max(maxX, ix);
@@ -659,14 +704,16 @@ public final class DungeonMap implements HudModule {
 			if (e == mc.player || !e.isAlive()) continue;
 			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
 			if (!clip.test(sx, sz)) continue;
+			if (e instanceof ArmorStand) continue;
+			int look = look(e);
 			// SkyUp's spawners (a hologram over a floating spawner on an armour stand): nothing on the map
-			if (DungeonRooms.spawnerLabel(e) || e instanceof ArmorStand) continue;
-			if (e instanceof AbstractClientPlayer p && !npc(p)) {
+			if ((look & LOOK_SPAWNER) != 0) continue;
+			if (e instanceof AbstractClientPlayer p && (look & LOOK_NPC) == 0) {
 				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
 			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible() && !simple()) {
 				// (on the simple map mobs are heads on their room's tile)
 				// a mob, or an NPC (a player with a skin who is not on the tab list): drawn as its class is set to be
-				int kind = kind(e), size = 8, frame = FRAMES[kind];
+				int kind = look >> 2, size = 8, frame = FRAMES[kind];
 				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
 			}
 		}
@@ -679,6 +726,29 @@ public final class DungeonMap implements HudModule {
 			int kind = mobKind(e), size = 8;
 			mob(g, e, ox + sx, oy + sz, size, FRAMES[kind], mobStyle(kind));
 		}
+	}
+
+	/**
+	 * What the map makes of each entity this tick (by id): a spawner's hologram, an NPC, and its class
+	 * (bits 2 and up). Working it out reads names and looks for the name tags over it, which every
+	 * frame for every entity cost frames; names change only with the server's packets, so once a
+	 * tick is enough.
+	 */
+	private static final java.util.Map<Integer, Integer> looks = new java.util.HashMap<>();
+	private static final int LOOK_SPAWNER = 1, LOOK_NPC = 2;
+
+	private static int look(Entity e) {
+		Integer known = looks.get(e.getId());
+		if (known != null) return known;
+		int look = 0;
+		if (DungeonRooms.spawnerLabel(e)) look = LOOK_SPAWNER;
+		else {
+			boolean npc = e instanceof AbstractClientPlayer p && npc(p);
+			if (npc) look = LOOK_NPC;
+			if (e instanceof Mob || npc) look |= kind(e) << 2;
+		}
+		looks.put(e.getId(), look);
+		return look;
 	}
 
 	/** How a mob class is drawn: "head", "dot" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss, 4 minion). */
@@ -785,7 +855,7 @@ public final class DungeonMap implements HudModule {
 
 	/** A dungeon mob's name: its health ("❤") or level ("poz. 1") in it. */
 	public static boolean mobName(String name) {
-		return MOB_NAME.matcher(name.replaceAll("§.", "")).find();
+		return MOB_NAME.matcher(uncoloured(name)).find();
 	}
 
 	/**
@@ -810,7 +880,7 @@ public final class DungeonMap implements HudModule {
 	/** The level in a name ("poz. 6"), colour codes left out; -1 for none. */
 	private static int level(Component name) {
 		if (name == null) return -1;
-		Matcher m = LEVEL_IN_NAME.matcher(name.getString().replaceAll("§.", ""));
+		Matcher m = LEVEL_IN_NAME.matcher(uncoloured(name.getString()));
 		return m.find() ? Math.min(9_999, Integer.parseInt(m.group(1))) : -1;
 	}
 
