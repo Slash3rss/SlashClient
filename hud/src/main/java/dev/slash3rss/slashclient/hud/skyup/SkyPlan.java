@@ -272,13 +272,16 @@ public final class SkyPlan {
 	private static final java.util.regex.Pattern BOSS_BEATEN = java.util.regex.Pattern.compile("^Dungeon » Boss został .*pokonany!$");
 
 	/** A line of the chat (ChatComponentMixin): SkyUp's fishing contests, events and boss fights starting and ending. */
-	public static void onChat(Component message) {
+	public static void onChat(String line) {
 		if (SlashHud.config == null || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
-		heard(message.getString(), ZonedDateTime.now(ZONE));
+		heard(line, ZonedDateTime.now(ZONE));
 	}
 
+	/** Compiled once: every chat line on SkyUp goes through it. */
+	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("\\s+");
+
 	static void heard(String line, ZonedDateTime now) {
-		line = line.replaceAll("§.", "").replaceAll("\\s+", " ").trim();
+		line = SPACES.matcher(DungeonMap.uncoloured(line)).replaceAll(" ").trim();
 		if (line.startsWith("Wędkarstwo » Zawody wędkarskie")) {
 			if (line.endsWith("wystartowały!")) started(Kind.FISHING, now);
 			else if (line.contains("zakończyły się!")) ended(Kind.FISHING, now);
