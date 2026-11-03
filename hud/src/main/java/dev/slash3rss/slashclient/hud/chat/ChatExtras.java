@@ -53,8 +53,15 @@ public final class ChatExtras {
 		boolean same = raw.equals(lastText) && !all.isEmpty() && ((GuiMessage) all.get(0)).content() == lastShown;
 		repeats = same ? repeats + 1 : 1;
 		if (same) {
-			all.remove(0);
-			access.slashclient$refresh();
+			GuiMessage old = (GuiMessage) all.remove(0);
+			List<Object> lines = access.slashclient$lines();
+			if (access.slashclient$scroll() > 0) access.slashclient$refresh();
+			else if (Compat.chatFilter.test(old)) {
+				// only the old line's own wrapped lines go (newest first: its end, then its earlier lines), not
+				// the whole history laid out again – with a long history and a spamming server that cost frames
+				if (!lines.isEmpty()) lines.remove(0);
+				while (!lines.isEmpty() && !((GuiMessage.Line) lines.get(0)).endOfEntry()) lines.remove(0);
+			}
 			shown = shown.copy().append(Component.literal(" ×" + repeats).withStyle(ChatFormatting.GRAY));
 		}
 		lastText = raw;

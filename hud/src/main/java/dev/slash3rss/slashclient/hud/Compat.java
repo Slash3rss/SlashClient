@@ -105,15 +105,15 @@ public final class Compat {
 		//#endif
 	}
 
-	/** Lines the open chat tab shows (before 26.1 used by ChatFilterMixin). */
+	/** Lines the open chat tab shows (before 26.1 used by ChatFilterMixin; on all versions by chat stacking). */
 	public static java.util.function.Predicate<net.minecraft.client.multiplayer.chat.GuiMessage> chatFilter = m -> true;
 
 	/** Shows only the chat lines `filter` accepts, and lays the chat out again. */
 	public static void setChatFilter(ChatComponent chat, java.util.function.Predicate<net.minecraft.client.multiplayer.chat.GuiMessage> filter) {
+		chatFilter = filter;
 		//#if MC >= 26.1
 		chat.setVisibleMessageFilter(filter);
 		//#else
-		//$ chatFilter = filter;
 		//$ chat.rescaleChat();
 		//#endif
 	}

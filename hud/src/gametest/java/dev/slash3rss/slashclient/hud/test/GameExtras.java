@@ -22,6 +22,9 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(30);
 			String stacked = context.computeOnClient(mc -> TestHooks.chatLines());
 			if (!stacked.contains("Ta sama wiadomość ×3")) throw new AssertionError("Repeated lines did not stack: " + stacked);
+			// the drawn lines too: the earlier ×2 and the first one are gone, not left above
+			String shown = context.computeOnClient(mc -> TestHooks.chatShownLines());
+			if (shown.split("Ta sama wiadomość", -1).length != 2 || !shown.contains("×3")) throw new AssertionError("Stacked lines left behind: " + shown);
 			context.takeScreenshot("extras-world");
 
 			// open chat: a right click on the second line from the bottom copies it

@@ -932,6 +932,20 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** The chat's wrapped lines as drawn, newest first, as plain text. */
+	public static String chatShownLines() {
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		StringBuilder sb = new StringBuilder();
+		for (Object o : ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$lines()) {
+			((net.minecraft.client.multiplayer.chat.GuiMessage.Line) o).content().accept((i, style, cp) -> {
+				sb.appendCodePoint(cp);
+				return true;
+			});
+			sb.append(" | ");
+		}
+		return sb.toString();
+	}
+
 	/** What a right click on the n-th line from the bottom of the open chat copies. */
 	public static String copyLine(int fromBottom) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
