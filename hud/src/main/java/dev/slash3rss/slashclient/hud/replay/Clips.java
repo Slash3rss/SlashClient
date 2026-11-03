@@ -1,6 +1,12 @@
 package dev.slash3rss.slashclient.hud.replay;
 
 import com.mojang.blaze3d.platform.NativeImage;
+//#if MC >= 26.3
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+//#elif MC >= 1.21.6
+//$ import com.mojang.blaze3d.buffers.GpuBuffer;
+//#endif
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -21,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -120,7 +127,7 @@ public final class Clips {
 		inFlight.incrementAndGet();
 		try {
 			//#if MC >= 1.21.6
-			Screenshot.takeScreenshot(target, grab, image -> WORKER.execute(() -> encode(image, now, scale / grab)));
+			if (!readBack(target, now, scale)) Screenshot.takeScreenshot(target, grab, image -> WORKER.execute(() -> encode(image, now, scale / grab)));
 			//#elif MC >= 1.21.5
 			//$ // no downscaled grab before 1.21.6: the frame is shrunk while it is encoded
 			//$ Screenshot.takeScreenshot(target, image -> WORKER.execute(() -> encode(image, now, scale)));
@@ -143,6 +150,105 @@ public final class Clips {
 		failWarned = true;
 	}
 
+	/** Byte arrays of frames already squeezed, used again so 30 frames a second do not leave megabytes of garbage each. */
+	private static final ConcurrentLinkedQueue<byte[]> spare = new ConcurrentLinkedQueue<>();
+
+	private static byte[] borrow(int size) {
+		for (byte[] b; (b = spare.poll()) != null; ) if (b.length == size) return b;
+		return new byte[size];
+	}
+
+	private static void giveBack(byte[] b) {
+		if (spare.size() < IN_FLIGHT) spare.offer(b);
+	}
+
+	//#if MC >= 1.21.6
+	/**
+	 * Copies the frame off the graphics card without the game's own grab: that one reads and averages
+	 * every pixel on the render thread once the copy arrives (and makes a full-size picture when the
+	 * window does not divide by the step), several milliseconds of every frame at 30 a second. Here the
+	 * render thread only copies the raw bytes in one go and the background thread shrinks them, the same
+	 * way the game does. False when the frame is in a format we do not read (the game's grab then does it).
+	 */
+	private static boolean readBack(com.mojang.blaze3d.pipeline.RenderTarget target, long at, int scale) {
+		var texture = target.getColorTexture();
+		if (texture == null) return false;
+		//#if MC >= 26.2
+		int pixel = texture.getFormat().blockSize();
+		//#else
+		//$ int pixel = texture.getFormat().pixelSize();
+		//#endif
+		if (pixel != 4) return false;
+		int w = target.width, h = target.height, size = w * h * 4;
+		var device = RenderSystem.getDevice();
+		var encoder = device.createCommandEncoder();
+		GpuBuffer buffer = device.createBuffer(() -> "SlashClient clip frame", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, size);
+		try {
+			encoder.copyTextureToBuffer(texture, buffer, 0, () -> {
+				byte[] pixels = null;
+				try {
+					//#if MC >= 26.2
+					try (var view = buffer.map(true, false)) {
+					//#else
+					//$ try (var view = encoder.mapBuffer(buffer, true, false)) {
+					//#endif
+						pixels = borrow(size);
+						view.data().get(0, pixels, 0, size);
+					}
+				} catch (RuntimeException e) {
+					if (pixels != null) giveBack(pixels);
+					pixels = null;
+					inFlight.updateAndGet(n -> Math.max(0, n - 1));
+					failed(e);
+				} finally {
+					buffer.close();
+				}
+				byte[] got = pixels;
+				if (got != null) WORKER.execute(() -> encode(got, w, h, at, scale));
+			}, 0);
+		} catch (RuntimeException e) {
+			buffer.close();
+			throw e;
+		}
+		return true;
+	}
+	//#endif
+
+	/**
+	 * Squeezes a raw frame from the graphics card (RGBA bytes, bottom row first) to JPEG, each pixel
+	 * the average of a `step` by `step` square, as the game's own smaller grab makes it.
+	 */
+	private static void encode(byte[] pixels, int width, int height, long at, int step) {
+		try {
+			int w = (width / step) & ~1, h = (height / step) & ~1, rows = height / step, n = step * step;
+			BufferedImage rgb = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+			int[] row = new int[w];
+			for (int y = 0; y < h; y++) {
+				// the picture's top is the texture's last row
+				int from = (rows - 1 - y) * step;
+				for (int x = 0; x < w; x++) {
+					int r = 0, g = 0, b = 0;
+					for (int dy = 0; dy < step; dy++) {
+						int i = ((from + dy) * width + x * step) * 4;
+						for (int dx = 0; dx < step; dx++, i += 4) {
+							r += pixels[i] & 255;
+							g += pixels[i + 1] & 255;
+							b += pixels[i + 2] & 255;
+						}
+					}
+					row[x] = (r / n) << 16 | (g / n) << 8 | b / n;
+				}
+				rgb.setRGB(0, y, w, 1, row, 0, w);
+			}
+			giveBack(pixels);
+			keep(rgb, w, h, at);
+		} catch (Exception e) {
+			failed(e);
+		} finally {
+			inFlight.updateAndGet(n -> Math.max(0, n - 1));
+		}
+	}
+
 	/** Squeezes a frame to JPEG, taking every `step`-th pixel (1 = all). */
 	private static void encode(NativeImage image, long at, int step) {
 		try (image) {
@@ -153,18 +259,23 @@ public final class Clips {
 				for (int x = 0; x < w; x++) row[x] = image.getPixel(x * step, y * step);
 				rgb.setRGB(0, y, w, 1, row, 0, w);
 			}
-			byte[] jpeg = jpeg(rgb);
-			long keep = Math.max(SlashHud.config.clips ? SlashHud.config.clipSeconds : 0, Replay.seconds()) * 1_000_000_000L;
-			synchronized (frames) {
-				// switched off while this frame was on its way
-				if (!capturing()) return;
-				frames.addLast(new Frame(jpeg, w, h, at));
-				while (!frames.isEmpty() && at - frames.getFirst().at() > keep) frames.removeFirst();
-			}
+			keep(rgb, w, h, at);
 		} catch (Exception e) {
 			failed(e);
 		} finally {
 			inFlight.updateAndGet(n -> Math.max(0, n - 1));
+		}
+	}
+
+	/** The squeezed frame into the buffer, the oldest beyond the seconds kept dropped. */
+	private static void keep(BufferedImage rgb, int w, int h, long at) throws java.io.IOException {
+		byte[] jpeg = jpeg(rgb);
+		long keep = Math.max(SlashHud.config.clips ? SlashHud.config.clipSeconds : 0, Replay.seconds()) * 1_000_000_000L;
+		synchronized (frames) {
+			// switched off while this frame was on its way
+			if (!capturing()) return;
+			frames.addLast(new Frame(jpeg, w, h, at));
+			while (!frames.isEmpty() && at - frames.getFirst().at() > keep) frames.removeFirst();
 		}
 	}
 
