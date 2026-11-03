@@ -33,28 +33,44 @@ public final class GameHud {
 		Minecraft mc = Minecraft.getInstance();
 		HudConfig.Placement p = cfg().placement(part.id());
 		int sw = g.guiWidth(), sh = g.guiHeight();
-		int[] size = SlashHud.size(part, mc, p);
+		// measured once a frame: the box's size, its position and the rounded corners all use this
+		int[] drawn = part.drawn(mc, sw, sh);
+		int[] size = { Math.round(part.width(drawn) * p.scale()), Math.round(part.height(drawn) * p.scale()) };
 		int[] at = SlashHud.position(p, size[0], size[1], sw, sh);
 		float[] box = part.boxAnchor(size[0], size[1]), screen = part.screenAnchor(sw, sh);
 		// what the game has measured fills its box: its top left corner on the box's
-		int[] drawn = part.drawn(mc, sw, sh);
 		if (drawn != null) {
 			box = new float[] { 0, 0 };
 			screen = new float[] { drawn[0], drawn[1] };
 		}
 		float scale = part.scale() * p.scale();
 		float tx = at[0] + box[0], ty = at[1] + box[1];
-		if (scale == 1f && Math.abs(tx - screen[0]) < 0.5f && Math.abs(ty - screen[1]) < 0.5f) {
+		GameParts.drawing(part, drawn);
+		try {
+			if (scale == 1f && Math.abs(tx - screen[0]) < 0.5f && Math.abs(ty - screen[1]) < 0.5f) {
+				draw.run();
+				return;
+			}
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(tx, ty);
+			pose.scale(scale, scale);
+			pose.translate(-screen[0], -screen[1]);
 			draw.run();
-			return;
+			pose.popMatrix();
+		} finally {
+			GameParts.drawing(null, null);
 		}
-		var pose = g.pose();
-		pose.pushMatrix();
-		pose.translate(tx, ty);
-		pose.scale(scale, scale);
-		pose.translate(-screen[0], -screen[1]);
-		draw.run();
-		pose.popMatrix();
+	}
+
+	/**
+	 * The game shows the tab list now (its own rule, Hud.extractTabList): Tab held, and not alone in
+	 * single player without a list objective. Otherwise the list draws nothing and is not measured.
+	 */
+	private static boolean tabShown(Minecraft mc) {
+		if (!mc.options.keyPlayerList.isDown()) return false;
+		if (!mc.isLocalServer()) return true;
+		return mc.getConnection() != null && mc.getConnection().getListedOnlinePlayers().size() > 1 || Compat.displayed(mc, false) != null;
 	}
 
 	/** The toasts where their box is: called around the game drawing them; false when they are hidden. */
@@ -104,6 +120,8 @@ public final class GameHud {
 			Minecraft mc = Minecraft.getInstance();
 			// in the editor: the real list, as if Tab were held
 			if (Compat.screen(mc) instanceof HudEditScreen && GameParts.TAB_LIST.real(mc)) placed(g, GameParts.TAB_LIST, () -> Compat.drawTabList(g, mc));
+			// Tab not held: the game only marks the list hidden, so nothing is measured or moved
+			else if (!tabShown(mc)) vanilla.extractRenderState(g, delta);
 			else placed(g, GameParts.TAB_LIST, () -> vanilla.extractRenderState(g, delta));
 		});
 		HudElementRegistry.replaceElement(VanillaHudElements.OVERLAY_MESSAGE, vanilla -> (HudElement) (g, delta) -> {

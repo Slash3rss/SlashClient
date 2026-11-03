@@ -64,13 +64,20 @@ public final class GameParts {
 
 		@Override
 		public int width(Minecraft mc) {
-			int[] r = drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-			return Math.round((r != null ? r[2] - r[0] : baseW) * scale());
+			return width(drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight()));
 		}
 
 		@Override
 		public int height(Minecraft mc) {
-			int[] r = drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+			return height(drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight()));
+		}
+
+		/** The box's size from a measure already taken (`drawn`), so one measure serves the size and the position. */
+		final int width(int[] r) {
+			return Math.round((r != null ? r[2] - r[0] : baseW) * scale());
+		}
+
+		final int height(int[] r) {
 			return Math.round((r != null ? r[3] - r[1] : baseH) * scale());
 		}
 
@@ -291,13 +298,31 @@ public final class GameParts {
 	 * in all), with the header and the footer over and under it, wrapped to the same width,
 	 * centred and 9 pixels from the top.
 	 */
+	/** The part GameHud is drawing now and what it measured for it (null: nothing measured), see `drawing`. */
+	private static Part drawing;
+	private static int[] drawingRect;
+
+	/**
+	 * GameHud draws `part`, already measured as `rect`: while the game draws it, its rounded corners
+	 * use that measure instead of laying the whole part out once more in the same frame.
+	 */
+	static void drawing(Part part, int[] rect) {
+		drawing = part;
+		drawingRect = rect;
+	}
+
 	/** The scoreboard's and the tab list's boxes as the game lays them out, for their rounded corners (GameRound). */
 	public static int[] scoreboardRect(Minecraft mc, Objective objective, int sw, int sh) {
-		return objective == null ? null : scoreboardDrawn(mc, objective, sw, sh);
+		if (objective == null) return null;
+		// the measure GameHud took is of the sidebar objective: a team's own sidebar is measured here
+		if (drawing == SCOREBOARD && drawingRect != null && objective == Compat.displayed(mc, true)) return drawingRect;
+		return scoreboardDrawn(mc, objective, sw, sh);
 	}
 
 	public static int[] tabListRect(Minecraft mc) {
-		return mc.level == null ? null : tabListDrawn(mc, mc.getWindow().getGuiScaledWidth());
+		if (mc.level == null) return null;
+		if (drawing == TAB_LIST && drawingRect != null) return drawingRect;
+		return tabListDrawn(mc, mc.getWindow().getGuiScaledWidth());
 	}
 
 	static int[] tabListDrawn(Minecraft mc, int sw) {

@@ -19,7 +19,7 @@ abstract class ScoreboardRoundMixin {
 	private void slashclient$roundStart(GuiGraphicsExtractor g, Objective objective, CallbackInfo ci) {
 		var mc = Minecraft.getInstance();
 		dev.slash3rss.slashclient.hud.gamehud.GameRound.begin("scoreboard",
-			dev.slash3rss.slashclient.hud.gamehud.GameParts.scoreboardRect(mc, objective, g.guiWidth(), g.guiHeight()));
+			() -> dev.slash3rss.slashclient.hud.gamehud.GameParts.scoreboardRect(mc, objective, g.guiWidth(), g.guiHeight()));
 	}
 
 	@Inject(method = "displayScoreboardSidebar", at = @At("RETURN"))

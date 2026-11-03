@@ -20,11 +20,14 @@ public final class GameRound {
 	/** Drawing the rounded shape itself (its own fills go through as they are). */
 	private static boolean inside;
 
-	/** The game starts drawing a part laid out in `rect` (null: nothing is rounded). */
-	public static void begin(String part, int[] rect) {
+	/**
+	 * The game starts drawing a part laid out in `rect` (null: nothing is rounded). The layout is only
+	 * worked out when the corners are rounded: measuring it every frame for square corners costs frames.
+	 */
+	public static void begin(String part, java.util.function.Supplier<int[]> rect) {
 		HudConfig c = SlashHud.config;
 		radius = c == null ? 0 : c.placement(part).radius(c);
-		box = radius > 0 ? rect : null;
+		box = radius > 0 ? rect.get() : null;
 	}
 
 	public static void end() {
