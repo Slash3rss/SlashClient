@@ -13,6 +13,10 @@ public interface OverlayMessageAccessor {
 	@Accessor("overlayMessageTime")
 	int slashclient$overlayMessageTime();
 
+	/** The action bar's message (for the tests). */
+	@Accessor("overlayMessageString")
+	net.minecraft.network.chat.Component slashclient$overlayMessage();
+
 	/** Above 0 while a title is on screen. */
 	@Accessor("titleTime")
 	int slashclient$titleTime();

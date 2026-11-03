@@ -744,7 +744,8 @@ public final class Catalog {
 			new Slider("slashclient-hud.game.tabPanelOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabPanelOpacity, v -> cfg.tabPanelOpacity = Math.round(v))), null));
 		//#if MC >= 1.20.2
 		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v)), null));
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v),
+			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.actionBarColor, v -> cfg.actionBarColor = v)), null));
 		//#endif
 		// on = the setting and the editor's box both (the box's ✕ turns off the latter, so this turns both on again)
 		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles && titles.enabled, v -> cfg.titles = titles.enabled = v, List.of(

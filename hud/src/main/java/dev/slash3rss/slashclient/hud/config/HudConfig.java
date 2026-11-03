@@ -436,6 +436,8 @@ public final class HudConfig {
 	/** The action bar above the hotbar (a server's short messages). */
 	public boolean actionBar = true;
 	public float actionBarScale = 1f;
+	/** The colour of its text where the server gives none (white: as the game draws it). */
+	public int actionBarColor = 0xFFFFFFFF;
 	/** Your own name above your head in third person (F5). */
 	public boolean ownNametag = false;
 	/** Clips: the last seconds of the screen in memory, saved with a key (off: it costs memory and a little CPU). */
@@ -1041,6 +1043,7 @@ public final class HudConfig {
 		titleScale = other.titleScale;
 		actionBar = other.actionBar;
 		actionBarScale = other.actionBarScale;
+		actionBarColor = other.actionBarColor == 0 ? 0xFFFFFFFF : other.actionBarColor;
 		ownNametag = other.ownNametag;
 		clips = other.clips;
 		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));

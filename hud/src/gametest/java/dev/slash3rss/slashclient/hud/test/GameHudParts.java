@@ -68,6 +68,9 @@ public class GameHudParts implements FabricClientGameTest {
 			// as tall as the game draws it: the title and two lines, 9 pixels each and 1 more, at 0.8
 			if (board[3] != Math.round(28 * 0.8f)) throw new AssertionError("The scoreboard's box is not its real height: h=" + board[3]);
 			context.waitTicks(5);
+			// and in the colour set for it
+			String color = context.computeOnClient(mc -> TestHooks.actionBarColor());
+			if (!color.equals("FACC15")) throw new AssertionError("The action bar's colour: " + color);
 			context.takeScreenshot("game-hud-parts-moved");
 			// the editor: the parts as boxes, and the armour at its biggest
 			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);

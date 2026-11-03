@@ -676,6 +676,24 @@ public final class TestHooks {
 		HudConfig.Placement action = c.placement("actionbar");
 		action.ay = 0.5f;
 		action.dy = 30;
+		c.actionBarColor = 0xFFFACC15;
+	}
+
+	/** The colour the action bar's message is drawn in, as RRGGBB ("none": the game's white). */
+	public static String actionBarColor() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		//#if MC >= 26.2
+		Object gui = mc.gui.hud;
+		//#else
+		//$ Object gui = mc.gui;
+		//#endif
+		var message = ((dev.slash3rss.slashclient.hud.mixin.OverlayMessageAccessor) gui).slashclient$overlayMessage();
+		String[] color = { "none" };
+		if (message != null) message.getVisualOrderText().accept((i, style, cp) -> {
+			if (style.getColor() != null) color[0] = String.format("%06X", style.getColor().getValue());
+			return false;
+		});
+		return color[0];
 	}
 
 	/** Where a game part's box is (x, y, w, h), in GUI pixels. */

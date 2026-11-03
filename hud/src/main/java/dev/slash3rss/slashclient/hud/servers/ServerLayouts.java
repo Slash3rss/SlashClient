@@ -38,7 +38,7 @@ public final class ServerLayouts {
 	/** HudConfig's fields that belong to a layout. */
 	static final List<String> KEYS = List.of("modules", "textColor", "background", "textShadow",
 		"scoreboard", "scoreboardScale", "scoreboardOffset", "scoreboardNumbers", "bossBar", "bossBarScale", "bossBarOffset",
-		"tabScale", "tabNumericPing", "titles", "titleScale", "actionBar", "actionBarScale",
+		"tabScale", "tabNumericPing", "titles", "titleScale", "actionBar", "actionBarScale", "actionBarColor",
 		"clockSeconds", "clock12h", "coordsDecimals", "coordsFacing", "fpsColored", "effectIcons", "chatScaleExtra");
 	/** The game's own chat options a layout carries too. */
 	private static final String CHAT_SCALE = "gameChatScale", CHAT_BACKGROUND = "gameChatBackground";
