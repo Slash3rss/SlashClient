@@ -39,7 +39,7 @@ abstract class PlayerTabOverlayMixin {
 		if (SlashHud.config.tabHideHeader) header = null;
 		if (SlashHud.config.tabHideFooter) footer = null;
 		// its backgrounds rounded at the list's top and bottom, like the modules
-		dev.slash3rss.slashclient.hud.gamehud.GameRound.begin("tablist", dev.slash3rss.slashclient.hud.gamehud.GameParts.tabListRect(Minecraft.getInstance()));
+		dev.slash3rss.slashclient.hud.gamehud.GameRound.begin("tablist", () -> dev.slash3rss.slashclient.hud.gamehud.GameParts.tabListRect(Minecraft.getInstance()));
 	}
 
 	@Inject(method = "extractRenderState", at = @At("RETURN"))
