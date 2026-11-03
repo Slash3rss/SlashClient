@@ -1,6 +1,6 @@
 import { escapeHtml, type Rendered } from './markdown.ts';
 import { DOCS, type Lang } from './store.ts';
-import { siteFooter } from '../siteFooter.ts';
+import { siteFooter, siteNav } from '../siteFooter.ts';
 
 /** The page of one legal document: the site's header and footer, the contents list, the text. */
 
@@ -44,6 +44,7 @@ export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; upda
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/landing.css">
   <link rel="stylesheet" href="/legal.css">
+  <script type="module" src="/router.js"></script>
   <script type="module" src="/legal.js"></script>
 </head>
 <body class="landing">
@@ -51,12 +52,7 @@ export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; upda
   <header class="nav scrolled">
     <div class="wrap">
       <a class="brand" href="/"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
-      <nav class="nav-links">
-        ${u.nav.filter(([h]) => !o.hidden?.(h)).map(([h, l]) => `<a href="${h}">${l}</a>`).join('\n        ')}
-      </nav>
-      <div class="push row">
-        <a class="btn lang-switch" href="${meta[other].path}" hreflang="${other}"><i class="fa-solid fa-language"></i> <span class="label">${u.other}</span></a>
-      </div>
+      ${siteNav(o.lang, u.nav.filter(([h]) => !o.hidden?.(h)))}
     </div>
   </header>
   <main>

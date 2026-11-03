@@ -1,5 +1,6 @@
 // The site's pages switch without reloading: a click on a link to another page of the site (home,
-// account, bug reports, shared logs, the admin panel) fetches that page, puts its content in place of
+// account, bug reports, shared logs, supporting the project, the terms and privacy policy, the changelog,
+// the admin panel) fetches that page, puts its content in place of
 // this one's and runs its script again; back and forward work the same way.
 //
 // A page's script may have left timers, animation loops and listeners on window or document behind:
@@ -7,7 +8,7 @@
 
 import { restoreNav } from './navState.js';
 
-const PAGE = /^\/(|en|konto|account|admin|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
+const PAGE = /^\/(|en|konto|account|admin|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10}|wsparcie(\/(dziekujemy|anulowano|regulamin))?|support(\/(thanks|cancelled|terms))?|regulamin|terms|polityka-prywatnosci|privacy|zmiany|changelog)\/?$/;
 const ROUTER = new URL(import.meta.url).pathname;
 
 const native = {

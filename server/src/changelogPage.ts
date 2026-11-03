@@ -1,7 +1,7 @@
 import type http from 'node:http';
 import type { ChangelogEntry, Downloads } from './downloads.ts';
 import { escapeHtml, notesHtml, parseVersion } from './releaseNotes.ts';
-import { siteFooter } from './siteFooter.ts';
+import { siteFooter, siteNav } from './siteFooter.ts';
 
 /**
  * The changelog page: /zmiany in Polish, /changelog in English. Every launcher release with its
@@ -90,18 +90,14 @@ export function changelogPage(o: { lang: Lang; releases: ChangelogEntry[]; more:
   <link rel="stylesheet" href="/landing.css">
   <link rel="stylesheet" href="/legal.css">
   <link rel="stylesheet" href="/changelog.css">
+  <script type="module" src="/router.js"></script>
 </head>
 <body class="landing">
   <div class="bg" aria-hidden="true"><div class="bg-grid"></div><div class="bg-glow g1"></div></div>
   <header class="nav scrolled">
     <div class="wrap">
       <a class="brand" href="${u.home}"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
-      <nav class="nav-links">
-        ${u.nav.filter(([h]) => !o.hidden?.(h)).map(([h, l]) => `<a href="${h}">${l}</a>`).join('\n        ')}
-      </nav>
-      <div class="push row">
-        <a class="btn lang-switch" href="${UI[other].path}" hreflang="${other}"><i class="fa-solid fa-language"></i> <span class="label">${u.other}</span></a>
-      </div>
+      ${siteNav(o.lang, u.nav.filter(([h]) => !o.hidden?.(h)))}
     </div>
   </header>
   <main>

@@ -230,7 +230,7 @@ function render() {
   body.push(costs(), el('h2', { class: 'section-title', textContent: L('Wybierz wsparcie', 'Choose your support') }), kindSwitch(), tierCards(),
     el('div', { class: 'support-cols' }, checkout(), promises()));
   root.replaceChildren(...body);
-  wall().then((w) => root.append(w));
+  return wall().then((w) => root.append(w));
 }
 
 // ---------- coming back from the provider ----------
@@ -287,5 +287,6 @@ else {
   [offer, health] = await Promise.all([api('GET', '/v1/support').catch(() => offer), api('GET', '/v1/health').catch(() => health)]);
   // the admin may have switched new payments off for a while (Ustawienia → Funkcje)
   paymentsOn = featureOn((await siteFeatures).features, 'support');
-  render();
+  // awaited with its supporters wall: the site's router shows the page whole
+  await render();
 }

@@ -45,7 +45,7 @@ async function renderList() {
     if (status.value) p.set('status', status.value);
     if (page) p.set('page', String(page));
     history.replaceState(null, '', `/zgloszenia${p.size ? `?${p}` : ''}`);
-    load(p);
+    return load(p);
   };
   let timer;
   q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => go(), 250); });
@@ -75,7 +75,7 @@ async function renderList() {
       if (res.page + 1 < pages) pager.append(el('button', { onclick: () => go(res.page + 1) }, L('Starsze', 'Older'), icon('fa-solid fa-chevron-right')));
     }
   }
-  load(new URLSearchParams([...params].filter(([k]) => ['q', 'status', 'page'].includes(k))));
+  return load(new URLSearchParams([...params].filter(([k]) => ['q', 'status', 'page'].includes(k))));
 }
 
 // ---------- a new report ----------
@@ -164,6 +164,7 @@ async function renderBug() {
 
 me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
 renderNav();
-if (bugId) renderBug();
+// awaited: the site's router shows the page once its list or report is in, not empty first
+if (bugId) await renderBug();
 else if (params.get('nowe')) renderNew();
-else renderList();
+else await renderList();

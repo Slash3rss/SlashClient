@@ -1,7 +1,7 @@
 ## 1. Postanowienia ogólne {#postanowienia-ogolne}
 
 1. Regulamin określa zasady korzystania z SlashClient: launchera Minecraft na komputery (Windows, macOS, Linux), modyfikacji gry („mod”, HUD), serwisu internetowego [slashclient.pl](https://slashclient.pl/) oraz usług online (konto SlashClient, znajomi, czat, klany, osiągnięcia, Iskry, kosmetyki, udostępnianie plików) — razem „Usługi”.
-2. Usługodawcą jest {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} („Usługodawca”, „my”). Usługi są bezpłatne; dobrowolne wsparcie (pkt 12) Usługodawca prowadzi jako działalność nierejestrowaną. Usługi są bezpłatne; dobrowolne wsparcie (pkt 12) Usługodawca prowadzi jako działalność nierejestrowaną.
+2. Usługodawcą jest {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} („Usługodawca”, „my”). Usługi są bezpłatne; dobrowolne wsparcie (pkt 12) Usługodawca prowadzi jako działalność nierejestrowaną.
 3. Regulamin jest regulaminem, o którym mowa w art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną. Jest dostępny bezpłatnie pod adresem [/regulamin](/regulamin) i w launcherze (Ustawienia → Informacje prawne); można go zapisać i wydrukować.
 4. Zasady przetwarzania danych osobowych opisuje [Polityka prywatności](/polityka-prywatnosci). Zasady dobrowolnego wsparcia finansowego opisuje osobny [Regulamin wsparcia](/wsparcie/regulamin).
 5. Wersją wiążącą jest wersja polska. Wersja angielska ([/terms](/terms)) jest tłumaczeniem pomocniczym.

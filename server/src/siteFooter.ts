@@ -16,3 +16,22 @@ export function siteFooter(lang: 'pl' | 'en'): string {
     </div>
   </footer>`;
 }
+
+/**
+ * The header's links and buttons as the pages written in HTML have them (the admin panel's button, the account
+ * button with the player's name put in by navState.js, the download), so the header does not change between pages.
+ */
+export function siteNav(lang: 'pl' | 'en', links: readonly (readonly [string, string])[]): string {
+  const en = lang === 'en';
+  const link = ([href, label]: readonly [string, string]) => /^\/(wsparcie|support)$/.test(href)
+    ? `<a href="${href}" class="nav-support"><i class="fa-solid fa-heart"></i> ${label}</a>`
+    : `<a href="${href}">${label}</a>`;
+  return `<nav class="nav-links">
+        ${links.map(link).join('\n        ')}
+      </nav>
+      <div class="push row">
+        <a class="btn hidden" id="nav-admin" href="/admin" title="${en ? 'Admin panel' : 'Panel admina'}"><i class="fa-solid fa-shield-halved"></i> <span class="label">${en ? 'Admin panel' : 'Panel admina'}</span></a>
+        <a class="btn" id="nav-account" href="${en ? '/account' : '/konto'}" title="${en ? 'Your account' : 'Twoje konto'}"><i class="fa-solid fa-user"></i> <span class="label">${en ? 'Sign in' : 'Zaloguj się'}</span></a>
+        <a class="btn primary" href="${en ? '/en' : '/'}#pobierz"><i class="fa-solid fa-download"></i> <span class="label">${en ? 'Download' : 'Pobierz'}</span></a>
+      </div>`;
+}
