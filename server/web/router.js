@@ -65,6 +65,65 @@ function leave() {
 
 let loads = 0;
 
+/**
+ * Pages already fetched (or being fetched), by address: going back shows one at once, and a link the mouse
+ * rests on or a finger touches is fetched before the click. Kept for a minute, so a page is not long out of date.
+ */
+const pages = new Map();
+const KEEP_MS = 60_000;
+
+function fetchPage(url) {
+  const key = url.pathname + url.search;
+  const had = pages.get(key);
+  if (had && Date.now() - had.at < KEEP_MS) return had.html;
+  const html = fetch(url.href, { headers: { Accept: 'text/html' } }).then((res) => {
+    if (!res.ok || !res.headers.get('content-type')?.includes('text/html')) throw new Error(String(res.status));
+    return res.text();
+  });
+  pages.set(key, { at: Date.now(), html });
+  html.catch(() => pages.delete(key));
+  return html;
+}
+
+/** Fetches a page ahead, with its look and its script (fetched, not run), so a click on it shows it quickly. */
+function prefetch(url) {
+  const key = url.pathname + url.search;
+  if (pages.has(key) && Date.now() - pages.get(key).at < KEEP_MS) return;
+  fetchPage(url).then((html) => {
+    const next = new DOMParser().parseFromString(html, 'text/html');
+    for (const link of next.querySelectorAll('link[rel="stylesheet"]')) {
+      const href = new URL(link.getAttribute('href'), url).href;
+      if (![...document.querySelectorAll('link[rel="stylesheet"], link[rel="preload"]')].some((l) => l.href === href)) {
+        document.head.append(Object.assign(document.createElement('link'), { rel: 'preload', as: 'style', href }));
+      }
+    }
+    // the copy of its script the next page change will run (see below), fetched and parsed already
+    for (const script of next.querySelectorAll('script[type="module"][src]')) {
+      const src = new URL(script.getAttribute('src'), url);
+      if (src.pathname === ROUTER) continue;
+      src.searchParams.set('strona', String(loads + 1));
+      if (![...document.querySelectorAll('link[rel="modulepreload"]')].some((l) => l.href === src.href)) {
+        document.head.append(Object.assign(document.createElement('link'), { rel: 'modulepreload', href: src.href }));
+      }
+    }
+  }).catch(() => {});
+}
+
+/** A thin bar at the top while a page takes a moment, so a click is seen to do something. */
+let bar;
+function busy(on) {
+  if (!on) {
+    bar?.remove();
+    bar = undefined;
+    return;
+  }
+  bar ??= Object.assign(document.createElement('div'), { className: 'route-bar', ariaHidden: 'true' });
+  bar.style.cssText = 'position:fixed;top:0;left:0;height:2px;width:30%;z-index:9999;pointer-events:none;'
+    + 'background:linear-gradient(90deg,#3b82f6,#60a5fa);transition:width 2s ease-out;';
+  document.documentElement.append(bar);
+  requestAnimationFrame(() => { if (bar) bar.style.width = '85%'; });
+}
+
 /** Shows another page of the site; `push` adds it to the history (not when going back or forward). */
 export async function go(href, { push = true } = {}) {
   const url = new URL(href, location.href);
@@ -72,11 +131,19 @@ export async function go(href, { push = true } = {}) {
     location.href = url.href;
     return;
   }
+  const slow = native.setTimeout(() => busy(true), 120);
+  try {
+    await show(url, push);
+  } finally {
+    clearTimeout(slow);
+    busy(false);
+  }
+}
+
+async function show(url, push) {
   let html;
   try {
-    const res = await fetch(url.href, { headers: { Accept: 'text/html' } });
-    if (!res.ok || !res.headers.get('content-type')?.includes('text/html')) throw new Error(String(res.status));
-    html = await res.text();
+    html = await fetchPage(url);
   } catch {
     location.href = url.href;
     return;
@@ -131,10 +198,33 @@ export async function go(href, { push = true } = {}) {
     else window.scrollTo({ top: 0, behavior: 'instant' });
   };
   // the page left stays on screen until the new one has drawn itself (the admin panel builds its whole look in
-  // its script, after asking the server), then fades into it: no empty frame in another colour in between
+  // its script, after asking the server), then fades into it: no empty frame in another colour in between.
+  // Not for long, though: the screen stands still meanwhile, so after a moment the page shows as far as it got.
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    await document.startViewTransition(() => Promise.race([swap(), new Promise((done) => native.setTimeout(done, 400))])).finished.catch(() => {});
+    let swapped;
+    await document.startViewTransition(() => {
+      swapped = swap();
+      return Promise.race([swapped, new Promise((done) => native.setTimeout(done, 250))]);
+    }).finished.catch(() => {});
+    await swapped;
   } else await swap();
+}
+
+/** A link to another page of the site the router shows, or null. */
+function routed(target) {
+  const a = target instanceof Element ? target.closest('a[href]') : null;
+  if (!a || a.target || a.hasAttribute('download')) return null;
+  const url = new URL(a.href, location.href);
+  if (url.origin !== location.origin || !PAGE.test(url.pathname)) return null;
+  if (url.pathname === location.pathname && url.search === location.search) return null;
+  return url;
+}
+// fetched ahead when the mouse rests on a link or a finger touches it (a click comes a moment later)
+for (const type of ['mouseover', 'touchstart', 'focusin']) {
+  native.docAdd(type, (e) => {
+    const url = routed(e.target);
+    if (url) prefetch(url);
+  }, { passive: true });
 }
 
 native.docAdd('click', (e) => {

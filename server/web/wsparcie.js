@@ -279,12 +279,15 @@ function cancelled() {
     el('div', { class: 'row' }, el('a', { class: 'btn primary', href: L('/wsparcie', '/support') }, L('Wróć do wsparcia', 'Back to support')))));
 }
 
+// asked all at once, not one after another: the page shows a few round trips sooner
+const returning = /\/(dziekujemy|thanks|anulowano|cancelled)\/?$/.test(location.pathname);
+const asked = returning ? undefined : Promise.all([api('GET', '/v1/support').catch(() => offer), api('GET', '/v1/health').catch(() => health)]);
 me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
 renderNav();
 if (/\/(dziekujemy|thanks)\/?$/.test(location.pathname)) thanks();
 else if (/\/(anulowano|cancelled)\/?$/.test(location.pathname)) cancelled();
 else {
-  [offer, health] = await Promise.all([api('GET', '/v1/support').catch(() => offer), api('GET', '/v1/health').catch(() => health)]);
+  [offer, health] = await asked;
   // the admin may have switched new payments off for a while (Ustawienia → Funkcje)
   paymentsOn = featureOn((await siteFeatures).features, 'support');
   // awaited with its supporters wall: the site's router shows the page whole
