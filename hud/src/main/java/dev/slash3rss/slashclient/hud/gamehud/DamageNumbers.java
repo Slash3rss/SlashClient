@@ -32,6 +32,8 @@ public final class DamageNumbers {
 	private static final Map<Integer, Float> health = new HashMap<>();
 	private static final List<Pop> pops = new ArrayList<>();
 	private static final Random RANDOM = new Random();
+	/** The ids seen this tick, kept from tick to tick (a new set 20 times a second is garbage for nothing). */
+	private static final Set<Integer> seen = new HashSet<>();
 
 	public static void tick(Minecraft mc) {
 		if (SlashHud.config == null || !SlashHud.config.damageNumbers || mc.level == null || mc.player == null) {
@@ -39,7 +41,7 @@ public final class DamageNumbers {
 			pops.clear();
 			return;
 		}
-		Set<Integer> seen = new HashSet<>();
+		seen.clear();
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (!(e instanceof LivingEntity living) || living.distanceToSqr(mc.player) > RANGE_SQ) continue;
 			seen.add(living.getId());

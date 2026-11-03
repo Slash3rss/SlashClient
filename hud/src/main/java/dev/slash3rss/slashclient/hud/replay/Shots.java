@@ -10,6 +10,8 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -27,6 +29,8 @@ public final class Shots {
 
 	private static final Identifier THUMB = Identifier.fromNamespaceAndPath("slashclient-hud", "screenshot_preview");
 	private static final long SHOW_MS = 4000;
+	/** The preview's picture is at least this wide: drawn 112 wide on the HUD, sharp at a large GUI scale too. */
+	private static final int THUMB_W = 640;
 	private static long shownAt;
 	private static int imgW, imgH;
 	private static boolean copied;
@@ -46,19 +50,62 @@ public final class Shots {
 		latestAt = System.currentTimeMillis();
 		if (SlashHud.config == null || !SlashHud.config.screenshotClipboard) return;
 		copied = Social.copyImage(newest.getAbsolutePath());
-		Minecraft mc = Minecraft.getInstance();
-		mc.execute(() -> {
-			try (InputStream in = Files.newInputStream(newest.toPath())) {
-				NativeImage img = NativeImage.read(in);
-				imgW = img.getWidth();
-				imgH = img.getHeight();
-				mc.getTextureManager().release(THUMB);
-				mc.getTextureManager().register(THUMB, new DynamicTexture(() -> "SlashClient screenshot preview", img));
-				shownAt = System.currentTimeMillis();
+		// reading a 4K picture and sending all of it to the graphics card took a few hundred milliseconds
+		// of the game's own thread (a visible hitch after F2): it is read and shrunk on the side, and only
+		// the small preview is handed over
+		Thread.ofVirtual().start(() -> {
+			NativeImage image;
+			int w, h;
+			try {
+				BufferedImage full;
+				try (InputStream in = Files.newInputStream(newest.toPath())) {
+					full = ImageIO.read(in);
+				}
+				if (full == null) throw new java.io.IOException("not a picture");
+				int step = Math.max(1, full.getWidth() / THUMB_W);
+				w = Math.max(1, full.getWidth() / step);
+				h = Math.max(1, full.getHeight() / step);
+				image = shrink(full, step, w, h);
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: screenshot preview: {}", e.toString());
+				return;
 			}
+			Minecraft mc = Minecraft.getInstance();
+			mc.execute(() -> {
+				try {
+					imgW = w;
+					imgH = h;
+					mc.getTextureManager().release(THUMB);
+					mc.getTextureManager().register(THUMB, new DynamicTexture(() -> "SlashClient screenshot preview", image));
+					shownAt = System.currentTimeMillis();
+				} catch (Exception e) {
+					SlashHud.LOG.warn("SlashClient: screenshot preview: {}", e.toString());
+				}
+			});
 		});
+	}
+
+	/** The picture `step` times smaller, each pixel the average of a `step` by `step` square. */
+	private static NativeImage shrink(BufferedImage full, int step, int w, int h) {
+		NativeImage image = new NativeImage(w, h, false);
+		int[] rows = new int[full.getWidth() * step];
+		int n = step * step;
+		for (int y = 0; y < h; y++) {
+			full.getRGB(0, y * step, full.getWidth(), step, rows, 0, full.getWidth());
+			for (int x = 0; x < w; x++) {
+				int r = 0, g = 0, b = 0;
+				for (int dy = 0; dy < step; dy++) {
+					for (int dx = 0, i = dy * full.getWidth() + x * step; dx < step; dx++, i++) {
+						int c = rows[i];
+						r += c >> 16 & 255;
+						g += c >> 8 & 255;
+						b += c & 255;
+					}
+				}
+				image.setPixel(x, y, 0xFF000000 | (r / n) << 16 | (g / n) << 8 | b / n);
+			}
+		}
+		return image;
 	}
 
 	/** The screenshot taken in the last few minutes and not sent yet, or null. */

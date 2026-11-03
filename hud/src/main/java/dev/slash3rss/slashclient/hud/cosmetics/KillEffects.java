@@ -110,10 +110,18 @@ public final class KillEffects {
 		if (mc.isPaused()) return;
 		tick++;
 		long now = System.currentTimeMillis();
-		for (Player p : mc.level.players()) if (p != mc.player && swinging(p)) swings.put(p.getUUID(), now);
-		for (Entity e : mc.level.entitiesForRendering()) {
-			if (!(e instanceof LivingEntity le) || e instanceof ArmorStand || !le.isDeadOrDying()) continue;
-			if (dying.add(e.getId())) died(mc, le, now);
+		if (SlashHud.config == null || !SlashHud.config.killEffects) {
+			// switched off, no death plays an effect: looking through every entity each tick would cost
+			// frames for nothing (the menu's preview still plays below)
+			ourHits.clear();
+			swings.clear();
+			dying.clear();
+		} else {
+			for (Player p : mc.level.players()) if (p != mc.player && swinging(p)) swings.put(p.getUUID(), now);
+			for (Entity e : mc.level.entitiesForRendering()) {
+				if (!(e instanceof LivingEntity le) || e instanceof ArmorStand || !le.isDeadOrDying()) continue;
+				if (dying.add(e.getId())) died(mc, le, now);
+			}
 		}
 		if (tick % 20 == 0) {
 			// gone, or alive again (our own player comes back with the same id)

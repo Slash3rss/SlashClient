@@ -56,7 +56,9 @@ public final class MoveEffects {
 
 	private static final Map<UUID, Track> tracks = new HashMap<>();
 	/** Projectiles leaving a streak: where they were last tick. */
-	private static final Map<Integer, Vec3> shots = new HashMap<>();
+	private static Map<Integer, Vec3> shots = new HashMap<>();
+	/** This tick's positions, swapped with `shots` at the end (two maps used again instead of a new one every tick). */
+	private static Map<Integer, Vec3> seen = new HashMap<>();
 	/** Parts of an effect that come a few ticks later (the landing's second sparkle). */
 	private static final List<Later> later = new ArrayList<>();
 	private record Later(int at, Runnable run) {}
@@ -203,7 +205,7 @@ public final class MoveEffects {
 
 	/** Streaks behind the flying projectiles of players who wear them. */
 	private static void streaks(Minecraft mc) {
-		Map<Integer, Vec3> seen = new HashMap<>();
+		seen.clear();
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (!(e instanceof Projectile pr) || !(pr.getOwner() instanceof Player owner)) continue;
 			if (!"move_arrows".equals(Cosmetics.worn(owner.getUUID(), "move"))) continue;
@@ -220,8 +222,9 @@ public final class MoveEffects {
 			if (tick % 3 == 0) add(mc, ParticleTypes.ELECTRIC_SPARK, pos.x, pos.y, pos.z, 0, 0, 0);
 			lastPlayed = "move_arrows:" + owner.getName().getString();
 		}
-		shots.clear();
-		shots.putAll(seen);
+		Map<Integer, Vec3> last = shots;
+		shots = seen;
+		seen = last;
 	}
 
 	private static void played(String kind, Player p) {
