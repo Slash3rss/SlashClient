@@ -882,7 +882,8 @@ public final class SkyCounters {
 	private static Map<Block, Long> nearCounts = Map.of();
 	/** The creatures around in the last full read ("Stój obok: Żelazny golem"), each as its names. */
 	private static List<Thing> nearMobs = List.of();
-	private static Map<Block, Long> reading = new HashMap<>();
+	/** The cube being read: each kind of block and its count so far (counted in place, not a new number per block). */
+	private static Map<Block, long[]> reading = new java.util.IdentityHashMap<>();
 	/** The barrels in the cube being read: a storage ("Magazyn") is one with its hologram by it. */
 	private static List<BlockPos> barrels = new ArrayList<>();
 	private static BlockPos readAt;
@@ -903,20 +904,44 @@ public final class SkyCounters {
 		if (readX == Integer.MIN_VALUE) {
 			readAt = mc.player.blockPosition();
 			readX = -NEAR_RADIUS;
-			reading = new HashMap<>();
+			reading = new java.util.IdentityHashMap<>();
 			barrels = new ArrayList<>();
 		}
-		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		Block last = null;
+		long[] lastCount = null;
+		int z0 = readAt.getZ() - NEAR_RADIUS, z1 = readAt.getZ() + NEAR_RADIUS, firstChunk = z0 >> 4;
 		for (int i = 0; i < SLICES_PER_TICK && readX <= NEAR_RADIUS; i++, readX++) {
-			for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
-				BlockState state = mc.level.getBlockState(pos.set(readAt.getX() + readX, readAt.getY() + dy, readAt.getZ() + dz));
-				if (state.isAir()) continue;
-				reading.merge(state.getBlock(), 1L, Long::sum);
-				if (state.is(net.minecraft.world.level.block.Blocks.BARREL)) barrels.add(pos.immutable());
+			int x = readAt.getX() + readX;
+			// the slice's chunks looked up once, not for every block; one not loaded holds only air
+			net.minecraft.world.level.chunk.LevelChunk[] column = new net.minecraft.world.level.chunk.LevelChunk[(z1 >> 4) - firstChunk + 1];
+			for (int c = 0; c < column.length; c++) column[c] = mc.level.getChunkSource().getChunkNow(x >> 4, firstChunk + c);
+			for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) {
+				int y = readAt.getY() + dy;
+				if (mc.level.isOutsideBuildHeight(y)) continue;
+				for (int z = z0; z <= z1; z++) {
+					var chunk = column[(z >> 4) - firstChunk];
+					var section = chunk == null ? null : chunk.getSections()[chunk.getSectionIndex(y)];
+					if (section == null || section.hasOnlyAir()) {
+						// all air to the chunk's edge (a skyblock's sky is mostly that): on to the next chunk
+						z |= 15;
+						continue;
+					}
+					BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+					if (state.isAir()) continue;
+					Block block = state.getBlock();
+					if (block != last) {
+						last = block;
+						lastCount = reading.computeIfAbsent(block, b -> new long[1]);
+					}
+					lastCount[0]++;
+					if (state.is(net.minecraft.world.level.block.Blocks.BARREL)) barrels.add(new BlockPos(x, y, z));
+				}
 			}
 		}
 		if (readX > NEAR_RADIUS) {
-			nearCounts = reading;
+			Map<Block, Long> counts = new java.util.IdentityHashMap<>();
+			for (var e : reading.entrySet()) counts.put(e.getKey(), e.getValue()[0]);
+			nearCounts = counts;
 			// and the creatures and things standing in the same cube (an end crystal, a frame): not the player, nor what
 			// only lies or flies there (a dropped item, an arrow, experience)
 			List<Thing> mobs = new ArrayList<>();

@@ -133,6 +133,8 @@ public final class SkyCase {
 
 	static Data lifetime() {
 		if (lifetime == null) {
+			// a save still on its way: read once it is there
+			SkyTasks.awaitWrites();
 			try {
 				if (Files.exists(FILE)) lifetime = GSON.fromJson(Files.readString(FILE), Data.class);
 			} catch (Exception e) {
@@ -177,13 +179,30 @@ public final class SkyCase {
 		}
 	}
 
+	/** Whether something changed since the last save, and when that was. */
+	private static boolean dirty;
+	private static long savedAt;
+	/** A key gem opens many keys in a row: their wins are saved together, at most this often. */
+	private static final long SAVE_MS = 3_000;
+
+	/** Something changed: saved within a few seconds (off the game's thread), with whatever follows it. */
 	static void save() {
+		dirty = true;
+	}
+
+	private static void saveNow() {
+		dirty = false;
+		savedAt = System.currentTimeMillis();
 		try {
-			Files.createDirectories(FILE.getParent());
-			Files.writeString(FILE, GSON.toJson(lifetime()));
+			SkyTasks.writeLater(FILE, GSON.toJson(lifetime()), "cases");
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: SkyUp cases: {}", e.toString());
 		}
+	}
+
+	/** Leaving a server or closing the game: what is not saved yet is saved now. */
+	static void flush() {
+		if (dirty) saveNow();
 	}
 
 	/** A new server: a new session. */
@@ -254,8 +273,17 @@ public final class SkyCase {
 
 	/** Names compared without case, the ♦ and doubled spaces. */
 	static String key(String name) {
-		return canonical(name).replace("♦", "").replaceAll("\\s+", " ").strip().toLowerCase(Locale.ROOT);
+		// asked for every reward of every case while the HUD and windows are drawn: each name worked out once
+		if (name == null) return "";
+		String known = KEYS.get(name);
+		if (known != null) return known;
+		String k = canonical(name).replace("♦", "").replaceAll("\\s+", " ").strip().toLowerCase(Locale.ROOT);
+		if (KEYS.size() > 10_000) KEYS.clear();
+		KEYS.put(name, k);
+		return k;
 	}
+
+	private static final Map<String, String> KEYS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	/** "5x Zaklęta butelka" is 5 of "Zaklęta butelka"; "Diament" 1 of itself. */
 	static String base(String reward) {
@@ -524,6 +552,7 @@ public final class SkyCase {
 	private static final long BROWSE_MS = 10_000;
 
 	public static void tick(Minecraft mc) {
+		if (dirty && System.currentTimeMillis() - savedAt > SAVE_MS) saveNow();
 		if (received != null) learnLook(mc);
 		if (!SkyTasks.onSkyUp(mc) || !(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return;
 		String type = caseType(screen.getTitle().getString());
@@ -852,10 +881,45 @@ public final class SkyCase {
 
 	/** The item a reward is shown with in any case's pool (one gone from its case's, or an unassigned one), or "". */
 	private static String itemOf(Data life, String reward) {
-		String k = key(reward);
-		for (Stats s : life.cases.values()) for (var e : s.pool.entrySet()) if (key(e.getKey()).equals(k)) return e.getValue();
-		return "";
+		return itemIndex(life).getOrDefault(key(reward), "");
 	}
+
+	/**
+	 * Every pool's rewards by key → their item (the first case's, as the cases are listed), made again
+	 * only when a pool changes: asked for every reward drawn, many times a second.
+	 */
+	private static Map<String, String> itemIndex(Data life) {
+		boolean same = indexedData == life && indexedPools.size() == life.cases.size();
+		if (same) {
+			int i = 0;
+			for (Stats s : life.cases.values()) {
+				// a pool is replaced whole when a preview changes it; one added to keeps its map but grows
+				if (indexedPools.get(i) != s.pool || indexedSizes.get(i) != s.pool.size()) {
+					same = false;
+					break;
+				}
+				i++;
+			}
+		}
+		if (!same) {
+			Map<String, String> index = new HashMap<>();
+			indexedPools.clear();
+			indexedSizes.clear();
+			for (Stats s : life.cases.values()) {
+				indexedPools.add(s.pool);
+				indexedSizes.add(s.pool.size());
+				for (var e : s.pool.entrySet()) index.putIfAbsent(key(e.getKey()), e.getValue());
+			}
+			indexedData = life;
+			itemIndex = index;
+		}
+		return itemIndex;
+	}
+
+	private static Data indexedData;
+	private static Map<String, String> itemIndex = Map.of();
+	private static final List<Map<String, String>> indexedPools = new ArrayList<>();
+	private static final List<Integer> indexedSizes = new ArrayList<>();
 
 	static String percent(double share) {
 		double p = share * 100;
@@ -950,7 +1014,21 @@ public final class SkyCase {
 			return SkyTasks.onSkyUp(mc) && lifetime().opened() > 0;
 		}
 
+		/** The rows as worked out last, and when: width, height and drawing ask for them several times a frame. */
+		private List<Row> rows;
+		private long rowsAt;
+
 		private List<Row> rowsOrPreview(Minecraft mc) {
+			long now = System.nanoTime();
+			// worked out again once a tick (wins come with the chat, between ticks)
+			if (rows == null || now - rowsAt > 50_000_000L) {
+				rows = rowsNow(mc);
+				rowsAt = now;
+			}
+			return rows;
+		}
+
+		private List<Row> rowsNow(Minecraft mc) {
 			if (visible(mc)) return rows(session, lifetime(), recent, shownType());
 			// the editor, before the first case: some made up
 			Data s = new Data(), l = new Data();
@@ -1089,6 +1167,8 @@ public final class SkyCase {
 	}
 
 	static void resetForTest() {
+		// the wins so far saved first, as they would be a few seconds later
+		flush();
 		session = new Data();
 		lifetime = new Data();
 		seed(lifetime);
@@ -1100,6 +1180,8 @@ public final class SkyCase {
 
 	/** What was saved read again (as after a restart). */
 	static void reloadForTest() {
+		// what is not saved yet first, as the game does on closing
+		flush();
 		lifetime = null;
 	}
 

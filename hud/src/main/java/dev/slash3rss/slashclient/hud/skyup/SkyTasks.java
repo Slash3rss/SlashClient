@@ -161,6 +161,8 @@ public final class SkyTasks {
 		}
 		if (data == null) {
 			loadedFrom = file;
+			// a save of this file still on its way: read once it is there
+			awaitWrites();
 			Path from = Files.exists(file) ? file : Files.exists(FILE) ? FILE : null;
 			try {
 				if (from != null) data = GSON.fromJson(Files.readString(from), Data.class);
@@ -206,21 +208,59 @@ public final class SkyTasks {
 
 	static void save() {
 		dirty = false;
+		soon = false;
 		savedAt = System.currentTimeMillis();
 		try {
 			Data now = data();
 			Path to = loadedFrom != null ? loadedFrom : file();
-			Files.createDirectories(to.getParent());
-			// written whole to a file beside, then put in place: a crash while writing leaves the last save as it was
-			Path tmp = to.resolveSibling(to.getFileName() + ".tmp");
-			Files.writeString(tmp, GSON.toJson(now));
-			try {
-				Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-			} catch (Exception e) {
-				Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			}
+			writeLater(to, GSON.toJson(now), "tasks");
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", e.toString());
+		}
+	}
+
+	/** The SkyUp counters' files are written on a thread of their own, one after another, so the game never waits for the disk. */
+	private static final java.util.concurrent.ExecutorService WRITER = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+		Thread t = new Thread(r, "SlashClient SkyUp saves");
+		// the game closing waits for it in flush(), not for the thread itself
+		t.setDaemon(true);
+		return t;
+	});
+	/** The last write asked for: once it is done, so are all before it (they run in order). */
+	private static volatile java.util.concurrent.Future<?> lastWrite;
+
+	/**
+	 * `json` written to `to` soon, off the game's thread. The text is made by the caller, on the game's
+	 * thread, so the data is never read while the game changes it.
+	 */
+	static void writeLater(Path to, String json, String what) {
+		lastWrite = WRITER.submit(() -> {
+			try {
+				Files.createDirectories(to.getParent());
+				// written whole to a file beside, then put in place: a crash while writing leaves the last save as it was
+				Path tmp = to.resolveSibling(to.getFileName() + ".tmp");
+				Files.writeString(tmp, json);
+				try {
+					Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+				} catch (Exception e) {
+					Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				}
+			} catch (Exception e) {
+				SlashHud.LOG.warn("SlashClient: SkyUp {}: {}", what, e.toString());
+			}
+		});
+	}
+
+	/** Every write asked for so far is on the disk: before a file is read again, and when leaving or closing the game. */
+	static void awaitWrites() {
+		var last = lastWrite;
+		if (last == null || last.isDone()) return;
+		try {
+			last.get(10, java.util.concurrent.TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			SlashHud.LOG.warn("SlashClient: SkyUp saves: {}", e.toString());
 		}
 	}
 
@@ -228,6 +268,8 @@ public final class SkyTasks {
 
 	/** Every few ticks while a chest-like screen is open: its tasks; saved once it closes. */
 	public static void tick(Minecraft mc) {
+		// the fish counted lately, saved now and then
+		SkyFish.saveDue();
 		var screen = Compat.screen(mc);
 		if (!onSkyUp(mc)) {
 			if (dirty) save();
@@ -253,6 +295,8 @@ public final class SkyTasks {
 			// what the counters add is saved now and then, not at every block
 			save();
 		}
+		// what the player did by hand (tracked a task, handed one in) a few seconds later, also while a window is open
+		if (dirty && soon && System.currentTimeMillis() - savedAt > SOON_MS) save();
 		SkyCounters.tick(mc);
 		remindDaily(mc);
 		remindBonus(mc);
@@ -375,9 +419,23 @@ public final class SkyTasks {
 		dirty = true;
 	}
 
+	/** Whether what is not saved yet was done by hand: saved within a few seconds, not half a minute. */
+	private static boolean soon;
+	private static final long SOON_MS = 3_000;
+
+	/** The player changed something (tracking, the order, a task handed in): saved in a few seconds, with whatever follows it. */
+	static void saveSoon() {
+		dirty = true;
+		soon = true;
+	}
+
 	/** Leaving a server or closing the game: what is not saved yet (up to the last 30 s of counting) is saved now. */
 	public static void flush() {
 		if (dirty) save();
+		SkyCase.flush();
+		SkyFish.flush();
+		// on the disk before the game goes on (or closes)
+		awaitWrites();
 	}
 
 	/** Each stack read once (the GUI draws them every frame; the server sends new stacks when they change). */
@@ -570,7 +628,7 @@ public final class SkyTasks {
 		}
 		d.done().add(plain);
 		if (best == null) {
-			save();
+			saveSoon();
 			return false;
 		}
 		String key = best.key();
@@ -580,7 +638,7 @@ public final class SkyTasks {
 		d.untracked.remove(key);
 		// the menu's count of the category: one fewer left
 		for (var e : d.categories.entrySet()) if (e.getKey().equalsIgnoreCase(best.tier) && e.getValue() > 0) e.setValue(e.getValue() - 1);
-		save();
+		saveSoon();
 		return true;
 	}
 
@@ -617,7 +675,7 @@ public final class SkyTasks {
 			// the whole category: tasks of it left out before come back
 			d.untracked.removeIf(k -> k.substring(0, Math.max(0, k.indexOf('|'))).equalsIgnoreCase(name));
 		}
-		save();
+		saveSoon();
 	}
 
 	/** For the in-game test: the task neither tracked nor taken off by hand. */
@@ -641,7 +699,7 @@ public final class SkyTasks {
 			d.tracked.remove(key);
 			d.untracked.add(key);
 		}
-		save();
+		saveSoon();
 	}
 
 	/** The task under the mouse in an open GUI, or null. */
@@ -997,12 +1055,13 @@ public final class SkyTasks {
 		Item item = itemNamed(mc, thing);
 		long n = 0;
 		boolean named = false;
+		String[] names = carriedNames(mc, inv);
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			// armour is worn, not carried
 			if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
 			ItemStack s = inv.getItem(i);
 			if (s.isEmpty()) continue;
-			boolean byName = SkyTaskParser.plain(s.getHoverName().getString()).equalsIgnoreCase(thing);
+			boolean byName = names[i].equalsIgnoreCase(thing);
 			if (byName || (item != null && s.is(item))) {
 				n += s.getCount();
 				named |= byName;
@@ -1010,6 +1069,41 @@ public final class SkyTasks {
 		}
 		return item != null || named ? n : -1;
 	}
+
+	/**
+	 * Each slot's plain name, read once for every requirement that asks (there are many, each looks at
+	 * every slot): again for a slot whose stack or count changed, and all of them every tick (a name may
+	 * change on the same stack).
+	 */
+	private static String[] carriedNames(Minecraft mc, Inventory inv) {
+		int size = inv.getContainerSize();
+		if (namesOf != inv || carriedNames.length != size || namesTick != mc.player.tickCount) {
+			namesOf = inv;
+			namesTick = mc.player.tickCount;
+			carriedNames = new String[size];
+			namesFor = new ItemStack[size];
+			namesCount = new int[size];
+		}
+		for (int i = 0; i < size; i++) {
+			// the armour worn is not asked for
+			if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) {
+				carriedNames[i] = "";
+				continue;
+			}
+			ItemStack s = inv.getItem(i);
+			if (carriedNames[i] != null && namesFor[i] == s && namesCount[i] == s.getCount()) continue;
+			namesFor[i] = s;
+			namesCount[i] = s.getCount();
+			carriedNames[i] = s.isEmpty() ? "" : SkyTaskParser.plain(s.getHoverName().getString());
+		}
+		return carriedNames;
+	}
+
+	private static Inventory namesOf;
+	private static int namesTick;
+	private static String[] carriedNames = new String[0];
+	private static ItemStack[] namesFor = new ItemStack[0];
+	private static int[] namesCount = new int[0];
 
 	/** A requirement's progress now: counted from the inventory where it can be. */
 	public static long current(Minecraft mc, SkyTaskParser.Section s, SkyTaskParser.Req r) {
@@ -1134,8 +1228,7 @@ public final class SkyTasks {
 		// the tasks not tracked now keep their places after these, for when they are tracked again
 		if (data().order != null) for (String k : data().order) if (!order.contains(k)) order.add(k);
 		data().order = order;
-		save();
-		changed();
+		saveSoon();
 	}
 
 	/** A value of a map keyed by category, whatever the letters' case (the menu's item and the GUI's title). */
@@ -1392,25 +1485,41 @@ public final class SkyTasks {
 
 		@Override
 		public boolean visible(Minecraft mc) {
+			refresh(mc);
+			return visibleNow;
+		}
+
+		private boolean shows(Minecraft mc, List<SkyTaskParser.Task> shown) {
 			if (!onSkyUp(mc)) return false;
-			if (!shown(mc).isEmpty()) return true;
+			if (!shown.isEmpty()) return true;
 			// a tracked category shows even with nothing loaded or left; the one last open only with tasks left
 			if (data().trackedCategories != null) return !headerTiers().isEmpty();
 			return SlashHud.config.skyTasksTierCount && !lastTier.isEmpty() && tierCount(mc, lastTier)[0] > 0;
 		}
 
-		/** The rows as worked out last, and when: width, height and drawing ask for them several times a frame. */
+		/**
+		 * The tasks shown, whether the module is, and their rows, as worked out last: the HUD asks for them
+		 * several times a frame, and each time every requirement looks through the inventory.
+		 */
+		private List<SkyTaskParser.Task> shownNow;
+		private boolean visibleNow;
 		private List<Row> rows;
-		private long rowsAt;
+		private long shownAt;
 
-		private List<Row> rowsOrPreview(Minecraft mc) {
+		private void refresh(Minecraft mc) {
 			long now = System.nanoTime();
 			// worked out again once a tick (what they show changes with ticks and windows read)
-			if (rows == null || now - rowsAt > 50_000_000L) {
-				// nothing real to show (the editor): two sample tasks
-				rows = SkyTasks.rows(mc, visible(mc) ? shown(mc) : preview());
-				rowsAt = now;
-			}
+			if (shownNow != null && now - shownAt <= 50_000_000L) return;
+			shownNow = onSkyUp(mc) ? shown(mc) : List.of();
+			visibleNow = shows(mc, shownNow);
+			rows = null;
+			shownAt = now;
+		}
+
+		private List<Row> rowsOrPreview(Minecraft mc) {
+			refresh(mc);
+			// nothing real to show (the editor): two sample tasks
+			if (rows == null) rows = SkyTasks.rows(mc, visibleNow ? shownNow : preview());
 			return rows;
 		}
 
