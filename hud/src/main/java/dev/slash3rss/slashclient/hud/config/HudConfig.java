@@ -799,7 +799,8 @@ public final class HudConfig {
 	/** The mending assistant's choice from before it took any numbers ("16x", "IV"), kept once over. */
 	private static void skyXpOld(HudConfig c) {
 		if (c.skyXpGenerators != null) c.skyXpGens = "16x".equals(c.skyXpGenerators) ? 16 : 8;
-		int old = java.util.List.of("III", "IV", "V", "VI").indexOf(c.skyXpUnbreaking);
+		// (List.of's indexOf does not take null)
+		int old = c.skyXpUnbreaking == null ? -1 : java.util.List.of("III", "IV", "V", "VI").indexOf(c.skyXpUnbreaking);
 		if (old >= 0) c.skyXpUnbreakingLevel = old + 3;
 		c.skyXpGenerators = c.skyXpUnbreaking = null;
 	}
