@@ -1,6 +1,7 @@
 import { KEEP as REQUESTS_KEPT } from './requests.ts';
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
+import { REFERRAL_SETTING_DEFS } from './referrals.ts';
 import { IMAGE_LIMITS } from './chatImages.ts';
 import { CHAT_KEY_SETTING_DEFS } from './chatKeys.ts';
 import { chatMediaSettingDefs } from './chatMediaLimits.ts';
@@ -47,6 +48,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'groups', label: 'Grupy', labelEn: 'Groups' },
   { id: 'communities', label: 'Społeczności', labelEn: 'Communities' },
   { id: 'sparks', label: 'Osiągnięcia i Iskry', labelEn: 'Achievements and sparks' },
+  { id: 'invites', label: 'Zaproszenia', labelEn: 'Invites' },
   { id: 'support', label: 'Wsparcie', labelEn: 'Support' },
   { id: 'profiles', label: 'Profile publiczne', labelEn: 'Public profiles' },
   { id: 'security', label: 'Bezpieczeństwo i limity', labelEn: 'Security and limits' },
@@ -173,6 +175,8 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'sparks.messagesPerDay', label: 'Wiadomości liczone dziennie', labelEn: 'Messages counted a day', description: 'Do osiągnięć za wiadomości liczy się najwyżej tyle wiadomości dziennie (UTC).', type: 'int', default: COUNTED_PER_DAY, min: 0, max: 10_000 },
   ]),
   ...CHALLENGE_SETTING_DEFS,
+  // inviting friends with one's code (referrals.ts)
+  ...REFERRAL_SETTING_DEFS,
 
   ...group('support', [
     { key: 'support.refundWindowDays', label: 'Okno na zwrot', labelEn: 'Refund window', description: 'Ile dni po płatności gracz sam może poprosić o zwrot. Regulamin obiecuje 14 dni (prawo konsumenta), więc nie mniej.', type: 'duration', default: REFUND_WINDOW_DAYS, min: 14, max: 365, unit: 'dni', risky: true },

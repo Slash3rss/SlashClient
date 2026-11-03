@@ -19,7 +19,7 @@ export const priceTag = (n) => el('span', { class: 'spark-price' }, el('span', {
 
 /** Each category's name, icon and English name (as in the launcher). */
 const CATEGORIES = {
-  play: ['Gra', 'fa-gamepad', 'Play'], streak: ['Serie', 'fa-fire', 'Streaks'], social: ['Znajomi', 'fa-user-group', 'Friends'], community: ['Grupy i klany', 'fa-people-group', 'Groups and clans'],
+  play: ['Gra', 'fa-gamepad', 'Play'], streak: ['Serie', 'fa-fire', 'Streaks'], social: ['Znajomi', 'fa-user-group', 'Friends'], invites: ['Zaproszenia', 'fa-user-plus', 'Invites'], community: ['Grupy i klany', 'fa-people-group', 'Groups and clans'],
   explore: ['Serwery', 'fa-compass', 'Servers'], skyup: ['SkyUp.pl', 'fa-cloud-sun', 'SkyUp.pl'], sharing: ['Udostępnianie', 'fa-share-nodes', 'Sharing'], style: ['Styl', 'fa-wand-magic-sparkles', 'Style'], secret: ['Ukryte', 'fa-mask', 'Hidden'],
 };
 
@@ -84,7 +84,8 @@ export async function achievementsCard() {
         const label = (EN && e.labelEn) || e.label || e.ref;
         return el('div', { class: 'ledger-row' },
         el('span', { class: 'grow', textContent: e.reason === 'achievement' ? L(`Osiągnięcie: ${label}`, `Achievement: ${label}`) : e.reason === 'purchase' ? L(`Zakup: ${label}`, `Purchase: ${label}`)
-          : e.reason === 'challenge' ? L(`Wyzwanie: ${label}`, `Challenge: ${label}`) : L(`Od administracji: ${e.note}`, `From the admins: ${e.note}`) }),
+          : e.reason === 'challenge' ? L(`Wyzwanie: ${label}`, `Challenge: ${label}`) : e.reason === 'referral' ? label
+          : L(`Od administracji: ${e.note}`, `From the admins: ${e.note}`) }),
         el('span', { class: 'muted small', textContent: new Date(e.at).toLocaleDateString(locale()) }),
         el('b', { class: e.amount > 0 ? 'plus' : 'minus', textContent: `${e.amount > 0 ? '+' : '−'}${Math.abs(e.amount)}` }));
       }))));

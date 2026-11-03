@@ -7,7 +7,7 @@ import { Db, type Message, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
-import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, supporterLevel, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
@@ -28,6 +28,7 @@ import { createAchievements, serverKey, TICK_MS } from './achievements.ts';
 import { ActivityTracker, createAdminStats } from './adminStats.ts';
 import { achievementsAdminRoutes } from './achievementsAdmin.ts';
 import { createChallenges } from './challenges.ts';
+import { createReferrals } from './referrals.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
@@ -132,6 +133,8 @@ export interface Config {
 const VALID_NAME = /^\w{3,16}$/;
 const LOGIN_TTL_MS = 10 * 60_000;
 const MC_CHALLENGE_MS = 2 * 60_000;
+/** The first launcher with the shop (prices in /v1/cosmetics). */
+const SHOP_SINCE = '0.9.22';
 const MAX_MESSAGE = 2000;
 /** An encrypted message: the text plus a wrapped key for each launcher of both friends. */
 const MAX_ENCRYPTED = 14_000;
@@ -193,6 +196,9 @@ type SeenRequest = http.IncomingMessage & { slashUser?: string; slashError?: str
 
 export function createApp(cfg: Config) {
   const db = new Db(cfg.dbFile);
+  // the capes that were free until 0.9.69: every account from before keeps them (once, before anything else runs)
+  const kept = db.keepFormerlyFree(FORMERLY_FREE_CAPES);
+  if (kept) console.log(`peleryny: zachowano dawniej darmowe peleryny (${kept} przyznań)`);
   // who was active which day, with which launcher, and the day's peak online: for the admin dashboard (adminStats.ts)
   const activity = new ActivityTracker(db.sql);
   // the admin panel's settings (settings.ts): the config's numbers (env, tests) are their defaults here
@@ -645,6 +651,14 @@ export function createApp(cfg: Config) {
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     partyMates: (uuid) => sharing.partyMates(uuid),
     available: (metric) => metric !== 'votes' || (/^https?:\/\//.test(settings.str('serverList.apiUrl')) && !!settings.str('serverList.voteKey')),
+    // the achievements for challenges done (and for the sparks they paid)
+    completed: (uuid) => {
+      try {
+        achievements.check(uuid);
+      } catch (err) {
+        console.error('osiągnięcia:', (err as Error).message);
+      }
+    },
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -669,6 +683,22 @@ export function createApp(cfg: Config) {
         out.set(l.user, a.kind === 'server' ? a.server : undefined);
       }
       return out;
+    },
+  });
+
+  // inviting friends with one's own code, paid when the friend has played a while (referrals.ts)
+  const referrals = createReferrals({
+    sql: db.sql, wallet, publicUrl: cfg.publicUrl, setting: (key) => settings.get(key), authed, admin, body, clientIp, push,
+    milestones: () => achievements.registry.active(),
+    counted: (inviter, invitee) => {
+      achievements.check(inviter);
+      achievements.check(invitee);
+    },
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    limitRedeem: limiter('referrals.redeemsPerMinute'), limitViews: limiter('profiles.viewsPerMinute'),
+    hidden: (p) => home.isHidden(p), versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
     },
   });
 
@@ -1080,6 +1110,8 @@ export function createApp(cfg: Config) {
       const badge = user ? wearOf(user) : [];
       const known = knownTo(req.headers);
       const frames = framesFor(req.headers);
+      // launchers from before the shop (0.9.22) get no prices: capes free before and sold now show to them as locked, owned ones as theirs
+      const knowsShop = known({ id: '', slot: 'cape', name: '', since: SHOP_SINCE });
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge.includes('admin')) && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge, me ? support.cosmeticsLevel(me) : 0),
@@ -1088,7 +1120,7 @@ export function createApp(cfg: Config) {
         // given by an achievement (as the admin set them now): which one, and how to get it
         ...achievements.rewardHint(i.id),
         // sold in the shop for sparks (items only the shop has come only to launchers that know it: `since`)
-        ...(priceOf(settings, i.id) ? { price: priceOf(settings, i.id), owned: granted.includes(i.id) } : {}),
+        ...(knowsShop && priceOf(settings, i.id) ? { price: priceOf(settings, i.id), owned: granted.includes(i.id) } : {}),
       }));
       return {
         // the launcher before 0.8 knows capes only
@@ -1580,10 +1612,12 @@ export function createApp(cfg: Config) {
     ...statusRules.routes,
     ...achievements.routes,
     ...challenges.routes,
+    ...referrals.routes,
     ...economyRoutes({
       db, wallet, authed, admin, body, push,
       label: (reason, ref, note) => {
         if (reason === 'challenge') return challenges.label(ref, note);
+        if (reason === 'referral') return referrals.label(ref, note);
         const a = reason === 'achievement' ? achievements.registry.get(ref) : undefined;
         const name = reason === 'purchase' ? CAPE_NAMES[ref] ?? ref : '';
         return a ? { label: a.name, labelEn: a.nameEn || a.name } : { label: name, labelEn: name };
@@ -1986,6 +2020,8 @@ export function createApp(cfg: Config) {
     if (legal.serve(req, res, url)) return;
     // the changelog page (/zmiany, /changelog) from the releases' notes
     if (await serveChangelog(req, res, url, { downloads, publicUrl: cfg.publicUrl, versioned: (html) => versioned(html, 'text/html'), hidden: (p) => home.isHidden(p) })) return;
+    // a player's invite page (/z/<code>), with what a friend gets and the code to type in (referrals.ts)
+    if (referrals.serve(req, res, url)) return;
     // the tab list's status rules for games and launchers, with an ETag (statusRules.ts)
     if (statusRules.serve(req, res, url)) return;
 
@@ -2419,6 +2455,19 @@ export function createApp(cfg: Config) {
       console.error('propozycje:', (err as Error).message);
     }
   }, 60_000);
+  // pending invites that got far enough count (referrals.ts), every few minutes and once on start
+  const referralTick = setInterval(() => {
+    try {
+      referrals.tick();
+    } catch (err) {
+      console.error('zaproszenia:', (err as Error).message);
+    }
+  }, 5 * 60_000);
+  try {
+    referrals.tick();
+  } catch (err) {
+    console.error('zaproszenia:', (err as Error).message);
+  }
   // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
   const backfilled = achievements.backfill();
   if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);
@@ -2463,6 +2512,8 @@ export function createApp(cfg: Config) {
     achievements,
     /** For tests: the daily and weekly challenges. */
     challenges,
+    /** For tests: inviting friends (counting with a chosen clock, the store). */
+    referrals,
     /** For tests: the database (data from before an update) and the sparks. */
     db,
     wallet,
@@ -2497,6 +2548,7 @@ export function createApp(cfg: Config) {
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
+      clearInterval(referralTick);
       clearInterval(encounterTick);
       clearInterval(logCleanup);
       // the last moment of the request log is kept too

@@ -4,6 +4,7 @@ import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
 import { challengesPage } from './adminChallenges.js';
+import { referralsPage } from './adminReferrals.js';
 import { clansPage } from './adminClans.js';
 import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
@@ -31,6 +32,7 @@ const GROUPS = [
     ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
     ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
     ['challenges', 'Wyzwania', 'fa-solid fa-list-check'],
+    ['referrals', 'Zaproszenia', 'fa-solid fa-user-plus'],
   ]],
   ['Społeczność', [
     ['clans', 'Klany', 'fa-solid fa-shield-halved'],
@@ -64,6 +66,7 @@ const ACTIONS = {
   ach_create: 'utworzył(a) osiągnięcie', ach_edit: 'zmienił(a) osiągnięcie', ach_reset: 'przywrócił(a) domyślne osiągnięcie', ach_delete: 'usunął(ęła) osiągnięcie',
   ach_grant: 'przyznał(a) osiągnięcie', ach_revoke: 'odebrał(a) osiągnięcie',
   challenge_create: 'utworzył(a) wyzwanie', challenge_edit: 'zmienił(a) wyzwanie', challenge_reset: 'przywrócił(a) domyślne wyzwanie', challenge_delete: 'usunął(ęła) wyzwanie',
+  referral_reject: 'odrzucił(a) zaproszenie',
   profile_hide: 'ukrył(a) profil', profile_show: 'przywrócił(a) profil',
   'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu', 'clan.rename': 'zmienił(a) nazwę klanu', 'clan.kick': 'wyrzucił(a) z klanu',
   'clan.role': 'zmienił(a) rolę w klanie', 'clan.transfer': 'przekazał(a) klan',
@@ -176,7 +179,7 @@ function layout() {
 }
 
 const PAGES = { dashboard: () => dashboard(), users: () => usersPage(), ranks: () => ranksPage(), cosmetics: () => cosmeticsPage(), achievements: () => achievementsPage(),
-  challenges: () => challengesPage(), partners: () => partnersPage(), clans: () => clansPage(), communities: () => communitiesPage(), requests: () => requestsPage(),
+  challenges: () => challengesPage(), referrals: () => referralsPage(), partners: () => partnersPage(), clans: () => clansPage(), communities: () => communitiesPage(), requests: () => requestsPage(),
   logs: () => logsPage(), storage: () => storagePage(), support: () => supportPage(), streams: () => streamsPage(), fishAtlas: () => fishAtlasPage(),
   home: () => homePage(), legal: () => legalPage(), settings: () => settingsPage(), log: () => logPage() };
 
