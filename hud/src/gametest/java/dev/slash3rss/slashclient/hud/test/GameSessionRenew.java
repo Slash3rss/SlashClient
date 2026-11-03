@@ -126,14 +126,7 @@ public class GameSessionRenew implements FabricClientGameTest {
 				//#endif
 			context.setScreen(() -> new DisconnectedScreen(new TitleScreen(), Component.translatable("connect.failed"), Component.literal("Timed out")));
 			context.waitTicks(3);
-			context.runOnClient(mc -> {
-				var s = dev.slash3rss.slashclient.hud.Compat.screen(mc);
-				//#if MC >= 26.1
-				s.resize(s.width, s.height);
-				//#else
-				//$ s.resize(mc, s.width, s.height);
-				//#endif
-			});
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.relayout(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 			context.waitTicks(3);
 			if (reconnects(context) != 1) throw new AssertionError("Reconnect buttons: " + reconnects(context));
 			// a smaller window: the button follows the game's buttons, centred
