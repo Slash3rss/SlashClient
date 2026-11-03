@@ -138,7 +138,25 @@ async function go(next) {
   }
   tab = next;
   if (location.hash.slice(1).split(':')[0] !== next) location.hash = next;
-  layout();
+  showTab();
+}
+
+/**
+ * Only the tab's part changes, the side list stays as it is (where it was scrolled to): the tab left stays on
+ * screen until the new one has its content (a quarter of a second at most), then fades into it.
+ */
+function showTab() {
+  const side = document.querySelector('.admin > .side');
+  if (!side || !$('#main')) return layout();
+  closeDrawer();
+  side.querySelectorAll('button.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  const swap = () => {
+    $('#main').replaceWith(el('main', { class: 'main', id: 'main' }));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    return Promise.resolve(PAGES[tab]?.()).catch(() => {});
+  };
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return void swap();
+  document.startViewTransition(() => Promise.race([swap(), new Promise((done) => setTimeout(done, 250))])).finished.catch(() => {});
 }
 
 function layout() {
@@ -147,15 +165,20 @@ function layout() {
   for (const [group, tabs] of GROUPS) {
     side.append(el('small', { class: 'side-group', textContent: group }));
     for (const [id, name, cls] of tabs) {
-      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, onclick: () => go(id) }, icon(cls), name));
+      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, dataset: { tab: id }, onclick: () => go(id) }, icon(cls), name));
     }
   }
   side.append(el('div', { class: 'me' }, avatarEl(me), el('div', { class: 'grow' }, el('b', { textContent: me.name }), el('small', { class: 'muted', textContent: ` @${me.handle}` })),
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, challenges: challengesPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, fishAtlas: fishAtlasPage, home: homePage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
+  PAGES[tab]?.();
 }
+
+const PAGES = { dashboard: () => dashboard(), users: () => usersPage(), ranks: () => ranksPage(), cosmetics: () => cosmeticsPage(), achievements: () => achievementsPage(),
+  challenges: () => challengesPage(), partners: () => partnersPage(), clans: () => clansPage(), communities: () => communitiesPage(), requests: () => requestsPage(),
+  logs: () => logsPage(), storage: () => storagePage(), support: () => supportPage(), streams: () => streamsPage(), fishAtlas: () => fishAtlasPage(),
+  home: () => homePage(), legal: () => legalPage(), settings: () => settingsPage(), log: () => logPage() };
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
 const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el('small', {}, icon(cls), label), el('b', { textContent: String(value) }), note ? el('em', { textContent: note }) : '');
@@ -163,7 +186,7 @@ const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el(
 // ---------- dashboard (adminDashboard.js) ----------
 
 function dashboard() {
-  return dashboardPage({ go: (id) => { tab = id; location.hash = id; layout(); }, capeNames, capeSlots });
+  return dashboardPage({ go: (id) => void go(id), capeNames, capeSlots });
 }
 
 // ---------- accounts ----------
