@@ -22,7 +22,8 @@ import dev.slash3rss.slashclient.hud.modules.Modules;
  *
  * The picture is painted on the CPU into a texture of its own, only when something it shows
  * changed (the player moved or turned, or the ground under it was read anew), so a still player
- * costs nothing and a turning one one small picture a frame.
+ * costs nothing and a turning one one small picture a frame. North up, a picture moves only in
+ * whole pixels, so it is painted again only when some pixel would show another block.
  */
 public final class Minimap implements HudModule {
 	public static final String[] SHAPES = { "square", "circle" };
@@ -35,6 +36,8 @@ public final class Minimap implements HudModule {
 	private static int W;
 	/** What the picture was last painted for; painted again when it differs. */
 	private static long painted = Long.MIN_VALUE;
+	/** North up: the block column under each column of the picture and the block row under each row, now and as last painted. */
+	private static int[] cols = new int[0], rows = new int[0], paintedCols, paintedRows;
 	/** When the last tick ran, to place the player between ticks. */
 	private static long tickedAt;
 	/** For the test: how long painting took, all told, and how often. */
@@ -59,7 +62,8 @@ public final class Minimap implements HudModule {
 		boolean map = SlashHud.config != null && SlashHud.config.worldMap;
 		if (!on() && !map || mc.level == null || mc.player == null) return;
 		tickedAt = System.nanoTime();
-		MinimapTerrain.tick(mc);
+		// with neither map on the screen, chunks already read are looked at again less often
+		MinimapTerrain.tick(mc, !on() && !(Compat.screen(mc) instanceof WorldMapScreen));
 	}
 
 	private static int size() {
@@ -84,6 +88,7 @@ public final class Minimap implements HudModule {
 		if (viewId == null) viewId = Identifier.fromNamespaceAndPath(SlashHud.ID, "minimap");
 		mc.getTextureManager().register(viewId, viewTexture);
 		painted = Long.MIN_VALUE;
+		paintedCols = paintedRows = null;
 	}
 
 	@Override
@@ -122,15 +127,30 @@ public final class Minimap implements HudModule {
 		float scale = zoom();
 		boolean rotate = cfg.minimapRotate, circle = circle();
 		float yaw = rotate ? mc.player.getYRot() : 180f;
-		// what the picture shows, in its own steps: half a pixel of movement, a quarter of a degree
-		long key = Math.round(at[0] * scale * 2) * 31 + Math.round(at[1] * scale * 2);
-		key = key * 31 + (rotate ? Math.round(yaw * 4) : 0);
-		key = key * 31 + MinimapTerrain.version;
+		long key = MinimapTerrain.version;
 		key = key * 31 + Float.floatToIntBits(scale) + (circle ? 1 : 0) + W * 7L;
-		if (key != painted) {
+		boolean again;
+		if (rotate) {
+			// what the picture shows, in its own steps: half a pixel of movement, a quarter of a degree
+			key = key * 31 + Math.round(at[0] * scale * 2);
+			key = key * 31 + Math.round(at[1] * scale * 2);
+			key = key * 31 + Math.round(yaw * 4);
+			again = key != painted;
+		} else {
+			// north up: only when a pixel would show another block than in the last picture
+			key = key * 31 + 1;
+			lines(at[0], at[1], scale);
+			again = key != painted || !java.util.Arrays.equals(cols, paintedCols) || !java.util.Arrays.equals(rows, paintedRows);
+		}
+		if (again) {
 			painted = key;
 			long t0 = System.nanoTime();
-			paint(at[0], at[1], scale, yaw, circle);
+			if (rotate) paint(at[0], at[1], scale, yaw, circle);
+			else {
+				paintNorth(circle);
+				paintedCols = cols.clone();
+				paintedRows = rows.clone();
+			}
 			viewTexture.upload();
 			paintNanos += System.nanoTime() - t0;
 			paints++;
@@ -191,6 +211,48 @@ public final class Minimap implements HudModule {
 		}
 	}
 
+	/** North up: the block column under each column of the picture and the block row under each row, around (px, pz). */
+	private static void lines(double px, double pz, float scale) {
+		if (cols.length != W) {
+			cols = new int[W];
+			rows = new int[W];
+		}
+		float r = W / 2f, inv = 1f / scale;
+		for (int q = 0; q < W; q++) {
+			float s = q + 0.5f - r;
+			cols[q] = (int) Math.floor(px + s * inv);
+			rows[q] = (int) Math.floor(pz + s * inv);
+		}
+	}
+
+	/** The ground into the picture north up, from the blocks `lines` found under its columns and rows. */
+	private static void paintNorth(boolean circle) {
+		float r = W / 2f;
+		float ring = (r - 1.2f) * (r - 1.2f);
+		for (int py = 0; py < W; py++) {
+			float sy = py + 0.5f - r;
+			int z = rows[py];
+			for (int qx = 0; qx < W; qx++) {
+				if (circle) {
+					float sx = qx + 0.5f - r, d = sx * sx + sy * sy;
+					if (d > r * r) {
+						view.setPixel(qx, py, 0);
+						continue;
+					}
+					if (d > ring) {
+						view.setPixel(qx, py, BORDER);
+						continue;
+					}
+				} else if (qx == 0 || py == 0 || qx == W - 1 || py == W - 1) {
+					view.setPixel(qx, py, BORDER);
+					continue;
+				}
+				int c = MinimapTerrain.sample(cols[qx], z);
+				view.setPixel(qx, py, c == 0 ? UNKNOWN : c);
+			}
+		}
+	}
+
 	/** A point `ox`, `oz` blocks from the player to screen pixels from the map's middle. */
 	static float[] toScreen(double ox, double oz, float scale, float cos, float sin) {
 		return new float[] { (float) (-cos * ox - sin * oz) * scale, (float) (sin * ox - cos * oz) * scale };
@@ -228,8 +290,12 @@ public final class Minimap implements HudModule {
 	/** Players and mobs nearby, where they are inside the map (none on its edge: only those the game knows of, close by). */
 	private static void entities(GuiGraphicsExtractor g, Minecraft mc, int cx, int cy, double[] at, float scale, float cos, float sin, float r, boolean circle) {
 		float reach = r - 4;
+		// further than the map's corners, in blocks: left out before working out where on the map
+		double far = reach * 1.42 / scale;
 		List<MapEntities.Mark> drawn = new java.util.ArrayList<>();
 		for (MapEntities.Mark m : MapEntities.around(mc, partial())) {
+			double dx = m.x() - at[0], dz = m.z() - at[1];
+			if (dx * dx + dz * dz > far * far) continue;
 			float[] s = toScreen(m.x() - at[0], m.z() - at[1], scale, cos, sin);
 			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
 			if (!inside) continue;

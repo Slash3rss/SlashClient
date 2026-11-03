@@ -32,8 +32,41 @@ public final class MapEntities {
 	static final int PLAYER = 0xFF60A5FA, HOSTILE = 0xFFEF4444, PASSIVE = 0xFF4ADE80;
 	static final int KIND_PLAYER = 0, KIND_HOSTILE = 1, KIND_PASSIVE = 2;
 
-	/** One thing to draw: where it is (x, z), which way it looks and what it is. */
-	record Mark(Entity entity, int kind, double x, double z, float yaw) {}
+	/** One thing to draw: what it is, and where it is (x, z) at the moment the maps are drawn. */
+	static final class Mark {
+		private final Entity entity;
+		private final int kind;
+		private double x, z;
+
+		Mark(Entity entity, int kind) {
+			this.entity = entity;
+			this.kind = kind;
+		}
+
+		Entity entity() {
+			return entity;
+		}
+
+		int kind() {
+			return kind;
+		}
+
+		double x() {
+			return x;
+		}
+
+		double z() {
+			return z;
+		}
+	}
+
+	/**
+	 * The marks of the last tick: which things to draw changes only with a tick, so they are picked
+	 * once a tick (not every frame) and only moved between ticks.
+	 */
+	private static List<Mark> marks = List.of();
+	private static Object marksLevel, marksPlayer;
+	private static int marksTick = Integer.MIN_VALUE, marksFlags = -1;
 
 	/** For the tests: the marks each map drew last (described only when a test asks, not every frame). */
 	public static List<Mark> shownMinimap = List.of(), shownWorldMap = List.of();
@@ -53,6 +86,24 @@ public final class MapEntities {
 	static List<Mark> around(Minecraft mc, float t) {
 		if (!on() || mc.level == null || mc.player == null) return List.of();
 		HudConfig cfg = SlashHud.config;
+		int flags = (cfg.mapPlayers ? 1 : 0) | (cfg.mapHostile ? 2 : 0) | (cfg.mapPassive ? 4 : 0);
+		if (mc.level != marksLevel || mc.player != marksPlayer || mc.player.tickCount != marksTick || flags != marksFlags) {
+			marksLevel = mc.level;
+			marksPlayer = mc.player;
+			marksTick = mc.player.tickCount;
+			marksFlags = flags;
+			marks = pick(mc, cfg);
+		}
+		for (Mark m : marks) {
+			Entity e = m.entity;
+			m.x = e.xo + (e.getX() - e.xo) * t;
+			m.z = e.zo + (e.getZ() - e.zo) * t;
+		}
+		return marks;
+	}
+
+	/** The things to draw now, mobs first and players last. */
+	private static List<Mark> pick(Minecraft mc, HudConfig cfg) {
 		Set<UUID> friends = new HashSet<>();
 		for (var p : dev.slash3rss.slashclient.hud.social.FriendPositions.visible(mc)) friends.addAll(p.uuids());
 		List<Mark> mobs = new ArrayList<>(), players = new ArrayList<>();
@@ -66,8 +117,7 @@ public final class MapEntities {
 				kind = e.getType().getCategory() == MobCategory.MONSTER ? KIND_HOSTILE : KIND_PASSIVE;
 				if (kind == KIND_HOSTILE ? !cfg.mapHostile : !cfg.mapPassive) continue;
 			} else continue;
-			double x = e.xo + (e.getX() - e.xo) * t, z = e.zo + (e.getZ() - e.zo) * t;
-			(kind == KIND_PLAYER ? players : mobs).add(new Mark(e, kind, x, z, e.getYRot()));
+			(kind == KIND_PLAYER ? players : mobs).add(new Mark(e, kind));
 		}
 		// hostile over the others, so a zombie in a herd of cows is seen
 		mobs.sort((a, b) -> Integer.compare(b.kind(), a.kind()));
@@ -83,6 +133,8 @@ public final class MapEntities {
 	public static void forget() {
 		shownMinimap = List.of();
 		shownWorldMap = List.of();
+		marks = List.of();
+		marksLevel = marksPlayer = null;
 	}
 
 	static boolean realPlayer(Minecraft mc, AbstractClientPlayer p) {

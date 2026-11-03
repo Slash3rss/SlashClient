@@ -39,6 +39,8 @@ public final class MinimapTerrain {
 	private static final int BUDGET = 6;
 	/** The ring of near chunks read again in turn (within 2 chunks: the first 25 of RING). */
 	private static final int NEAR = 25;
+	/** With nothing showing the ground, read chunks are looked at again only every this many ticks. */
+	private static final int IDLE = 4;
 	private static final long EMPTY = Long.MIN_VALUE;
 	/** Water's colour is stored with this alpha: it is drawn flat, its depth already in the colour. */
 	static final int FLAT = 0xFE000000;
@@ -46,11 +48,13 @@ public final class MinimapTerrain {
 	/** Per column: 0 when nothing is there (void), else 0xFF/0xFE alpha and the map colour. */
 	private static int[] color;
 	private static short[] height;
+	/** Per column: its colour as drawn (what sample gives), worked out when its chunk or the one north of it is read. */
+	private static int[] drawn;
 	/** Which chunk each slot holds, and the height a roofed dimension's chunk was read at. */
 	private static long[] slotKey;
 	private static int[] slotBase;
 	private static ClientLevel level;
-	private static int nearTurn, allTurn;
+	private static int nearTurn, allTurn, idleTurn;
 	/** Goes up whenever a column changed, so the view knows to paint itself again. */
 	static int version;
 	/** The chunks seen in each dimension of this world, as drawn, the most recently read last. */
@@ -86,10 +90,16 @@ public final class MinimapTerrain {
 		version++;
 	}
 
-	static void tick(Minecraft mc) {
+	/**
+	 * `idle`: nothing shows the ground right now (the minimap is off and the full map closed). New
+	 * chunks are still read, so the full map keeps all that was seen, but read ones are looked at
+	 * again only every IDLE ticks instead of every tick.
+	 */
+	static void tick(Minecraft mc, boolean idle) {
 		if (color == null) {
 			color = new int[SIZE * SIZE];
 			height = new short[SIZE * SIZE];
+			drawn = new int[SIZE * SIZE];
 			slotKey = new long[SLOTS * SLOTS];
 			slotBase = new int[SLOTS * SLOTS];
 			Arrays.fill(slotKey, EMPTY);
@@ -122,6 +132,7 @@ public final class MinimapTerrain {
 			if (--budget == 0) break;
 		}
 		// and again in turn, for blocks placed and broken: the near ones every ~1 s, the rest every ~50 s
+		if (idle && idleTurn++ % IDLE != 0) return;
 		int[] near = RING[nearTurn++ % NEAR];
 		if (level.hasChunk(pcx + near[0], pcz + near[1])) read(pcx + near[0], pcz + near[1], roof, base);
 		int[] far = RING[NEAR + allTurn++ % (RING.length - NEAR)];
@@ -167,6 +178,14 @@ public final class MinimapTerrain {
 		}
 		slotKey[s] = key(cx, cz);
 		slotBase[s] = base;
+		for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) shadeColumn(cx * 16 + lx, cz * 16 + lz);
+		// the first row of the chunk in the slot south of it is shaded against this one (or against
+		// nothing, when it is not its neighbour): worked out again
+		long south = slotKey[slot(cx, cz + 1)];
+		if (south != EMPTY) {
+			int sx = (int) (south >> 32), sz = (int) south;
+			for (int lx = 0; lx < 16; lx++) shadeColumn(sx * 16 + lx, sz * 16);
+		}
 		if (changed) version++;
 		remember(cx, cz);
 		// the chunk south of it is shaded by this one's last row: drawn again for the full map
@@ -244,17 +263,29 @@ public final class MinimapTerrain {
 		if (color == null) return 0;
 		int cx = x >> 4, cz = z >> 4;
 		if (slotKey[slot(cx, cz)] != key(cx, cz)) return 0;
+		// worked out once when read: the minimap asks for every pixel of every picture it paints
+		return drawn[(z & MASK) * SIZE + (x & MASK)];
+	}
+
+	/** A column of a chunk in the grid: its colour as drawn, from its own top and the column north of it. */
+	private static void shadeColumn(int x, int z) {
 		int i = (z & MASK) * SIZE + (x & MASK);
 		int c = color[i];
-		if (c == 0) return 0;
-		if ((c & 0xFF000000) == FLAT) return c | 0xFF000000;
-		int n = z - 1, ncz = n >> 4;
+		if (c == 0) {
+			drawn[i] = 0;
+			return;
+		}
+		if ((c & 0xFF000000) == FLAT) {
+			drawn[i] = c | 0xFF000000;
+			return;
+		}
+		int n = z - 1, cx = x >> 4, ncz = n >> 4;
 		int rise = 0;
 		if (slotKey[slot(cx, ncz)] == key(cx, ncz)) {
 			int j = (n & MASK) * SIZE + (x & MASK);
 			if (color[j] != 0) rise = height[i] - height[j];
 		}
-		return 0xFF000000 | shade(c, rise > 0 ? 1.08f : rise < 0 ? 0.80f : 0.94f);
+		drawn[i] = 0xFF000000 | shade(c, rise > 0 ? 1.08f : rise < 0 ? 0.80f : 0.94f);
 	}
 
 	/** The height of a known column, or Integer.MIN_VALUE. */
