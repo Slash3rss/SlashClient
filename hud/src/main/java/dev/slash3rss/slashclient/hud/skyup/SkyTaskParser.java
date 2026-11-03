@@ -122,8 +122,20 @@ public final class SkyTaskParser {
 	 * and puts a mouse icon in "LPM \ue510 » Ukończ".
 	 */
 	public static String plain(String s) {
+		if (s == null) return "";
+		// most names have none of it: looked over once instead of copied three times (this runs for many slots a tick)
+		if (!marked(s)) return s.strip();
 		// SkyUp's no-break spaces ("Stojak na zbroję") as plain ones; written as codes, so no editor loses them
-		return s == null ? "" : NO_BREAK.matcher(PRIVATE.matcher(COLOUR.matcher(s).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
+		return NO_BREAK.matcher(PRIVATE.matcher(COLOUR.matcher(s).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
+	}
+
+	/** Whether the text has anything plain() takes off: a colour code, a private character or a no-break space. */
+	private static boolean marked(String s) {
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c == '§' || c >= '' && c <= '' || c == ' ' || c == ' ' || c == ' ') return true;
+		}
+		return false;
 	}
 
 	// compiled once: plain() runs for every slot and line the tracker looks at, many times a frame

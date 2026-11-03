@@ -76,6 +76,8 @@ public final class SkyFish {
 
 	static Tally lifetime() {
 		if (lifetime == null) {
+			// a save still on its way: read once it is there
+			SkyTasks.awaitWrites();
 			try {
 				if (Files.exists(FILE)) lifetime = GSON.fromJson(Files.readString(FILE), Tally.class);
 			} catch (Exception e) {
@@ -89,13 +91,35 @@ public final class SkyFish {
 		return lifetime;
 	}
 
+	/** Whether a fish was counted since the last save, and when that was. */
+	private static boolean dirty;
+	private static long savedAt;
+	/** Fish come quickly at a contest: saved together, at most this often. */
+	private static final long SAVE_MS = 3_000;
+
+	/** A fish counted: saved within a few seconds (off the game's thread), with whatever follows it. */
 	private static void save() {
+		dirty = true;
+	}
+
+	private static void saveNow() {
+		dirty = false;
+		savedAt = System.currentTimeMillis();
 		try {
-			Files.createDirectories(FILE.getParent());
-			Files.writeString(FILE, GSON.toJson(lifetime()));
+			SkyTasks.writeLater(FILE, GSON.toJson(lifetime()), "fish");
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: SkyUp fish: {}", e.toString());
 		}
+	}
+
+	/** Every tick: what was counted lately, once a few seconds went by since the last save. */
+	static void saveDue() {
+		if (dirty && System.currentTimeMillis() - savedAt > SAVE_MS) saveNow();
+	}
+
+	/** Leaving a server or closing the game: what is not saved yet is saved now. */
+	static void flush() {
+		if (dirty) saveNow();
 	}
 
 	/** A new server: a new session (and a new trip). */
@@ -258,6 +282,8 @@ public final class SkyFish {
 	}
 
 	public static void resetForTest() {
+		// the fish so far saved first, as they would be a few seconds later
+		flush();
 		trip = new Tally();
 		session = new Tally();
 		lifetime = new Tally();
