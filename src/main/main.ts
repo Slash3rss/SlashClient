@@ -375,6 +375,10 @@ handle('settings:save', async (settings: Partial<Settings>) => {
     const picked = Array.isArray(allowed.sharedPerAccount) ? allowed.sharedPerAccount : [];
     allowed.sharedPerAccount = store.accounts.map((a) => a.id).filter((id) => picked.includes(id));
   }
+  if (allowed.referralPromptSkipped !== undefined) {
+    const ids = Array.isArray(allowed.referralPromptSkipped) ? allowed.referralPromptSkipped : [];
+    allowed.referralPromptSkipped = [...new Set(ids.filter((id) => typeof id === 'string' && /^[\w-]{1,64}$/.test(id)))].slice(-50);
+  }
   store.settings = { ...store.settings, ...allowed };
   if (allowed.launcherWindow !== undefined && (allowed.launcherWindow || '') !== (previous.launcherWindow || '')) applyWindowChoice(allowed.launcherWindow);
   await applyToolSettings(store.settings, previous);
@@ -2418,7 +2422,7 @@ handle('lan:join', (friendId: string) => {
 });
 
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|challenges|groups|clans|communities|wallet|shop|gifs)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|challenges|referrals|groups|clans|communities|wallet|shop|gifs)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
 

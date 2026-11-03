@@ -6,6 +6,7 @@
 
 import { TOOLS_EN } from './i18nTools';
 import { SPARKS_EN } from './i18nSparks';
+import { REFERRALS_EN } from './i18nReferrals';
 import { PROFILES_EN } from './i18nProfiles';
 import { SUPPORT_EN } from './i18nSupport';
 import { RANKS_EN } from './i18nRanks';
@@ -47,6 +48,8 @@ const EN: Record<string, string> = {
   ...PI_EN,
   // sparks, the shop and the achievements in categories (own file)
   ...SPARKS_EN,
+  // inviting friends (own file)
+  ...REFERRALS_EN,
   // the Installed list's dependencies, leftover libraries and multi-select (own file)
   ...MOD_DEPS_EN,
   // public profiles (own file)

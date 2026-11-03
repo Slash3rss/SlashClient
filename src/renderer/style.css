@@ -1680,6 +1680,44 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 .ledger-amount.minus { color: #f87171; }
 .ledger-after { font: 11px var(--font-mono); min-width: 52px; text-align: right; }
 .cosmetic-shop { margin-left: auto; }
+/* inviting friends: the "Zaproś" tab in Achievements and the question after signing in (referrals.ts) */
+.ref-hero { gap: 16px; }
+.ref-hero-text h3 { margin: 0 0 6px; }
+.ref-hero-text p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.ref-share { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; }
+.ref-share-item { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ref-share-link { flex: 1 1 280px; }
+.ref-share .code-row { align-items: center; min-width: 0; }
+.ref-code { font-size: 24px; padding: 6px 14px; }
+.ref-link { flex: 1; font: 13px var(--font-mono); color: var(--text-secondary); user-select: text; padding: 7px 12px; border-radius: 10px; background: rgba(255, 255, 255, .04); border: 1px solid var(--glass-border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ach-section-head small.ref-next { margin-left: auto; font: 12.5px var(--font-sans); }
+.ref-reward .ach-text, .ref-friend > .ach-text { flex: 1; min-width: 0; }
+.ref-reward .ref-cape { width: 46px; height: 64px; display: grid; place-items: center; flex: none; color: var(--text-muted); font-size: 20px; }
+.ref-reward .ref-cape canvas { width: 40px; height: 64px; image-rendering: pixelated; }
+.ref-reward:not(.done) .ref-cape > * { filter: grayscale(.85) brightness(.6); }
+.ref-friends { padding: 2px 14px; }
+.ref-friend { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.ref-friend:last-child { border-bottom: none; }
+.ref-friend .ach-bar { max-width: 260px; }
+.ref-friend .ach-text b small { font-weight: 500; }
+.ref-hint { color: #fbbf24; font-size: 12px; }
+.ref-status { flex: none; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--glass-border); white-space: nowrap; }
+.ref-status.pending { color: var(--text-secondary); background: rgba(255, 255, 255, .04); }
+.ref-status.counted { color: #4ade80; background: rgba(74, 222, 128, .1); border-color: rgba(74, 222, 128, .3); }
+.ref-status.rejected { color: #f87171; background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); }
+.ref-friend.rejected .ach-text { opacity: .65; }
+.ref-enter h3 { margin: 0 0 6px; }
+.ref-enter p { margin: 0 0 10px; font-size: 13.5px; }
+.ref-form { display: flex; flex-direction: column; gap: 6px; }
+.ref-form .row { gap: 8px; flex-wrap: wrap; }
+.ref-input { flex: 1 1 180px; width: auto; font: 600 15px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.ref-input::placeholder { font-family: var(--font-sans); letter-spacing: 0; text-transform: none; }
+.ref-error { margin: 0; font-size: 13px; }
+.ref-modal { width: min(480px, 100%); }
+.ref-prompt { display: flex; flex-direction: column; gap: 10px; }
+.ref-prompt p { margin: 0; }
+.ref-success { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: rgba(34, 197, 94, .12); border: 1px solid rgba(34, 197, 94, .45); }
+.ref-success i { color: #4ade80; margin-top: 3px; }
 .cosmetic-shop b { color: var(--text, #fff); }
 /* public profile: the row in Friends and the privacy window (profilePrivacy.ts) */
 .fr-profile-row { gap: 6px; flex-wrap: wrap; }

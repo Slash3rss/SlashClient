@@ -15,6 +15,7 @@ import { initVersionMove } from './versionMove';
 import { initJavaChoice } from './javaChoice';
 import { createAchievements } from './achievements';
 import { buyWithConfirm } from './sparkShop';
+import { createReferrals } from './referrals';
 import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
@@ -82,7 +83,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -2049,8 +2050,18 @@ document.querySelector('.nav[data-view="friends"]')?.addEventListener('click', (
 
 // ---------- achievements ----------
 
+// inviting friends: the "Zaproś" tab in Achievements and the question after signing in (referrals.ts)
+const invites = createReferrals({
+  api, toast, errorText,
+  picture: (slot, id) => cosmeticPicture(slot as Slot, id),
+  skipped: (account) => (store.settings.referralPromptSkipped ?? []).includes(account),
+  skip: (account) => {
+    store.settings.referralPromptSkipped = [...(store.settings.referralPromptSkipped ?? []), account];
+    void api.saveSettings({ referralPromptSkipped: store.settings.referralPromptSkipped }).catch(() => undefined);
+  },
+});
 const achievements = createAchievements($('#achievements-root'), {
-  api, toast, errorText, badge: $('#sparks-badge'),
+  api, toast, errorText, badge: $('#sparks-badge'), invites,
   // the shop shows the cosmetics as the cosmetics menu does
   picture: (slot, id) => cosmeticPicture(slot as Slot, id),
   slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),

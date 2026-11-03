@@ -2,6 +2,7 @@ import { getLang, locale, t } from '../shared/i18n';
 import { currencyName, currencyOf, signedSparks, sparkAmount, sparkShort, sparks } from '../shared/sparks';
 import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
 import { bonusText, completedText, renderChallenges, type Challenge, type Challenges } from './challenges';
+import type { createReferrals, Referrals } from './referrals';
 
 /**
  * The "Achievements" view: SlashClient achievements of the signed-in account in categories (play
@@ -41,6 +42,8 @@ export interface AchievementsDeps {
   slotName?: (slot: string) => string;
   /** The balance next to the menu entry (hidden while signed out). */
   badge?: HTMLElement;
+  /** Inviting friends (referrals.ts): the "Zaproś" tab, shown only when the server has it. */
+  invites?: ReturnType<typeof createReferrals>;
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -104,7 +107,7 @@ export function byCategory(list: Achievement[], order: string[]): { category: st
   }).filter((g) => g.items.length);
 }
 
-type Tab = 'list' | 'challenges' | 'shop' | 'history';
+type Tab = 'list' | 'challenges' | 'shop' | 'history' | 'invite';
 
 export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
   const { api } = deps;
@@ -198,7 +201,10 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
 
   function tabs() {
     const bar = el('div', { className: 'ach-tabs' });
-    for (const [key, label, iconName] of [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][]) {
+    const all = [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][];
+    // inviting friends: only when the server has it (an older one, or switched off, has no tab)
+    if (deps.invites?.available() || tab === 'invite') all.push(['invite', t('Zaproś'), 'fa-user-plus']);
+    for (const [key, label, iconName] of all) {
       const b = el('button', { type: 'button', className: `ach-tab${tab === key ? ' active' : ''}` }, icon(iconName), ` ${label}`);
       b.addEventListener('click', () => {
         tab = key;
@@ -265,6 +271,8 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       if (e.reason === 'achievement') return [icon('fa-trophy'), t(' Osiągnięcie: {0}', label || e.ref)];
       if (e.reason === 'purchase') return [icon('fa-bag-shopping'), t(' Zakup: {0}', label || e.ref)];
       if (e.reason === 'challenge') return [icon('fa-list-check'), t(' Wyzwanie: {0}', label || e.ref)];
+      // a counted invite, for the inviter and for the friend (referrals.ts)
+      if (/^referral/.test(e.reason)) return [icon('fa-user-plus'), t(' Zaproszenie: {0}', label || e.ref)];
       return [icon('fa-user-shield'), t(' Od administracji: {0}', e.note)];
     };
     const rows = w.ledger.map((e) => el('div', { className: 'ledger-row' },
@@ -289,7 +297,8 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     | { kind: 'list'; mine: Mine }
     | { kind: 'shop'; res: ShopData }
     | { kind: 'history'; w: Wallet }
-    | { kind: 'challenges'; res?: Challenges; fetchedAt: number };
+    | { kind: 'challenges'; res?: Challenges; fetchedAt: number }
+    | { kind: 'invite'; res?: Referrals };
   /**
    * What each tab showed last, by tab (and friend): coming back to it, or picking a category, shows it
    * at once instead of "Wczytywanie…"; it is asked again quietly and redrawn only if something changed.
@@ -318,6 +327,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       setBalance(w.balance);
       return { kind: 'history', w };
     }
+    if (tab === 'invite') return { kind: 'invite', res: await deps.invites?.load() };
     if (tab === 'challenges') {
       const fetchedAt = Date.now();
       let res: Challenges;
@@ -352,6 +362,13 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
         el('div', { className: 'ach-head' }, el('h3', {}, icon('fa-trophy'), t(' Osiągnięcia: {0}', f.name)),
           el('span', { className: 'muted', textContent: t('{0} z {1} odblokowanych', unlocked, achievements.length) }), back),
         chips, ...sections);
+      return;
+    }
+    if (data.kind === 'invite') {
+      const body = data.res && deps.invites
+        ? deps.invites.render(data.res, () => void render(true))
+        : [el('div', { className: 'card glass-panel' }, el('p', { className: 'muted', textContent: t('Zaproszenia są teraz wyłączone.') }))];
+      root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
       return;
     }
     if (data.kind !== 'list') {
@@ -501,6 +518,12 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
   });
   api.on('notify:open', (target: { view?: string }) => {
     if (target?.view === 'achievements') document.querySelector<HTMLButtonElement>('.nav[data-view="achievements"]')?.click();
+  });
+  // the "Zaproś" tab appears or goes once the server said whether it has invites (or a code was entered)
+  deps.invites?.onChange(() => {
+    if (!deps.invites?.available() && tab === 'invite') tab = 'list';
+    kept.delete('invite');
+    if (isVisible() && !friend) redraw();
   });
   // the launcher may have connected before this view existed
   void api.socialState().then((s: { user?: unknown; connected?: boolean } | undefined) => s?.user && s.connected && catchUp()).catch(() => undefined);

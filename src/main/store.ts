@@ -150,6 +150,8 @@ export interface Settings {
   updateChannel?: 'stable' | 'beta';
   /** Minecraft accounts (their ids here) whose games keep shared game settings of their own (sync.ts); the rest share one set. */
   sharedPerAccount?: string[];
+  /** SlashClient accounts (their ids) that answered "Masz kod od znajomego?" with "Pomiń": not asked again (referrals.ts). */
+  referralPromptSkipped?: string[];
 }
 
 export interface StoreData {
