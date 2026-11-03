@@ -221,12 +221,19 @@ public final class MobHeads {
 		return face(type) != NO_FACE;
 	}
 
-	/** Each mob's texture, looked up now and then (a variant rarely changes: a sheared sheep, a shooting ghast). */
-	private record Looked(Identifier texture, long until) {}
+	/**
+	 * Each mob's texture, looked up now and then (a variant rarely changes: a sheared sheep, a shooting
+	 * ghast), with its face as last made (for that texture's size then), so drawing it makes nothing new.
+	 */
+	private record Looked(Identifier texture, Head head, Size size, long until) {}
 
 	private static final Map<Entity, Looked> TEXTURES = new WeakHashMap<>();
-	/** Each texture's real size, read from the file again after a few seconds (a resource pack may have changed it). */
-	private record Size(int w, int h, long until) {}
+	/**
+	 * Each texture's real size and the resource pack it came from. After a few seconds we ask again
+	 * which pack has it, and read the file again only when that is another one (a pack was switched
+	 * or the resources reloaded), not every time.
+	 */
+	private record Size(int w, int h, Object source, long until) {}
 
 	private static final Map<Identifier, Size> SIZES = new HashMap<>();
 	private static final Identifier NONE = Identifier.fromNamespaceAndPath("slashclient-hud", "none");
@@ -241,18 +248,32 @@ public final class MobHeads {
 		if (looked == null || now > looked.until()) {
 			Identifier tex = texture(mc, e);
 			// spread over time, not every mob of a herd at once
-			looked = new Looked(tex == null ? NONE : tex, now + 1500 + (e.getId() & 511));
+			looked = new Looked(tex == null ? NONE : tex, null, null, now + 1500 + (e.getId() & 511));
 			TEXTURES.put(e, looked);
 		}
 		if (looked.texture() == NONE) return null;
-		Size size = SIZES.get(looked.texture());
-		if (size == null || now > size.until()) {
-			int[] wh = pngSize(mc, looked.texture());
-			size = wh == null ? new Size(f.texW(), f.texH(), now + 5000) : new Size(wh[0], wh[1], now + 5000);
-			SIZES.put(looked.texture(), size);
-		}
+		Size size = size(mc, looked.texture(), f, now);
+		if (looked.head() != null && looked.size() == size) return looked.head();
 		if (f == FACES.get("tropical_fish") && looked.texture().getPath().endsWith("tropical_b.png")) f = TROPICAL_LARGE;
-		return new Head(looked.texture(), f, size.w(), size.h());
+		Head head = new Head(looked.texture(), f, size.w(), size.h());
+		TEXTURES.put(e, new Looked(looked.texture(), head, size, looked.until()));
+		return head;
+	}
+
+	/** A texture's real size (the face's usual one when it is no file of a pack), kept until a pack changes. */
+	private static Size size(Minecraft mc, Identifier tex, Face f, long now) {
+		Size size = SIZES.get(tex);
+		if (size != null && now <= size.until()) return size;
+		var resource = mc.getResourceManager().getResource(tex);
+		Object source = resource.isPresent() ? resource.get().source() : null;
+		if (size != null && size.source() == source) {
+			size = new Size(size.w(), size.h(), source, now + 5000);
+		} else {
+			int[] wh = resource.isPresent() ? pngSize(resource.get()) : null;
+			size = wh == null ? new Size(f.texW(), f.texH(), source, now + 5000) : new Size(wh[0], wh[1], source, now + 5000);
+		}
+		SIZES.put(tex, size);
+		return size;
 	}
 
 	/**
@@ -279,11 +300,9 @@ public final class MobHeads {
 		return mc.getResourceManager().getResource(grown).isPresent() ? grown : null;
 	}
 
-	/** A PNG's width and height from its header, or null when there is no such file (a texture made in the game). */
-	private static int[] pngSize(Minecraft mc, Identifier tex) {
-		var resource = mc.getResourceManager().getResource(tex);
-		if (resource.isEmpty()) return null;
-		try (var in = resource.get().open()) {
+	/** A PNG's width and height from its header, or null when it has none. */
+	private static int[] pngSize(net.minecraft.server.packs.resources.Resource resource) {
+		try (var in = resource.open()) {
 			byte[] b = in.readNBytes(24);
 			if (b.length < 24 || b[12] != 'I' || b[13] != 'H' || b[14] != 'D' || b[15] != 'R') return null;
 			int w = (b[16] & 255) << 24 | (b[17] & 255) << 16 | (b[18] & 255) << 8 | b[19] & 255;
