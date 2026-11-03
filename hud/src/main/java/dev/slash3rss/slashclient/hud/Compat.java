@@ -66,8 +66,22 @@ public final class Compat {
 		//#endif
 	}
 
+	/** The on/off word that ends our own action bar messages ("Fullbright on", "Autoclicker: wyłączony"). */
+	private static final java.util.regex.Pattern STATE = java.util.regex.Pattern.compile("(?<=\\s)(on|off|w\u0142\u0105czon[aey]|wy\u0142\u0105czon[aey])$", java.util.regex.Pattern.CASE_INSENSITIVE);
+
 	/** The line above the hotbar ("Fullbright on"). */
 	public static void overlay(Minecraft mc, Component text) {
+		// "…: on" / "…: off" with the state in green or red
+		java.util.regex.Matcher state = STATE.matcher(text.getString());
+		if (state.find()) {
+			String word = state.group(1);
+			boolean on = !word.equalsIgnoreCase("off") && !word.toLowerCase(java.util.Locale.ROOT).startsWith("wy");
+			text = Component.literal(state.replaceFirst("")).append(Component.literal(word)
+				.withStyle(s -> s.withColor(net.minecraft.network.chat.TextColor.fromRgb(on ? 0x4ADE80 : 0xF87171))));
+		}
+		// the mod's own messages in their colour, so they stand apart from a server's
+		int color = SlashHud.config == null ? 0xFFFFFF : SlashHud.config.actionBarColor & 0xFFFFFF;
+		text = Component.empty().withStyle(s -> s.withColor(net.minecraft.network.chat.TextColor.fromRgb(color))).append(text);
 		//#if MC >= 26.2
 		mc.gui.hud.setOverlayMessage(text, false);
 		//#else

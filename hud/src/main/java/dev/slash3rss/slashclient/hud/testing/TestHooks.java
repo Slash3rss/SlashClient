@@ -679,6 +679,24 @@ public final class TestHooks {
 		c.actionBarColor = 0xFFFACC15;
 	}
 
+	/** Our own "…on" / "…off" message on the action bar: the colours of its first and last letter. */
+	public static String actionBarStateColors(boolean on) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Compat.overlay(mc, net.minecraft.network.chat.Component.translatable(on ? "slashclient-hud.fullbright.on" : "slashclient-hud.fullbright.off"));
+		//#if MC >= 26.2
+		Object gui = mc.gui.hud;
+		//#else
+		//$ Object gui = mc.gui;
+		//#endif
+		var message = ((dev.slash3rss.slashclient.hud.mixin.OverlayMessageAccessor) gui).slashclient$overlayMessage();
+		java.util.List<String> colors = new java.util.ArrayList<>();
+		message.getVisualOrderText().accept((i, style, cp) -> {
+			colors.add(style.getColor() == null ? "none" : String.format("%06X", style.getColor().getValue()));
+			return true;
+		});
+		return colors.get(0) + "/" + colors.get(colors.size() - 1);
+	}
+
 	/** The colour the action bar's message is drawn in, as RRGGBB ("none": the game's white). */
 	public static String actionBarColor() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

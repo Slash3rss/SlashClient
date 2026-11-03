@@ -236,6 +236,7 @@
 	"slashclient-hud.crosshairColor": "Kolor celownika",
 	"slashclient-hud.crosshairSize": "Rozmiar celown. %s",
 	"slashclient-hud.textColor": "Kolor tekstu",
+	"slashclient-hud.actionbar.modColor": "Kolor komunikatów SlashClient",
 	"slashclient-hud.module.movement": "Sprint/skradanie",
 	"slashclient-hud.sprinting": "Sprint",
 	"slashclient-hud.sneaking": "Skradanie",

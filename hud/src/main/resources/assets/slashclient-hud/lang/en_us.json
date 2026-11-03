@@ -236,6 +236,7 @@
 	"slashclient-hud.crosshairColor": "Crosshair colour",
 	"slashclient-hud.crosshairSize": "Crosshair size %s",
 	"slashclient-hud.textColor": "Text colour",
+	"slashclient-hud.actionbar.modColor": "SlashClient messages colour",
 	"slashclient-hud.module.movement": "Sprint/sneak",
 	"slashclient-hud.sprinting": "Sprinting",
 	"slashclient-hud.sneaking": "Sneaking",

@@ -68,9 +68,16 @@ public class GameHudParts implements FabricClientGameTest {
 			// as tall as the game draws it: the title and two lines, 9 pixels each and 1 more, at 0.8
 			if (board[3] != Math.round(28 * 0.8f)) throw new AssertionError("The scoreboard's box is not its real height: h=" + board[3]);
 			context.waitTicks(5);
-			// and in the colour set for it
+			// a server's message keeps the game's colours: only the mod's own get the colour set
 			String color = context.computeOnClient(mc -> TestHooks.actionBarColor());
-			if (!color.equals("FACC15")) throw new AssertionError("The action bar's colour: " + color);
+			if (!color.equals("none")) throw new AssertionError("A server's action bar message got a colour: " + color);
+			// our own "on" / "off": the state in green or red, the rest in the colour set for them
+			String on = context.computeOnClient(mc -> TestHooks.actionBarStateColors(true));
+			if (!on.equals("FACC15/4ADE80")) throw new AssertionError("Colours of an 'on' message: " + on);
+			String off = context.computeOnClient(mc -> TestHooks.actionBarStateColors(false));
+			if (!off.equals("FACC15/F87171")) throw new AssertionError("Colours of an 'off' message: " + off);
+			context.waitTicks(3);
+			context.takeScreenshot("game-hud-actionbar-off");
 			context.takeScreenshot("game-hud-parts-moved");
 			// the editor: the parts as boxes, and the armour at its biggest
 			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);

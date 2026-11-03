@@ -91,7 +91,6 @@
 		"MouseHandlerMixin",
 		"WindowTitleMixin",
 		"OverlayMessageAccessor",
-		"ActionBarColorMixin",
 		"NametagMixin",
 		"OnlineServerEntryMixin",
 		"OwnArmorMixin",
