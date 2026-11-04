@@ -171,7 +171,7 @@ export function partnerBanner(p, extra = []) {
 
 const ERRORS = {
   unauthorized: 'Sesja wygasła, zaloguj się ponownie.',
-  banned: 'To konto jest zablokowane.',
+  banned: (d) => `To konto jest zablokowane${d.until ? ` do ${new Date(d.until).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}.${d.reason ? ` Powód: ${d.reason}` : ''}`,
   not_admin: 'To konto nie ma dostępu do panelu admina.',
   bad_picture: 'To nie jest obrazek PNG ani JPG.',
   too_large: 'Obrazek jest za duży (do 3 MB).',
@@ -256,7 +256,7 @@ const ERRORS = {
 /** The same in English, for what a player can meet on the site (the admin panel's own ones stay Polish). */
 const ERRORS_EN = {
   unauthorized: 'Your session has expired, sign in again.',
-  banned: 'This account is banned.',
+  banned: (d) => `This account is banned${d.until ? ` until ${new Date(d.until).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}.${d.reason ? ` Reason: ${d.reason}` : ''}`,
   not_admin: 'This account has no access to the admin panel.',
   bad_picture: 'This is not a PNG or JPG picture.',
   too_large: 'The picture is too large (up to 3 MB).',
