@@ -1754,7 +1754,10 @@ public final class TestHooks {
 
 	private static final java.util.Map<String, Integer> SHOP_PRICES = java.util.Map.ofEntries(java.util.Map.entry("emberstar", 600), java.util.Map.entry("obsidian", 500),
 		java.util.Map.entry("coral", 500), java.util.Map.entry("thunder", 700), java.util.Map.entry("regal", 800), java.util.Map.entry("cosmos", 1000),
-		java.util.Map.entry("emberwings", 1200), java.util.Map.entry("sapphire", 1000), java.util.Map.entry("obsidianwings", 1000));
+		java.util.Map.entry("emberwings", 1200), java.util.Map.entry("sapphire", 1000), java.util.Map.entry("obsidianwings", 1000),
+		java.util.Map.entry("dragonscale", 600), java.util.Map.entry("hellfire", 600), java.util.Map.entry("heavens", 600), java.util.Map.entry("jollyroger", 500),
+		java.util.Map.entry("autumnleaves", 400), java.util.Map.entry("sapphirecape", 700),
+		java.util.Map.entry("dragonelytra", 800), java.util.Map.entry("obsidianelytra", 700), java.util.Map.entry("sapphireelytra", 700));
 
 	/** The cosmetics menu with the shop's capes and wings at their prices (the coral cape and the sapphire wings already bought) and this many Sparks. */
 	public static void shopMenu(String slot, int balance) {

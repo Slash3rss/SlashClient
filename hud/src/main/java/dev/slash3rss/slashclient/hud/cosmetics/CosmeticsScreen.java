@@ -143,8 +143,8 @@ public class CosmeticsScreen extends Screen {
 	public static CosmeticsScreen sample(String slot) {
 		CosmeticsScreen screen = new CosmeticsScreen(null);
 		List<Entry> list = new ArrayList<>();
-		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner") && !id.equals("streak30") && !id.equals("skyup_noc"),
-			id.equals("streak30") ? "Osiągnięcie „Seria 30 dni”: Graj co najmniej 10 minut dziennie przez 30 dni z rzędu."
+		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner") && !STREAK_HINTS.containsKey(id) && !id.equals("skyup_noc"),
+			STREAK_HINTS.containsKey(id) ? STREAK_HINTS.get(id)
 				// a SkyUp.pl cape: earned with time on that server (the server's words)
 				: id.equals("skyup_noc") ? "Osiągnięcie „Nocna zmiana”: Spędź 50 godzin na SkyUp.pl. Liczy się czas od wprowadzenia tych osiągnięć." : ""));
 		for (String id : Cosmetics.WINGS) list.add(new Entry(id, "wings", id, "", !id.equals("phoenix")));
@@ -194,8 +194,20 @@ public class CosmeticsScreen extends Screen {
 		screen.balance = balance;
 		return screen;
 	}
-	private static final Map<String, String> SAMPLE_NAMES = Map.of("emberstar", "Iskra", "obsidian", "Obsydian", "coral", "Rafa koralowa", "thunder", "Grom",
-		"regal", "Purpura", "cosmos", "Kosmos", "emberwings", "Iskrzące", "sapphire", "Szafirowe", "obsidianwings", "Obsydianowe");
+	/** The streak capes' achievements as the server words them: the sample shows these capes locked. */
+	private static final Map<String, String> STREAK_HINTS = Map.of(
+		"streak7", "Osiągnięcie „Tydzień z rzędu”: Graj co najmniej 10 minut dziennie przez 7 dni z rzędu.",
+		"streak14", "Osiągnięcie „Dwa tygodnie z rzędu”: Graj co najmniej 10 minut dziennie przez 14 dni z rzędu.",
+		"streak30", "Osiągnięcie „Seria 30 dni”: Graj co najmniej 10 minut dziennie przez 30 dni z rzędu.",
+		"streak60", "Osiągnięcie „Seria 60 dni”: Graj co najmniej 10 minut dziennie przez 60 dni z rzędu.",
+		"streak100", "Osiągnięcie „Seria 100 dni”: Graj co najmniej 10 minut dziennie przez 100 dni z rzędu.",
+		"streak365", "Osiągnięcie „Cały rok z rzędu”: Graj co najmniej 10 minut dziennie przez 365 dni z rzędu.");
+	private static final Map<String, String> SAMPLE_NAMES = Map.ofEntries(Map.entry("emberstar", "Iskra"), Map.entry("obsidian", "Obsydian"),
+		Map.entry("coral", "Rafa koralowa"), Map.entry("thunder", "Grom"), Map.entry("regal", "Purpura"), Map.entry("cosmos", "Kosmos"),
+		Map.entry("emberwings", "Iskrzące"), Map.entry("sapphire", "Szafirowe"), Map.entry("obsidianwings", "Obsydianowe"),
+		Map.entry("dragonscale", "Smocza łuska"), Map.entry("hellfire", "Piekło"), Map.entry("heavens", "Niebiosa"), Map.entry("jollyroger", "Bandera"),
+		Map.entry("autumnleaves", "Jesień"), Map.entry("sapphirecape", "Szafir"),
+		Map.entry("dragonelytra", "Smocza"), Map.entry("obsidianelytra", "Obsydian"), Map.entry("sapphireelytra", "Szafir"));
 
 	@Override
 	protected void init() {

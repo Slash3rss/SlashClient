@@ -125,12 +125,12 @@ export const ACHIEVEMENTS: Achievement[] = [
   ]),
   ...of('streak', [
     { id: 'streak_3', group: 'streak', goal: 3, sparks: 25, name: 'Trzy dni z rzędu', nameEn: 'Three in a row', description: 'Graj co najmniej 10 minut dziennie przez 3 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 3 days in a row.' },
-    { id: 'streak_7', group: 'streak', goal: 7, sparks: 50, name: 'Tydzień z rzędu', nameEn: 'A week in a row', description: 'Graj co najmniej 10 minut dziennie przez 7 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 7 days in a row.' },
-    { id: 'streak_14', group: 'streak', goal: 14, sparks: 100, name: 'Dwa tygodnie z rzędu', nameEn: 'Two weeks in a row', description: 'Graj co najmniej 10 minut dziennie przez 14 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 14 days in a row.' },
+    { id: 'streak_7', group: 'streak', goal: 7, sparks: 50, name: 'Tydzień z rzędu', nameEn: 'A week in a row', description: 'Graj co najmniej 10 minut dziennie przez 7 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 7 days in a row.', reward: 'streak7' },
+    { id: 'streak_14', group: 'streak', goal: 14, sparks: 100, name: 'Dwa tygodnie z rzędu', nameEn: 'Two weeks in a row', description: 'Graj co najmniej 10 minut dziennie przez 14 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 14 days in a row.', reward: 'streak14' },
     { id: 'streak_30', group: 'streak', goal: 30, sparks: 200, name: 'Seria 30 dni', nameEn: '30-day streak', description: 'Graj co najmniej 10 minut dziennie przez 30 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 30 days in a row.', reward: 'streak30' },
-    { id: 'streak_60', group: 'streak', goal: 60, sparks: 300, name: 'Seria 60 dni', nameEn: '60-day streak', description: 'Graj co najmniej 10 minut dziennie przez 60 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 60 days in a row.' },
-    { id: 'streak_100', group: 'streak', goal: 100, sparks: 500, name: 'Seria 100 dni', nameEn: '100-day streak', description: 'Graj co najmniej 10 minut dziennie przez 100 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 100 days in a row.' },
-    { id: 'streak_365', group: 'streak', goal: 365, sparks: 1000, name: 'Cały rok z rzędu', nameEn: 'A whole year in a row', description: 'Graj co najmniej 10 minut dziennie przez 365 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 365 days in a row.' },
+    { id: 'streak_60', group: 'streak', goal: 60, sparks: 300, name: 'Seria 60 dni', nameEn: '60-day streak', description: 'Graj co najmniej 10 minut dziennie przez 60 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 60 days in a row.', reward: 'streak60' },
+    { id: 'streak_100', group: 'streak', goal: 100, sparks: 500, name: 'Seria 100 dni', nameEn: '100-day streak', description: 'Graj co najmniej 10 minut dziennie przez 100 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 100 days in a row.', reward: 'streak100' },
+    { id: 'streak_365', group: 'streak', goal: 365, sparks: 1000, name: 'Cały rok z rzędu', nameEn: 'A whole year in a row', description: 'Graj co najmniej 10 minut dziennie przez 365 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 365 days in a row.', reward: 'streak365' },
   ]),
   ...of('social', [
     { id: 'friend_1', group: 'friends', goal: 1, sparks: 10, name: 'Pierwszy znajomy', nameEn: 'First friend', description: 'Dodaj pierwszego znajomego.', descriptionEn: 'Add your first friend.' },
