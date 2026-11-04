@@ -107,7 +107,8 @@ Takes the best tool for the block you mine and the strongest weapon when you hit
 
 | Setting | What it does |
 |---|---|
-| Tool for mining blocks | picks the tool |
+| Tool for mining blocks | picks the tool; blocks that break at once (crops, grass, flowers) keep what you hold, so you harvest a field with your hoe |
+| Keep the weapon in a fight | right after you hit a mob, or with a hostile mob close by, a missed hit on the block behind it keeps your weapon; the tool comes only when you keep digging |
 | Leaves, Cobweb, Bamboo, Pumpkin and melon | what to use for blocks several tools can mine |
 | Strongest weapon on hitting a mob, Preferred weapon | strongest, sword or axe |
 | Shears for sheep, Bucket and bowl, Water bucket for fish, Brush for armadillos, Food for animals | right-clicking an animal takes what it needs |

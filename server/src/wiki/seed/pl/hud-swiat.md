@@ -107,7 +107,8 @@ Przy kopaniu sam bierze najlepsze narzędzie do bloku, a przy uderzeniu moba –
 
 | Ustawienie | Co robi |
 |---|---|
-| Narzędzie do kopania bloków | dobiera narzędzie |
+| Narzędzie do kopania bloków | dobiera narzędzie; bloków niszczonych od razu (zboże, trawa, kwiaty) nie zmienia, więc pole zbierasz motyką |
+| W walce broń zostaje w ręce | gdy przed chwilą uderzyłeś moba albo obok jest wrogi mob, pudło w blok za nim nie zmienia broni na kilof; narzędzie przychodzi dopiero, gdy kopiesz dłużej |
 | Liście, Pajęczyna, Bambus, Dynia i arbuz | czym kopać bloki, które da się kopać kilkoma narzędziami |
 | Najmocniejsza broń przy uderzeniu moba, Preferowana broń | najmocniejsza, miecz albo siekiera |
 | Nożyce na owce, Wiadro i miska, Wiadro wody na ryby, Pędzel na pancernika, Jedzenie dla zwierząt | przy prawym kliknięciu w zwierzę bierze to, co trzeba |
