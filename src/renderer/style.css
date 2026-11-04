@@ -1650,7 +1650,9 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
    (the overlay on Windows and Linux says where they start; on macOS they are on the left, so the corner is free) */
 .top-sparks {
   position: fixed; top: 5px; z-index: 2; -webkit-app-region: no-drag;
-  right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 8px)) + 8px);
+  /* left of the window's own buttons: measured in app.ts (placeTopSparks), since the titlebar-area env()
+     values are not always there and the pill then slid under the close button */
+  right: var(--top-sparks-right, 146px);
   height: 26px; padding: 0 3px 0 10px; gap: 6px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
   background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .28); color: #fcd34d;
 }

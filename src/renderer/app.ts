@@ -2080,6 +2080,21 @@ function showTopSparks(n: number | undefined) {
   }
   topSparks = n;
 }
+/**
+ * Keeps the balance left of the window's buttons (minimise, maximise, close) on Windows and Linux: the
+ * overlay says where they start; before it does, or when it is off, a gap as wide as the three buttons.
+ * On macOS the buttons are on the left, so the pill sits at the right edge.
+ */
+const controlsOverlay = (navigator as Navigator & { windowControlsOverlay?: EventTarget & { visible: boolean; getTitlebarAreaRect(): DOMRect } }).windowControlsOverlay;
+function placeTopSparks() {
+  const mac = navigator.platform.startsWith('Mac');
+  const area = controlsOverlay?.visible ? controlsOverlay.getTitlebarAreaRect() : undefined;
+  const right = mac ? 8 : area && area.width > 0 ? Math.max(8, innerWidth - (area.x + area.width) + 8) : 146;
+  document.documentElement.style.setProperty('--top-sparks-right', `${right}px`);
+}
+controlsOverlay?.addEventListener('geometrychange', placeTopSparks);
+addEventListener('resize', placeTopSparks);
+placeTopSparks();
 /** The sets for the Shop view: the account's own (not one character's), worn in one request like in the cosmetics menu. */
 async function shopSets(redraw: () => void): Promise<Node[]> {
   const { me, catalog, walletBalance, sets } = await readCosmetics();
