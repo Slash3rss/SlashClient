@@ -95,6 +95,21 @@ Znaczek przy celowniku, gdy trafisz (działa też z celownikiem z gry). Włącza
 | Także strzały i trójzęby | znacznik przy trafieniu z daleka |
 | Dźwięk, Jaki dźwięk, Głośność | dzwonek, klik albo kula doświadczenia |
 
+## Koniec wypitej mikstury
+
+Daje znać, gdy skończy się mikstura, którą **wypiłeś** – albo kilka sekund wcześniej. Liczą się tylko efekty z wypitej mikstury: nie te z beaconu, złotego jabłka czy od serwera. Gdy ten sam efekt dostaniesz potem z czegoś innego, przestaje się liczyć. Włączone od razu (Walka → **Koniec wypitej mikstury**).
+
+![Baner u góry: mikstura się kończy](hud-mikstura-baner.webp)
+
+![Powiadomienie w rogu: mikstura się skończyła](hud-mikstura-powiadomienie.webp)
+
+| Ustawienie | Co robi |
+|---|---|
+| Gdzie | powiadomienie w rogu, baner u góry, nad paskiem przedmiotów albo na czacie |
+| Ostrzeż przed końcem | 0–30 sekund wcześniej (0 – dopiero na końcu) |
+| Dźwięk | bez dźwięku, pling, dzwonek, ametyst, butelka, kula doświadczenia |
+| Głośność | 0–100% |
+
 ## Wskaźniki obrażeń
 
 Gdy mob albo gracz obok Ciebie traci zdrowie, nad nim na chwilę unosi się liczba obrażeń – żółta, pomarańczowa przy mocnym ciosie, czerwona przy bardzo mocnym. Włączone od razu.

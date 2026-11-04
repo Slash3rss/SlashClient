@@ -27,6 +27,25 @@ The ground around you from above, your waypoints, players and mobs nearby, and y
 
 In the Nether the minimap draws the ground at your level, not the bedrock roof – you see the tunnels you walk in.
 
+The **Minimap** card also has look options, shared with the world map:
+
+| Setting | What it does |
+|---|---|
+| Caves | **Underground** – below ground the map shows the caves by itself; **Always**; **Off** |
+| Shading | **Relief** (slopes lighter and darker, so hills stand out) or **Like the game's map** |
+| Darker at night | the map gets darker at night |
+| Trail walked | dots where you walked; older ones are fainter |
+
+![The minimap with "Like the game's map" shading](hud-minimapa-klasyczna.webp)
+
+### Cave mode
+
+Underground (or always, if you set it so) the map does not draw the surface above you but the cave floor at your height. Solid rock is dark, so tunnels, caverns and water stand out. Caves have their own layer on the world map – its top then says **Caves**.
+
+![The minimap in a cave](hud-minimapa-jaskinie.webp)
+
+![The world map in cave mode](hud-mapa-jaskinie.webp)
+
 The map is only drawn again when something changed (you moved or turned, or the ground changed), so standing still costs nothing.
 
 ## World map
@@ -41,10 +60,25 @@ The map is only drawn again when something changed (you moved or turned, or the 
 - **Right click** – a new waypoint there (at the ground's height when it is known), opened at once to name it.
 - **Click a waypoint** – opens it: rename, recolour, hide, share with friends or delete.
 - **M**, **Esc** or ✕ closes the map.
+- **Ctrl + click** – teleports you there, onto the ground. Only where you may use `/spreadplayers` (a singleplayer world with cheats, or a server where you are an operator); the hint at the bottom of the map then says "Ctrl+click: teleport".
+
+### Grid and biomes
+
+The buttons on the map's top bar switch on:
+- **Grid** – chunk borders, and region borders (512 blocks) in thicker lines;
+- **Biomes** – biome colours instead of the ground (oceans blue, deserts sandy, snowy ones white…), with the name of the biome under the cursor next to the coordinates.
+
+![The world map with the chunk grid](hud-mapa-siatka.webp)
+
+![The world map's biome view](hud-mapa-biomy.webp)
+
+### Keeping the map
+
+With **Keep the map on disk** (the World map card, on by default) everything the map has seen – ground, biomes, caves and the trail – is still there the next time you join the same server or world. Maps live in `.minecraft/slashclient/maps`, apart for every world and dimension. They are written in the background every few minutes, when you leave the world and when the game closes. A file that cannot be read is put aside (`.bad`), never deleted.
 
 The top shows the dimension, how many chunks are known and the scale. On the map are your waypoints, points from friends, the death point, players and mobs nearby, and friends sharing their position.
 
-**Settings** (the **World map** card in World): the M key on or off, **Starting zoom** and who to show. On the partner servers, inside a dungeon M opens the dungeon map instead.
+**Settings** (the **World map** card in World): the M key on or off, **Starting zoom**, **Keep the map on disk**, **Caves**, **Grid**, **Biomes**, **Trail walked** and who to show. On the partner servers, inside a dungeon M opens the dungeon map instead.
 
 ## Waypoints
 

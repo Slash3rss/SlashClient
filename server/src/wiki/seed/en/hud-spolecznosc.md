@@ -43,9 +43,33 @@ Move the notifications elsewhere on the screen in the editor (the **Notification
 
 The spray key (unbound by default – set it in the Keys window) paints your chosen spray on the block you look at, up to 5 blocks away. Pick the spray in the cosmetics menu (the **Spray** tab). There is a short wait between sprays.
 
-## Cosmetics in game
+## Cosmetics menu
 
-Pick cosmetics (capes, wings, hats, clothes, pets, effects and more) in SlashClient's main menu, under the skin preview, or in the launcher. The Extras category has switches for what you see on others:
+Pick cosmetics in the game: the **Cosmetics** button in SlashClient's main menu (under the skin preview) opens a menu with your character on the left – drag it with the mouse to turn it – and a grid of items on the right. The character tries on the item under the mouse (turning round for what is worn on the back), and a click puts it on. The launcher can change the same.
+
+![The cosmetics menu: the Cape tab](hud-kosmetyki.webp)
+
+The tabs include **Sets**, **Cape**, **Wings**, **Elytra**, **Trail**, **Aura**, **Pet**, **Hat**, **Outfit**, **Suit**, **Shoes**, **Hands**, **Face**, **Ears & horns**, **Back**, **Tail**, **Prop**, **Kill effect**, **Shield**, **Weapon skin**, **Ring**, **Movement effect**, **Spray**.
+
+![The Wings tab](hud-kosmetyki-skrzydla.webp)
+
+![The Hat tab](hud-kosmetyki-na-glowe.webp)
+
+![The Pet tab](hud-kosmetyki-pupile.webp)
+
+- Above the grid you see whether you change the **whole account's set** or one character's (Minecraft account) – **Same as the account** goes back to the shared one.
+- Items you do not have yet are marked, and their tooltip says how to get them (an achievement, say). Some can be bought with **Sparks**, earned with SlashClient achievements – a click asks before buying and shows how many Sparks will be left.
+- An item on your back takes the place of the cape and wings, and a tail sways as you walk.
+
+### Sets
+
+The **Sets** tab shows items that go together (Ice, Dragon, Demon, Angel, Pirate, Obsidian, Wolf, Cat…) as cards with their parts and how many of them you have. **Wear the set** puts on all the parts you have at once; point at a missing one to see how to get it. A set you wear is marked **Worn**.
+
+![The Sets tab](hud-kosmetyki-zestawy.webp)
+
+## Other players' cosmetics
+
+The Extras category has switches for what you see on others:
 
 | Card | What it does |
 |---|---|
