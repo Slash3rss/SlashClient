@@ -367,6 +367,82 @@ describe('public API answers with an ETag', () => {
   });
 });
 
+describe('only what each client reads', () => {
+  const as = async (url: string, client?: string, token?: string) => (await call('GET', url, token, undefined, client ? { 'X-SlashClient': client } : {})).body;
+
+  it('sends the capes list of the catalog only to launchers before 0.8 and the website, and the emotes to nobody', async () => {
+    const fresh = await as('/v1/cosmetics', 'launcher/0.9.69');
+    assert.equal(fresh.capes, undefined);
+    assert.ok(fresh.items.some((i: any) => i.slot === 'cape'));
+    assert.equal(fresh.emotes, undefined);
+    assert.equal((await as('/v1/cosmetics', 'mod/0.9.70')).capes, undefined);
+    assert.equal((await as('/v1/cosmetics', 'launcher/0.8.0')).capes, undefined);
+    // a launcher before 0.8, an unnamed client and the website still get them
+    for (const client of ['launcher/0.7.3', undefined]) {
+      const old = await as('/v1/cosmetics', client);
+      assert.ok(Array.isArray(old.capes) && old.capes.length, String(client));
+      assert.deepEqual(Object.keys(old.capes[0]), ['id', 'name', 'exclusive', 'available']);
+    }
+    const site = await (await fetch(base + '/v1/cosmetics', { headers: { 'User-Agent': 'Mozilla/5.0' } })).json() as any;
+    assert.ok(site.capes.length);
+    // every item keeps all its fields for everyone (games read `available` as it is)
+    assert.ok(fresh.items.every((i: any) => typeof i.available === 'boolean' && typeof i.exclusive === 'boolean'));
+  });
+
+  it("leaves out the lookup's capes for HUDs reading cosmetics, and the clans' logos nobody draws", async () => {
+    const ewa = await login('TrimEwa');
+    const mc = await inGame(ewa.token, ewa.user.id, 6);
+    await call('POST', '/v1/me', ewa.token, { cape: 'ember' });
+    const fresh = JSON.parse(await lookup([mc], NEW_HUD));
+    assert.equal(fresh.capes, undefined);
+    assert.equal(fresh.cosmetics[mc].cape, 'ember');
+    assert.equal(fresh.clanLogos, undefined);
+    // HUDs before 0.9.23 still get them
+    assert.deepEqual(JSON.parse(await lookup([mc], ['friend_pink', 'supporter'])).capes, { [mc]: 'ember' });
+    assert.deepEqual(JSON.parse(await lookup([mc])).capes, { [mc]: 'ember' });
+  });
+
+  it("leaves out of the account what only the website reads, for launchers from 0.9.70", async () => {
+    const ala = await login('TrimAla');
+    const full = await as('/v1/me', undefined, ala.token);
+    for (const key of ['grants', 'avatars', 'avatarSource']) assert.ok(key in full, key);
+    const older = await as('/v1/me', 'launcher/0.9.69', ala.token);
+    assert.deepEqual(Object.keys(older), Object.keys(full));
+    const lean = await as('/v1/me', 'launcher/0.9.70', ala.token);
+    for (const key of ['grants', 'avatars', 'avatarSource']) assert.equal(lean[key], undefined, key);
+    // and nothing else is missing
+    assert.deepEqual(Object.keys(lean), Object.keys(full).filter((k) => !['grants', 'avatars', 'avatarSource'].includes(k)));
+    assert.equal((await as('/v1/me', 'launcher/0.9.70-beta.1', ala.token)).grants, undefined);
+    assert.equal((await as('/v1/me', 'mod/0.9.70', ala.token)).avatars, undefined);
+    // changing the account answers the same way
+    const changed = (await call('POST', '/v1/me', ala.token, { showServer: false }, { 'X-SlashClient': 'launcher/0.9.70' })).body;
+    assert.equal(changed.showServer, false);
+    assert.equal(changed.grants, undefined);
+    assert.ok('avatars' in (await call('POST', '/v1/me', ala.token, { showServer: true })).body);
+
+    // the live connection: only a launcher that names itself and its version
+    const ready = async (extra: Record<string, unknown>) => {
+      const ws = new WebSocket(base.replace('http', 'ws') + '/v1/ws');
+      await new Promise((r) => ws.once('open', r));
+      const got = new Promise<any>((r) => ws.on('message', (d) => {
+        const e = JSON.parse(String(d));
+        if (e.type === 'ready') r(e);
+      }));
+      ws.send(JSON.stringify({ type: 'auth', token: ala.token, ...extra }));
+      const e = await got;
+      ws.close();
+      return e.me;
+    };
+    assert.ok('grants' in await ready({}));
+    assert.ok('grants' in await ready({ client: 'launcher', version: '0.9.69' }));
+    assert.ok('avatars' in await ready({ client: 'app' }));
+    const leanReady = await ready({ client: 'launcher', version: '0.9.70' });
+    assert.equal(leanReady.grants, undefined);
+    assert.equal(leanReady.handle, 'TrimAla');
+    await new Promise((r) => setTimeout(r, 200));
+  });
+});
+
 describe('live events', () => {
   it('sends the features and the banner with the features event', async () => {
     const boss = await login('Szef');
