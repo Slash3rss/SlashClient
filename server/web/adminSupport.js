@@ -77,9 +77,30 @@ export async function supportPage() {
     el('div', { id: 'sup-payments' }),
     el('h2', { class: 'sup-h', textContent: 'Wpływy w miesiącach (live)' }),
     revenueTable());
-  refundsSection($('#sup-refunds'), Object.fromEntries(data.tiers.map((t) => [t.id, t.name])), () => { supportersSection(); paymentsSection(); });
-  supportersSection();
-  paymentsSection();
+  // the parts that come with their own request: the page is whole once they are in (`reload` below waits for that)
+  await Promise.all([
+    refundsSection($('#sup-refunds'), Object.fromEntries(data.tiers.map((t) => [t.id, t.name])), () => { supportersSection(); paymentsSection(); }),
+    supportersSection(),
+    paymentsSection(),
+  ]);
+}
+
+/**
+ * The page again after a change (a provider's keys, a tier), where it was scrolled to; a tier just saved
+ * stays open, so the next edit is right there.
+ */
+async function reload(openTier) {
+  const y = scrollY;
+  // while the parts load the page keeps its height, so nothing jumps
+  const main = $('#main');
+  if (main) main.style.minHeight = `${main.offsetHeight}px`;
+  try {
+    await supportPage();
+    if (openTier) { const card = document.querySelector(`.sup-tier[data-tier="${CSS.escape(openTier)}"]`); if (card) card.open = true; }
+  } finally {
+    if (main) main.style.minHeight = '';
+  }
+  if (main?.isConnected) scrollTo({ top: y, behavior: 'instant' });
 }
 
 // ---------- providers ----------
@@ -112,7 +133,7 @@ function providerCard(p) {
       if (Object.keys(keys).length) body[m] = keys;
     }
     const res = await call('POST', `/v1/admin/support/providers/${p.id}`, body);
-    if (res) { toast(done); supportPage(); }
+    if (res) { toast(done); reload(); }
   };
   const result = el('p', { class: 'small muted' });
   const test = el('button', { type: 'button', onclick: async () => {
@@ -178,7 +199,7 @@ function tierCard(t) {
       monthlyPln: toMinor(f.monthlyPln.value), monthlyEur: toMinor(f.monthlyEur.value), limitFactor: Number(f.limitFactor.value),
       cosmetics: f.cosmetics.checked, profile: f.profile.checked, earlyAccess: f.earlyAccess.checked, enabled: f.enabled.checked,
     };
-    if (await call('POST', '/v1/admin/support/tiers', body)) { toast(isNew ? 'Dodano poziom.' : 'Zapisano poziom.'); supportPage(); }
+    if (await call('POST', '/v1/admin/support/tiers', body)) { toast(isNew ? 'Dodano poziom.' : 'Zapisano poziom.'); reload(body.id); }
   };
   const card = el('details', { class: 'glass card sup-tier', open: isNew ? false : undefined },
     el('summary', { class: 'row' }, el('span', { class: 'sup-dot' }), el('b', { class: 'grow', textContent: isNew ? '+ Nowy poziom' : `${t.name} (${t.id}, poziom ${t.level})` }),
@@ -194,9 +215,10 @@ function tierCard(t) {
     el('div', { class: 'row' }, el('button', { class: 'primary', onclick: save }, icon('fa-solid fa-check'), isNew ? 'Dodaj' : 'Zapisz'),
       isNew ? '' : el('button', { class: 'danger', onclick: async () => {
         if (!await confirmModal({ title: `Usunąć poziom ${t.name}?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
-        if (await call('DELETE', `/v1/admin/support/tiers/${t.id}`)) { toast('Usunięto.'); supportPage(); }
+        if (await call('DELETE', `/v1/admin/support/tiers/${t.id}`)) { toast('Usunięto.'); reload(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń')));
   card.style.setProperty('--tier', t.color);
+  if (!isNew) card.dataset.tier = t.id;
   return card;
 }
 
@@ -206,6 +228,8 @@ async function supportersSection() {
   const res = await call('GET', '/v1/admin/support/supporters');
   const box = $('#sup-supporters');
   if (!res || !box) return;
+  // a supporter opened before (extending, taking back) stays open when the list comes again
+  const opened = new Set([...box.querySelectorAll('details.sup-person[open]')].map((d) => d.dataset.handle));
   const tierName = Object.fromEntries(data.tiers.map((t) => [t.id, t.name]));
   const handle = el('input', { type: 'text', placeholder: 'nick (handle)' });
   const tier = el('select', {}, ...data.tiers.map((t) => el('option', { value: t.id, textContent: t.name })));
@@ -233,7 +257,7 @@ async function supportersSection() {
       if (reason !== null && await call('POST', `/v1/admin/support/grants/${g.id}/revoke`, { reason })) { toast('Odebrano.'); supportersSection(); }
     } }, icon('fa-solid fa-ban')) : '');
   box.replaceChildren(form, el('div', { class: 'glass card' }, res.supporters.length
-    ? el('div', { class: 'sup-people' }, ...res.supporters.map((s) => el('details', { class: 'sup-person' },
+    ? el('div', { class: 'sup-people' }, ...res.supporters.map((s) => el('details', { class: 'sup-person', dataset: { handle: s.handle }, open: opened.has(s.handle) },
       el('summary', { class: 'row' }, el('b', { textContent: `@${s.handle}` }), el('span', { class: 'muted', textContent: s.name }), el('span', { class: 'grow' }),
         s.active ? el('span', { class: 'chip green', textContent: `${tierName[s.active.tier] ?? s.active.tier}${s.active.expiresAt ? ` do ${fmtDate(s.active.expiresAt)}` : ', na zawsze'}` }) : el('span', { class: 'chip', textContent: 'nieaktywny' })),
       ...s.grants.map(grantRow))))

@@ -57,10 +57,24 @@ systemReduced.addEventListener('change', applyMotion);
 // a page put into English after this ran (common.js localizePage) says it again in English
 addEventListener('slashclient-lang', applyMotion);
 
+/**
+ * The server's answer, asked once for the browser tab's life and again after five minutes: the router runs
+ * this file again on every page change, and the switches and hidden pages do not change that often. A failed
+ * answer is not kept, and the admin panel's changes clear it (common.js `api`), so an admin sees them at once.
+ */
+const STALE_MS = 5 * 60_000;
+function cachedJson(path) {
+  const cache = (window.slashSiteCache ??= {});
+  const had = cache[path];
+  if (had && Date.now() - had.at < STALE_MS) return had.data;
+  const data = fetch(path).then((r) => (r.ok ? r.json() : undefined)).catch(() => undefined);
+  cache[path] = { at: Date.now(), data };
+  data.then((res) => { if (res === undefined && window.slashSiteCache?.[path]?.data === data) delete window.slashSiteCache[path]; });
+  return data;
+}
+
 /** { features: { shop: true, … }, banner: … | null }; everything on when the server cannot be asked. */
-export const siteFeatures = fetch('/v1/features')
-  .then((r) => (r.ok ? r.json() : undefined))
-  .catch(() => undefined)
+export const siteFeatures = cachedJson('/v1/features')
   .then((res) => ({ features: res?.features ?? {}, banner: res?.banner ?? null }));
 
 /** Whether a feature is on (missing: an older server without switches, so on). */
@@ -108,8 +122,7 @@ export function bannerElement(b, onClose) {
 }
 
 // pages hidden in the admin panel (with their link in the home page's menu or footer): no links to them anywhere
-fetch('/v1/home/hidden')
-  .then((r) => (r.ok ? r.json() : undefined))
+cachedJson('/v1/home/hidden')
   .then((res) => {
     const paths = res?.paths ?? [];
     if (!paths.length) return;

@@ -2,7 +2,8 @@
 // small DOM helpers and toasts. The session token stays in this browser only (localStorage).
 
 import { gameIconInto } from './preview.js';
-import './navState.js';
+// (with `from`: the server puts the version on it as on every import, so the page loads it once, not twice)
+import {} from './navState.js';
 
 const TOKEN = 'slashclient.token';
 
@@ -68,6 +69,8 @@ export async function api(method, path, body) {
     if (res.status === 401) token.set('');
     throw new ApiError(data.error ?? 'server_error', res.status, data);
   }
+  // a change in the admin panel (the banner, a switch, a hidden page): the site's kept answers (siteBanner.js) are asked again
+  if (method !== 'GET' && path.startsWith('/v1/admin/')) delete window.slashSiteCache;
   return data;
 }
 
@@ -512,10 +515,27 @@ let capeTick = 0;
 let capeTimer;
 /** When the capes last turned: the router stops a page's timers when it is left, so a timer that went quiet is gone. */
 let capeTickAt = 0;
-const framesOfCapes = () => capeFrames ??= fetch('/v1/cosmetics')
-  .then((r) => (r.ok ? r.json() : {}))
+const plainCatalog = () => fetch('/v1/cosmetics').then((r) => (r.ok ? r.json() : {}));
+// the frames are the same for everyone: the catalog the page asked for already does (cosmeticsCatalog), else one without the account
+const framesOfCapes = () => capeFrames ??= (catalogNow()?.catch(plainCatalog) ?? plainCatalog())
   .then(({ items }) => new Map((items ?? []).filter((i) => i.slot === 'cape' && i.frames > 1).map((i) => [i.id, i.frames])))
   .catch(() => new Map());
+
+/**
+ * /v1/cosmetics as the signed-in player (or a guest) sees it, shared by what asks for it within a minute
+ * (the home page's strip and the capes' frames), so the page asks once. Asked again for another account.
+ */
+let catalog;
+const catalogNow = () => (catalog && catalog.token === (token.get() ?? '') && Date.now() - catalog.at < 60_000 ? catalog.data : undefined);
+export function cosmeticsCatalog() {
+  const had = catalogNow();
+  if (had) return had;
+  const data = api('GET', '/v1/cosmetics');
+  catalog = { token: token.get() ?? '', at: Date.now(), data };
+  // a failed answer is not kept
+  data.catch(() => { if (catalog?.data === data) catalog = undefined; });
+  return data;
+}
 
 /** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
 export const motionOff = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -682,8 +702,28 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
   }
   // the game's own pictures (the launcher's icons) replace the Font Awesome one once loaded
   const box = el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-star'}`));
-  gameIconInto(box, id);
+  whenSeen(box, () => gameIconInto(box, id));
   return box;
+}
+
+/**
+ * Runs `fn` once `box` comes near the screen: the game's icons need the 3D preview's code (a large file),
+ * fetched only when such an icon is to be seen, not for a list scrolled past or a tab not opened.
+ */
+let seenWatch;
+const onSeen = new WeakMap();
+function whenSeen(box, fn) {
+  if (typeof IntersectionObserver !== 'function') return void fn();
+  seenWatch ??= new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      seenWatch.unobserve(e.target);
+      onSeen.get(e.target)?.();
+      onSeen.delete(e.target);
+    }
+  }, { rootMargin: '300px' });
+  onSeen.set(box, fn);
+  seenWatch.observe(box);
 }
 
 export function avatarEl(user, big = false) {
