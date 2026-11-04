@@ -5,6 +5,7 @@ import type { Db, Person } from './db.ts';
 import { ClanLogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { CLAN_CHAT_SIZE, type createGroups } from './groups.ts';
 import { withDefaults } from './settings.ts';
+import { statements } from './statements.ts';
 
 /**
  * Clans: a group of players with a short tag ([ABC]) shown next to their nick: in the launcher,
@@ -115,7 +116,7 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
   }
 
   clan(id: string): ClanRow | undefined {
-    return this.sql.prepare('SELECT id, tag, name, owner, chat, created_at AS createdAt FROM clans WHERE id = ?').get(id) as never;
+    return statements(this.sql)('SELECT id, tag, name, owner, chat, created_at AS createdAt FROM clans WHERE id = ?').get(id) as never;
   }
 
   tagTaken(tag: string, except = ''): boolean {
@@ -144,7 +145,7 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
 
   /** The clan a player is in, with their role. */
   membership(uuid: string): { clan: string; role: ClanRole; hideTag: boolean } | undefined {
-    const m = this.sql.prepare('SELECT clan_id AS clan, role, hide_tag AS hideTag FROM clan_members WHERE uuid = ?').get(uuid) as { clan: string; role: ClanRole; hideTag: number } | undefined;
+    const m = statements(this.sql)('SELECT clan_id AS clan, role, hide_tag AS hideTag FROM clan_members WHERE uuid = ?').get(uuid) as { clan: string; role: ClanRole; hideTag: number } | undefined;
     return m && { clan: m.clan, role: m.role, hideTag: !!m.hideTag };
   }
 

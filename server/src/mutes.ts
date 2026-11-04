@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type http from 'node:http';
+import { statements } from './statements.ts';
 
 /**
  * Muted friends: they stay on the list and their messages still arrive, but the player's
@@ -30,7 +31,7 @@ export class MuteStore {
 
   /** The friends this player muted. */
   muted(uuid: string): Set<string> {
-    return new Set((this.sql.prepare('SELECT friend FROM friend_mutes WHERE uuid = ?').all(uuid) as { friend: string }[]).map((r) => r.friend));
+    return new Set((statements(this.sql)('SELECT friend FROM friend_mutes WHERE uuid = ?').all(uuid) as { friend: string }[]).map((r) => r.friend));
   }
 
   set(uuid: string, friend: string, muted: boolean) {

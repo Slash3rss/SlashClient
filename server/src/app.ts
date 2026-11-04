@@ -420,9 +420,10 @@ export function createApp(cfg: Config) {
     for (const set of sockets.values()) for (const ws of set) ws.send(data);
   });
 
-  function presenceOf(userId: string) {
-    const user = db.user(userId);
-    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId), statusRules.nameFor);
+  /** `known`: the account's setting and last visit when the caller read them already (the friends list). */
+  function presenceOf(userId: string, known?: { showServer: boolean; lastSeen: number }) {
+    const showServer = known ? known.showServer : db.user(userId)?.showServer ?? false;
+    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, showServer, known ? known.lastSeen : db.lastSeen(userId), statusRules.nameFor);
     // a world opened to LAN: friends can join it through the relay below
     return lanHosts.has(userId) && presence.status !== 'offline' ? { ...presence, lan: true } : presence;
   }
@@ -586,22 +587,21 @@ export function createApp(cfg: Config) {
     const unread = db.unreadCounts(me);
     const last = db.lastMessageTimes(me);
     const muted = mutes.store.muted(me);
-    const friends = db.friends(me);
-    // the clans of all of them in one query, not two per friend
-    const tags = clans.tagsOf(friends.map((f) => f.id));
+    // each friend with their account and last visit in one query, and the clans of all of them in another
+    const rows = db.friendsWithUsers(me);
+    const tags = clans.tagsOf(rows.map((r) => r.friend.id));
     return {
-      friends: friends.map((f) => {
+      friends: rows.map(({ friend: f, user: u, lastSeen }) => {
         const tagged = tags.get(f.id);
         const clan = tagged?.tag;
         // the clan's logo (its id and version) next to the tag, when it has one
         const clanLogo = tagged && tagged.logo !== null ? { id: tagged.clan, v: tagged.logo } : undefined;
         // the rank badge they show next to their nick (ranks.ts); launchers before 0.9.23 ignore it
-        const u = db.user(f.id);
-        const shown = u ? ranks.shown(u) : undefined;
+        const shown = ranks.shown(u);
         const badgeRank = shown ? { id: shown.id, name: shown.name, nameEn: shown.nameEn, color: shown.color, ...(shown.icon ? { icon: shown.icon } : {}) } : undefined;
         // live on Twitch or Kick (streams.ts), unless they hide it; launchers before 0.9.24 ignore it
         const stream = streams.friendView(f.id);
-        return { ...f, ...(stream ? { stream } : {}), presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
+        return { ...f, ...(stream ? { stream } : {}), presence: presenceOf(f.id, { showServer: u.showServer, lastSeen }), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
@@ -1096,6 +1096,8 @@ export function createApp(cfg: Config) {
       const res = requests.query({
         q: url.searchParams.get('q') ?? '', errors: url.searchParams.get('errors') === '1',
         client: url.searchParams.get('client') ?? '', user: url.searchParams.get('user') ?? '', limit: Number(url.searchParams.get('limit')) || 200,
+        // `since=<at>`: only what came after it (a panel polling for news); without it, everything as before
+        ...(Number.isFinite(Number(url.searchParams.get('since'))) && url.searchParams.get('since') ? { since: Number(url.searchParams.get('since')) } : {}),
       });
       const handles = new Map<string, string>();
       for (const e of res.entries) if (e.user && !handles.has(e.user)) handles.set(e.user, db.user(e.user)?.handle ?? '');

@@ -2,6 +2,7 @@ import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import { LogoStore, logoProblem, readLogo, serveLogo } from './clanLogos.ts';
 import type { SettingDef, SettingValue } from './settings.ts';
+import { statements } from './statements.ts';
 
 /**
  * Ranks: what a player is (Admin, Support, Partner, Friend, Supporter, and whatever the admins add
@@ -187,7 +188,7 @@ CREATE TABLE IF NOT EXISTS rank_badge_character (
 
   /** Every grant of a player, expired ones too (the admin panel). */
   grants(uuid: string): { rank: string; grantedBy: string; grantedAt: number; expiresAt: number | null; source: RankSource }[] {
-    return this.sql.prepare('SELECT rank, granted_by AS grantedBy, granted_at AS grantedAt, expires_at AS expiresAt, source FROM user_ranks WHERE uuid = ? ORDER BY granted_at')
+    return statements(this.sql)('SELECT rank, granted_by AS grantedBy, granted_at AS grantedAt, expires_at AS expiresAt, source FROM user_ranks WHERE uuid = ? ORDER BY granted_at')
       .all(uuid) as { rank: string; grantedBy: string; grantedAt: number; expiresAt: number | null; source: RankSource }[];
   }
 
@@ -204,7 +205,7 @@ CREATE TABLE IF NOT EXISTS rank_badge_character (
 
   /** What the player picked to show: '' (the default, the most important rank), 'none', or a rank's id. */
   choice(uuid: string): string {
-    return (this.sql.prepare('SELECT rank FROM rank_badge_choice WHERE uuid = ?').get(uuid) as { rank: string } | undefined)?.rank ?? '';
+    return (statements(this.sql)('SELECT rank FROM rank_badge_choice WHERE uuid = ?').get(uuid) as { rank: string } | undefined)?.rank ?? '';
   }
 
   setChoice(uuid: string, rank: string) {
@@ -214,12 +215,12 @@ CREATE TABLE IF NOT EXISTS rank_badge_character (
 
   /** The picks of single Minecraft accounts (their uuid without dashes): 'none' or a rank's id; one not here goes with the account's pick. */
   characterChoices(uuid: string): Record<string, string> {
-    const rows = this.sql.prepare('SELECT character, rank FROM rank_badge_character WHERE uuid = ?').all(uuid) as { character: string; rank: string }[];
+    const rows = statements(this.sql)('SELECT character, rank FROM rank_badge_character WHERE uuid = ?').all(uuid) as { character: string; rank: string }[];
     return Object.fromEntries(rows.map((r) => [r.character, r.rank]));
   }
 
   characterChoice(uuid: string, character: string): string | undefined {
-    return (this.sql.prepare('SELECT rank FROM rank_badge_character WHERE uuid = ? AND character = ?').get(uuid, character) as { rank: string } | undefined)?.rank;
+    return (statements(this.sql)('SELECT rank FROM rank_badge_character WHERE uuid = ? AND character = ?').get(uuid, character) as { rank: string } | undefined)?.rank;
   }
 
   /** '' = back to the account's pick. */
@@ -230,7 +231,7 @@ CREATE TABLE IF NOT EXISTS rank_badge_character (
 
   /** The ids of the ranks given to a player that are in force now. */
   givenNow(uuid: string): { rank: string; source: RankSource; grantedAt: number; expiresAt: number | null }[] {
-    return this.sql.prepare('SELECT rank, source, granted_at AS grantedAt, expires_at AS expiresAt FROM user_ranks WHERE uuid = ? AND (expires_at IS NULL OR expires_at > ?)')
+    return statements(this.sql)('SELECT rank, source, granted_at AS grantedAt, expires_at AS expiresAt FROM user_ranks WHERE uuid = ? AND (expires_at IS NULL OR expires_at > ?)')
       .all(uuid, this.now()) as { rank: string; source: RankSource; grantedAt: number; expiresAt: number | null }[];
   }
 

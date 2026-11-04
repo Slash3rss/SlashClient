@@ -2,6 +2,7 @@ import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db } from './db.ts';
 import { serverKeyOf, type Presence } from './presence.ts';
+import { statements } from './statements.ts';
 
 /**
  * Friends on the minimap. A player who chose to share their position (off by default; with all
@@ -65,7 +66,7 @@ CREATE TABLE IF NOT EXISTS ${table} (
   }
 
   get(uuid: string): PositionSharing {
-    const r = this.sql.prepare(`SELECT mode, friends FROM ${this.table} WHERE uuid = ?`).get(uuid) as { mode: string; friends: string } | undefined;
+    const r = statements(this.sql)(`SELECT mode, friends FROM ${this.table} WHERE uuid = ?`).get(uuid) as { mode: string; friends: string } | undefined;
     if (!r) return { mode: this.fallback(), friends: [] };
     if (!MODES.includes(r.mode as ShareMode)) return { mode: 'off', friends: [] };
     let friends: string[] = [];

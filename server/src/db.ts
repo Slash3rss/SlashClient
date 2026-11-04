@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
+import { statements } from './statements.ts';
 
 /**
  * Storage for players, friendships and messages. One SQLite file; every query lives
@@ -25,7 +26,7 @@ export interface CosmeticSetting {
   /** The supporter level set in the admin panel (supporterItems.ts): 0 = for everyone, missing = as cosmetics.ts has it. */
   supporter?: number;
 }
-export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
+export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string; adminHandle?: string | null }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
 /** `party`: the invite is one of a party's (sharing.ts), so Join also says "I'm in". */
@@ -91,6 +92,9 @@ CREATE INDEX IF NOT EXISTS friendships_b ON friendships(b);
 CREATE INDEX IF NOT EXISTS identities_uuid ON identities(uuid, provider);
 CREATE INDEX IF NOT EXISTS requests_to ON requests(to_uuid);
 CREATE INDEX IF NOT EXISTS sessions_uuid ON sessions(uuid);
+-- the newest message with each friend (lastMessageTimes), read from the indexes alone, sent and received
+CREATE INDEX IF NOT EXISTS messages_from_at ON messages(from_uuid, to_uuid, created_at);
+CREATE INDEX IF NOT EXISTS messages_to_at ON messages(to_uuid, from_uuid, created_at);
 `;
 
 interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number; loadout: string }
@@ -115,6 +119,24 @@ const AVATAR = (t: string) => `CASE WHEN ${t}.avatar_source = 'provider' AND ${t
     NULLIF(${t}.avatar, ''), '') END`;
 
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
+
+/**
+ * An account as the admin panel lists it, in one query: its friends and sessions counted, its sign-in
+ * providers (in order, once each) and its Minecraft accounts (in the order they were linked) as JSON.
+ */
+const ADMIN_USER = `SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen,
+  (SELECT COUNT(*) FROM friendships f WHERE f.a = users.uuid OR f.b = users.uuid) AS friends,
+  (SELECT COUNT(*) FROM sessions s WHERE s.uuid = users.uuid) AS sessions,
+  (SELECT json_group_array(p ORDER BY p) FROM (SELECT DISTINCT i.provider AS p FROM identities i WHERE i.uuid = users.uuid)) AS providers,
+  (SELECT json_group_array(json_object('name', i.label, 'loadout', i.loadout) ORDER BY i.rowid) FROM identities i WHERE i.uuid = users.uuid AND i.provider = 'minecraft') AS characters
+  FROM users`;
+type AdminUserRow = UserRow & { created_at: number; last_seen: number; friends: number; sessions: number; providers: string; characters: string };
+const toAdminUser = (row: AdminUserRow): AdminUser => ({
+  ...toUser(row), createdAt: row.created_at, lastSeen: row.last_seen, providers: JSON.parse(row.providers) as string[],
+  friends: Number(row.friends), sessions: Number(row.sessions),
+  // a character with its own set wears that set's cape (none: ''), the others the account's
+  worn: (JSON.parse(row.characters) as { name: string; loadout: string }[]).map((c) => ({ name: c.name, cape: c.loadout ? parseLoadout(c.loadout).cape ?? '' : row.cape })),
+});
 
 /** A bug report as the tracker lists it; `authorHandle` is null once the account is gone. */
 export interface Bug { id: number; author: string; authorHandle: string | null; title: string; body: string; logId: string; version: string; os: string; status: string; createdAt: number; updatedAt: number; comments: number }
@@ -160,9 +182,12 @@ const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
 export class Db {
   private db: DatabaseSync;
+  /** Prepared statements kept for reuse (statements.ts): every query below runs often. */
+  private stmt: (sql: string) => StatementSync;
 
   constructor(file: string) {
     this.db = new DatabaseSync(file);
+    this.stmt = statements(this.db);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
     this.db.exec(SCHEMA);
     // added after the first release: older files get the column on start
@@ -254,17 +279,17 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
    * one of them later takes it off that list). Returns how many grants it added (0 when done before).
    */
   keepFormerlyFree(capes: readonly string[], id = 'free-capes-0.9.69', now = Date.now()): number {
-    if (this.db.prepare('SELECT 1 FROM data_migrations WHERE id = ?').get(id)) return 0;
+    if (this.stmt('SELECT 1 FROM data_migrations WHERE id = ?').get(id)) return 0;
     let added = 0;
     this.db.exec('BEGIN IMMEDIATE');
     try {
       for (const cape of capes) {
         // an admin's grant from before stays the player's own (it counts for the collection)
-        this.db.prepare('INSERT OR IGNORE INTO cape_grants_kept (uuid, cape) SELECT u.uuid, ? FROM users u WHERE NOT EXISTS (SELECT 1 FROM cape_grants g WHERE g.uuid = u.uuid AND g.cape = ?)').run(cape, cape);
-        added += Number(this.db.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) SELECT uuid, ? FROM users').run(cape).changes);
+        this.stmt('INSERT OR IGNORE INTO cape_grants_kept (uuid, cape) SELECT u.uuid, ? FROM users u WHERE NOT EXISTS (SELECT 1 FROM cape_grants g WHERE g.uuid = u.uuid AND g.cape = ?)').run(cape, cape);
+        added += Number(this.stmt('INSERT OR IGNORE INTO cape_grants (uuid, cape) SELECT uuid, ? FROM users').run(cape).changes);
       }
-      const users = (this.db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
-      this.db.prepare('INSERT INTO data_migrations (id, at, detail) VALUES (?, ?, ?)').run(id, now, `${users} kont, ${added} przyznań`);
+      const users = (this.stmt('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
+      this.stmt('INSERT INTO data_migrations (id, at, detail) VALUES (?, ?, ?)').run(id, now, `${users} kont, ${added} przyznań`);
       this.db.exec('COMMIT');
     } catch (err) {
       this.db.exec('ROLLBACK');
@@ -293,22 +318,22 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     const now = Date.now();
     const known = this.owner(provider, subject);
     if (known) {
-      if (wanted.avatar) this.db.prepare('UPDATE users SET avatar = ? WHERE uuid = ?').run(wanted.avatar, known);
-      this.db.prepare('UPDATE users SET last_seen = ? WHERE uuid = ?').run(now, known);
-      if (label) this.db.prepare('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
+      if (wanted.avatar) this.stmt('UPDATE users SET avatar = ? WHERE uuid = ?').run(wanted.avatar, known);
+      this.stmt('UPDATE users SET last_seen = ? WHERE uuid = ?').run(now, known);
+      if (label) this.stmt('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
       return this.user(known)!;
     }
     const uuid = randomUUID();
     const handle = this.freeHandle(wanted.handle);
-    this.db.prepare('INSERT INTO users (uuid, handle, handle_lower, name, avatar, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    this.stmt('INSERT INTO users (uuid, handle, handle_lower, name, avatar, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(uuid, handle, handle.toLowerCase(), wanted.name, wanted.avatar, now, now);
-    this.db.prepare('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
+    this.stmt('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
     return this.user(uuid)!;
   }
 
   /** Whose account a login belongs to, if anyone's. */
   owner(provider: Provider, subject: string): string | undefined {
-    return (this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined)?.uuid;
+    return (this.stmt('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined)?.uuid;
   }
 
   /**
@@ -317,47 +342,47 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
    */
   minecraftAccounts(uuid: string): { uuid: string; name: string; loadout: Record<string, string> | null }[] {
     // in the order they were linked (the table's own row numbers grow with each link)
-    return (this.db.prepare("SELECT subject, label, loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY rowid").all(uuid) as { subject: string; label: string; loadout: string }[])
+    return (this.stmt("SELECT subject, label, loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY rowid").all(uuid) as { subject: string; label: string; loadout: string }[])
       .map((r) => ({ uuid: r.subject, name: r.label, loadout: r.loadout ? parseLoadout(r.loadout) : null }));
   }
 
   /** A character's own set (null = none: it wears the account's), only for one of `uuid`'s own. */
   characterLoadout(uuid: string, subject: string): Record<string, string> | null {
-    const row = this.db.prepare("SELECT loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").get(uuid, subject) as { loadout: string } | undefined;
+    const row = this.stmt("SELECT loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").get(uuid, subject) as { loadout: string } | undefined;
     return row?.loadout ? parseLoadout(row.loadout) : null;
   }
 
   /** Gives a character its own set, or (null) sends it back to the account's default. */
   setCharacterLoadout(uuid: string, subject: string, loadout: Record<string, string> | null) {
-    this.db.prepare("UPDATE identities SET loadout = ? WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").run(loadout ? JSON.stringify(loadout) : '', uuid, subject);
+    this.stmt("UPDATE identities SET loadout = ? WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").run(loadout ? JSON.stringify(loadout) : '', uuid, subject);
   }
 
   /** How many ways there are to sign in to an account (each Minecraft account counts). */
   identityCount(uuid: string): number {
-    return (this.db.prepare('SELECT COUNT(*) AS n FROM identities WHERE uuid = ?').get(uuid) as { n: number }).n;
+    return (this.stmt('SELECT COUNT(*) AS n FROM identities WHERE uuid = ?').get(uuid) as { n: number }).n;
   }
 
   unlinkIdentity(uuid: string, provider: Provider, subject: string): boolean {
-    return this.db.prepare('DELETE FROM identities WHERE uuid = ? AND provider = ? AND subject = ?').run(uuid, provider, subject).changes > 0;
+    return this.stmt('DELETE FROM identities WHERE uuid = ? AND provider = ? AND subject = ?').run(uuid, provider, subject).changes > 0;
   }
 
   /** Adds a sign-in method to an account; false when it already belongs to someone. */
   link(provider: Provider, subject: string, uuid: string, label = ''): boolean {
     const owner = this.owner(provider, subject);
     if (owner) {
-      if (owner === uuid && label) this.db.prepare('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
+      if (owner === uuid && label) this.stmt('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
       return owner === uuid;
     }
-    this.db.prepare('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
+    this.stmt('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
     return true;
   }
 
   unlink(uuid: string, provider: string) {
-    this.db.prepare('DELETE FROM identities WHERE uuid = ? AND provider = ?').run(uuid, provider);
+    this.stmt('DELETE FROM identities WHERE uuid = ? AND provider = ?').run(uuid, provider);
   }
 
   providers(uuid: string): string[] {
-    return (this.db.prepare('SELECT DISTINCT provider FROM identities WHERE uuid = ? ORDER BY provider').all(uuid) as { provider: string }[]).map((r) => r.provider);
+    return (this.stmt('SELECT DISTINCT provider FROM identities WHERE uuid = ? ORDER BY provider').all(uuid) as { provider: string }[]).map((r) => r.provider);
   }
 
   /** `base`, or `base2`, `base3`… when someone already has it. */
@@ -365,17 +390,17 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     const clean = base.replace(/[^\w.]/g, '').slice(0, 24) || 'gracz';
     for (let n = 1; ; n++) {
       const handle = n === 1 ? clean : `${clean}${n}`;
-      if (!this.db.prepare('SELECT 1 FROM users WHERE handle_lower = ?').get(handle.toLowerCase())) return handle;
+      if (!this.stmt('SELECT 1 FROM users WHERE handle_lower = ?').get(handle.toLowerCase())) return handle;
     }
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?`).get(uuid) as UserRow | undefined;
+    const row = this.stmt(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?`).get(uuid) as UserRow | undefined;
     return row && toUser(row);
   }
 
   userByHandle(handle: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid FROM users WHERE handle_lower = ?').get(handle.toLowerCase()) as { uuid: string } | undefined;
+    const row = this.stmt('SELECT uuid FROM users WHERE handle_lower = ?').get(handle.toLowerCase()) as { uuid: string } | undefined;
     return row && this.user(row.uuid);
   }
 
@@ -384,16 +409,16 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
    * 'provider' = the sign-in provider's picture), and that picture.
    */
   avatarChoice(uuid: string): { source: string; provider: string } {
-    const row = this.db.prepare('SELECT avatar_source, avatar FROM users WHERE uuid = ?').get(uuid) as { avatar_source: string; avatar: string } | undefined;
+    const row = this.stmt('SELECT avatar_source, avatar FROM users WHERE uuid = ?').get(uuid) as { avatar_source: string; avatar: string } | undefined;
     return { source: row?.avatar_source ?? '', provider: row?.avatar ?? '' };
   }
 
   setAvatarSource(uuid: string, source: string) {
-    this.db.prepare('UPDATE users SET avatar_source = ? WHERE uuid = ?').run(source, uuid);
+    this.stmt('UPDATE users SET avatar_source = ? WHERE uuid = ?').run(source, uuid);
   }
 
   setCape(uuid: string, cape: string) {
-    this.db.prepare('UPDATE users SET cape = ? WHERE uuid = ?').run(cape, uuid);
+    this.stmt('UPDATE users SET cape = ? WHERE uuid = ?').run(cape, uuid);
   }
 
   // ---- chat encryption: the public keys of each account's launchers ----
@@ -406,22 +431,22 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
    * removed cannot come back under the same id: 'revoked'.
    */
   setDeviceKey(uuid: string, device: string, pub: string, name = '', max = 10): 'added' | 'refreshed' | 'revoked' {
-    if (this.db.prepare('SELECT 1 FROM device_revoked WHERE uuid = ? AND device = ?').get(uuid, device)) return 'revoked';
+    if (this.stmt('SELECT 1 FROM device_revoked WHERE uuid = ? AND device = ?').get(uuid, device)) return 'revoked';
     const now = Date.now();
-    const old = this.db.prepare('SELECT pub, kind FROM device_keys WHERE uuid = ? AND device = ?').get(uuid, device) as { pub: string; kind: string } | undefined;
+    const old = this.stmt('SELECT pub, kind FROM device_keys WHERE uuid = ? AND device = ?').get(uuid, device) as { pub: string; kind: string } | undefined;
     // the backup's id is not a launcher's: a launcher claiming it is refused like a removed one
     if (old?.kind === 'backup') return 'revoked';
     if (old && old.pub === pub) {
-      this.db.prepare("UPDATE device_keys SET at = ?, name = CASE WHEN ? != '' THEN ? ELSE name END WHERE uuid = ? AND device = ?").run(now, name, name, uuid, device);
+      this.stmt("UPDATE device_keys SET at = ?, name = CASE WHEN ? != '' THEN ? ELSE name END WHERE uuid = ? AND device = ?").run(now, name, name, uuid, device);
       return 'refreshed';
     }
-    const others = (this.db.prepare("SELECT COUNT(*) AS n FROM device_keys WHERE uuid = ? AND device != ? AND kind = ''").get(uuid, device) as { n: number }).n;
-    this.db.prepare(`INSERT INTO device_keys (uuid, device, pub, at, name, created_at, kind, handover) VALUES (?, ?, ?, ?, ?, ?, '', ?)
+    const others = (this.stmt("SELECT COUNT(*) AS n FROM device_keys WHERE uuid = ? AND device != ? AND kind = ''").get(uuid, device) as { n: number }).n;
+    this.stmt(`INSERT INTO device_keys (uuid, device, pub, at, name, created_at, kind, handover) VALUES (?, ?, ?, ?, ?, ?, '', ?)
       ON CONFLICT (uuid, device) DO UPDATE SET pub = excluded.pub, at = excluded.at, name = excluded.name, created_at = excluded.created_at, handover = excluded.handover`)
       .run(uuid, device, pub, now, name, now, others ? 'pending' : 'none');
     // what was wrapped for the old key cannot be opened by the new one
-    if (old) this.db.prepare('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
-    const gone = this.db.prepare(`SELECT device FROM device_keys WHERE uuid = ? AND kind = '' AND device NOT IN
+    if (old) this.stmt('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
+    const gone = this.stmt(`SELECT device FROM device_keys WHERE uuid = ? AND kind = '' AND device NOT IN
       (SELECT device FROM device_keys WHERE uuid = ? AND kind = '' ORDER BY at DESC LIMIT ?)`).all(uuid, uuid, max) as { device: string }[];
     for (const g of gone) this.dropDevice(uuid, g.device);
     return 'added';
@@ -429,47 +454,47 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
 
   /** A device's key and what was wrapped for it, gone (pushed out, removed by the player, or a replaced backup). */
   dropDevice(uuid: string, device: string) {
-    this.db.prepare('DELETE FROM device_keys WHERE uuid = ? AND device = ?').run(uuid, device);
-    this.db.prepare('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
+    this.stmt('DELETE FROM device_keys WHERE uuid = ? AND device = ?').run(uuid, device);
+    this.stmt('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
   }
 
   /** The keys to encrypt for: the password backup's first (when there is one), then the launchers, most recent first. */
   deviceKeys(uuid: string): { device: string; pub: string }[] {
-    return this.db.prepare("SELECT device, pub FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string }[];
+    return this.stmt("SELECT device, pub FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string }[];
   }
 
   /** The keys for a group's message: the backup's, and at most `max` launchers. */
   deviceKeysFor(uuid: string, max: number): { device: string; pub: string }[] {
-    const all = this.db.prepare("SELECT device, pub, kind FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string; kind: string }[];
+    const all = this.stmt("SELECT device, pub, kind FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string; kind: string }[];
     const backup = all.filter((k) => k.kind === 'backup');
     return [...backup, ...all.filter((k) => k.kind !== 'backup').slice(0, max)].map(({ device, pub }) => ({ device, pub }));
   }
 
   setRank(uuid: string, rank: string) {
-    this.db.prepare('UPDATE users SET rank = ? WHERE uuid = ?').run(rank, uuid);
+    this.stmt('UPDATE users SET rank = ? WHERE uuid = ?').run(rank, uuid);
   }
 
   setRole(uuid: string, role: string) {
-    this.db.prepare('UPDATE users SET role = ? WHERE uuid = ?').run(role, uuid);
+    this.stmt('UPDATE users SET role = ? WHERE uuid = ?').run(role, uuid);
   }
 
   setBanned(uuid: string, banned: boolean) {
-    this.db.prepare('UPDATE users SET banned = ? WHERE uuid = ?').run(banned ? 1 : 0, uuid);
+    this.stmt('UPDATE users SET banned = ? WHERE uuid = ?').run(banned ? 1 : 0, uuid);
     if (banned) this.removeSessions(uuid);
   }
 
   /** Removes an account with everything that hangs on it (sign-ins, sessions, friends, messages, grants). */
   deleteUser(uuid: string) {
-    this.db.prepare('DELETE FROM messages WHERE from_uuid = ? OR to_uuid = ?').run(uuid, uuid);
+    this.stmt('DELETE FROM messages WHERE from_uuid = ? OR to_uuid = ?').run(uuid, uuid);
     // the admin statistics' rows of the account (adminStats.ts), where they exist
     for (const table of ['stats_active_days', 'stats_clients']) {
-      if (this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) this.db.prepare(`DELETE FROM ${table} WHERE uuid = ?`).run(uuid);
+      if (this.stmt("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) this.stmt(`DELETE FROM ${table} WHERE uuid = ?`).run(uuid);
     }
-    this.db.prepare('DELETE FROM users WHERE uuid = ?').run(uuid);
+    this.stmt('DELETE FROM users WHERE uuid = ?').run(uuid);
   }
 
   removeSessions(uuid: string) {
-    this.db.prepare('DELETE FROM sessions WHERE uuid = ?').run(uuid);
+    this.stmt('DELETE FROM sessions WHERE uuid = ?').run(uuid);
   }
 
   // ---- the admin panel ----
@@ -478,33 +503,26 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   listUsers(query: string, limit: number, offset: number): { users: AdminUser[]; total: number } {
     const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
     const where = "WHERE handle_lower LIKE ? ESCAPE '\\' OR lower(name) LIKE ? ESCAPE '\\' OR uuid = ?";
-    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM users ${where}`).get(like, like, query) as { n: number }).n;
-    const rows = this.db.prepare(`SELECT uuid FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(like, like, query, limit, offset) as { uuid: string }[];
-    return { users: rows.map((r) => this.adminUser(r.uuid)!), total };
+    const total = (this.stmt(`SELECT COUNT(*) AS n FROM users ${where}`).get(like, like, query) as { n: number }).n;
+    // the whole page in one query (counts, sign-ins and characters as subqueries), not five per account
+    const rows = this.stmt(`${ADMIN_USER} ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(like, like, query, limit, offset) as unknown as AdminUserRow[];
+    return { users: rows.map(toAdminUser), total };
   }
 
   adminUser(uuid: string): AdminUser | undefined {
-    const row = this.db.prepare(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen FROM users WHERE uuid = ?`).get(uuid) as
-      (UserRow & { created_at: number; last_seen: number }) | undefined;
-    if (!row) return undefined;
-    const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
-    return {
-      ...toUser(row), createdAt: row.created_at, lastSeen: row.last_seen, providers: this.providers(uuid),
-      friends: count('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid),
-      sessions: count('SELECT COUNT(*) AS n FROM sessions WHERE uuid = ?', uuid),
-      worn: this.minecraftAccounts(uuid).map((a) => ({ name: a.name, cape: a.loadout ? a.loadout.cape ?? '' : row.cape })),
-    };
+    const row = this.stmt(`${ADMIN_USER} WHERE uuid = ?`).get(uuid) as unknown as AdminUserRow | undefined;
+    return row && toAdminUser(row);
   }
 
   stats(since: number) {
-    const n = (sql: string, ...args: (string | number)[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
+    const n = (sql: string, ...args: (string | number)[]) => (this.stmt(sql).get(...args) as { n: number }).n;
     // what players wear in game: each Minecraft account's own cape (set in the client), or else the account's; a player counts once per cape
     const capes: Record<string, number> = {};
     const own = new Map<string, string[]>();
-    for (const r of this.db.prepare("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft'").all() as { uuid: string; loadout: string }[]) {
+    for (const r of this.stmt("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft'").all() as { uuid: string; loadout: string }[]) {
       own.set(r.uuid, [...(own.get(r.uuid) ?? []), r.loadout]);
     }
-    for (const u of this.db.prepare('SELECT uuid, cape FROM users').all() as { uuid: string; cape: string }[]) {
+    for (const u of this.stmt('SELECT uuid, cape FROM users').all() as { uuid: string; cape: string }[]) {
       const accounts = own.get(u.uuid);
       const worn = new Set(accounts ? accounts.map((l) => (l ? parseLoadout(l).cape ?? '' : u.cape)) : [u.cape]);
       for (const id of worn) if (id) capes[id] = (capes[id] ?? 0) + 1;
@@ -526,18 +544,18 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     const dayMs = 86_400_000;
     const start = Math.floor(Date.now() / dayMs) * dayMs - (days - 1) * dayMs;
     const out = new Array<number>(days).fill(0);
-    for (const r of this.db.prepare('SELECT created_at FROM users WHERE created_at >= ?').all(start) as { created_at: number }[]) {
+    for (const r of this.stmt('SELECT created_at FROM users WHERE created_at >= ?').all(start) as { created_at: number }[]) {
       out[Math.floor((r.created_at - start) / dayMs)]++;
     }
     return out;
   }
 
   cosmeticSettings(): Map<string, CosmeticSetting> {
-    const rows = this.db.prepare('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
+    const rows = this.stmt('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
     const out = new Map<string, CosmeticSetting>(rows.map((r) => [r.id, { id: r.id, enabled: !!r.enabled, exclusive: !!r.exclusive }]));
     // the shop's prices (economy.ts keeps them; not there in a database without the shop)
     try {
-      for (const r of this.db.prepare('SELECT id, price FROM shop_prices').all() as { id: string; price: number | null }[]) {
+      for (const r of this.stmt('SELECT id, price FROM shop_prices').all() as { id: string; price: number | null }[]) {
         out.set(r.id, { ...(out.get(r.id) ?? { id: r.id, enabled: true, exclusive: false }), price: r.price });
       }
     } catch {
@@ -546,7 +564,7 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     // supporter-only levels the admin set (supporterItems.ts)
     // (read here, not through supporterItems.ts: the launcher's type check takes this file in through cosmetics.ts)
     try {
-      for (const r of this.db.prepare('SELECT id, level FROM cosmetic_supporter').all() as { id: string; level: number }[]) {
+      for (const r of this.stmt('SELECT id, level FROM cosmetic_supporter').all() as { id: string; level: number }[]) {
         out.set(r.id, { ...(out.get(r.id) ?? { id: r.id, enabled: true, exclusive: false }), supporter: r.level });
       }
     } catch {
@@ -556,31 +574,31 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   }
 
   setCosmetic(id: string, enabled: boolean, exclusive: boolean) {
-    this.db.prepare('INSERT INTO cosmetics (id, enabled, exclusive) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, exclusive = excluded.exclusive')
+    this.stmt('INSERT INTO cosmetics (id, enabled, exclusive) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, exclusive = excluded.exclusive')
       .run(id, enabled ? 1 : 0, exclusive ? 1 : 0);
   }
 
   grants(uuid: string): string[] {
-    return (this.db.prepare('SELECT cape FROM cape_grants WHERE uuid = ? ORDER BY cape').all(uuid) as { cape: string }[]).map((r) => r.cape);
+    return (this.stmt('SELECT cape FROM cape_grants WHERE uuid = ? ORDER BY cape').all(uuid) as { cape: string }[]).map((r) => r.cape);
   }
 
   /** Who may wear an exclusive cape. */
   grantees(cape: string): { id: string; handle: string; name: string }[] {
-    return (this.db.prepare('SELECT u.uuid AS id, u.handle, u.name FROM cape_grants g JOIN users u ON u.uuid = g.uuid WHERE g.cape = ? ORDER BY u.handle_lower').all(cape)) as { id: string; handle: string; name: string }[];
+    return (this.stmt('SELECT u.uuid AS id, u.handle, u.name FROM cape_grants g JOIN users u ON u.uuid = g.uuid WHERE g.cape = ? ORDER BY u.handle_lower').all(cape)) as { id: string; handle: string; name: string }[];
   }
 
   grant(uuid: string, cape: string) {
-    this.db.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) VALUES (?, ?)').run(uuid, cape);
+    this.stmt('INSERT OR IGNORE INTO cape_grants (uuid, cape) VALUES (?, ?)').run(uuid, cape);
   }
 
   revoke(uuid: string, cape: string) {
-    this.db.prepare('DELETE FROM cape_grants WHERE uuid = ? AND cape = ?').run(uuid, cape);
+    this.stmt('DELETE FROM cape_grants WHERE uuid = ? AND cape = ?').run(uuid, cape);
   }
 
   /** Takes a cape off everyone wearing it who may not any more (those `spare` says so keep it: admins). */
   clearCape(cape: string, exceptGranted: boolean, spare: (uuid: string) => boolean = () => false) {
     const granted = new Set(exceptGranted ? this.grantees(cape).map((g) => g.id) : []);
-    for (const r of this.db.prepare('SELECT uuid FROM users WHERE cape = ?').all(cape) as { uuid: string }[]) {
+    for (const r of this.stmt('SELECT uuid FROM users WHERE cape = ?').all(cape) as { uuid: string }[]) {
       if (!granted.has(r.uuid) && !spare(r.uuid)) this.setCape(r.uuid, '');
     }
     this.clearFromCharacters(cape, exceptGranted, spare);
@@ -589,7 +607,7 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   /** The same for the characters' own sets. */
   private clearFromCharacters(id: string, exceptGranted: boolean, spare: (uuid: string) => boolean) {
     const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
-    const rows = this.db.prepare("SELECT uuid, subject, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; subject: string; loadout: string }[];
+    const rows = this.stmt("SELECT uuid, subject, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; subject: string; loadout: string }[];
     for (const r of rows) {
       if (granted.has(r.uuid) || spare(r.uuid)) continue;
       const l = parseLoadout(r.loadout);
@@ -599,13 +617,13 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   }
 
   setLoadout(uuid: string, loadout: Record<string, string>) {
-    this.db.prepare('UPDATE users SET loadout = ? WHERE uuid = ?').run(JSON.stringify(loadout), uuid);
+    this.stmt('UPDATE users SET loadout = ? WHERE uuid = ?').run(JSON.stringify(loadout), uuid);
   }
 
   /** Takes an item (wings, elytra, trail, aura, pet) off everyone wearing it who may not any more. */
   clearItem(id: string, exceptGranted: boolean, spare: (uuid: string) => boolean = () => false) {
     const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
-    const rows = this.db.prepare('SELECT uuid, loadout FROM users WHERE loadout LIKE ?').all(`%"${id}"%`) as { uuid: string; loadout: string }[];
+    const rows = this.stmt('SELECT uuid, loadout FROM users WHERE loadout LIKE ?').all(`%"${id}"%`) as { uuid: string; loadout: string }[];
     for (const r of rows) {
       if (granted.has(r.uuid) || spare(r.uuid)) continue;
       const l = parseLoadout(r.loadout);
@@ -618,10 +636,10 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   /** Who wears an item now (the account's cape or set, or a character's set). */
   wearers(id: string): string[] {
     const out = new Set<string>();
-    for (const r of this.db.prepare('SELECT uuid, cape, loadout FROM users WHERE cape = ? OR loadout LIKE ?').all(id, `%"${id}"%`) as { uuid: string; cape: string; loadout: string }[]) {
+    for (const r of this.stmt('SELECT uuid, cape, loadout FROM users WHERE cape = ? OR loadout LIKE ?').all(id, `%"${id}"%`) as { uuid: string; cape: string; loadout: string }[]) {
       if (r.cape === id || Object.values(parseLoadout(r.loadout)).includes(id)) out.add(r.uuid);
     }
-    for (const r of this.db.prepare("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; loadout: string }[]) {
+    for (const r of this.stmt("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; loadout: string }[]) {
       if (Object.values(parseLoadout(r.loadout)).includes(id)) out.add(r.uuid);
     }
     return [...out];
@@ -630,48 +648,50 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   /** How many players wear each item (cape and the other slots). */
   wornCounts(): Record<string, number> {
     const counts: Record<string, number> = {};
-    for (const r of this.db.prepare("SELECT cape, loadout FROM users WHERE cape != '' OR loadout != '{}'").all() as { cape: string; loadout: string }[]) {
+    for (const r of this.stmt("SELECT cape, loadout FROM users WHERE cape != '' OR loadout != '{}'").all() as { cape: string; loadout: string }[]) {
       for (const id of [r.cape, ...Object.values(parseLoadout(r.loadout))]) if (id) counts[id] = (counts[id] ?? 0) + 1;
     }
-    for (const r of this.db.prepare("SELECT loadout FROM identities WHERE provider = 'minecraft' AND loadout != ''").all() as { loadout: string }[]) {
+    for (const r of this.stmt("SELECT loadout FROM identities WHERE provider = 'minecraft' AND loadout != ''").all() as { loadout: string }[]) {
       for (const id of Object.values(parseLoadout(r.loadout))) counts[id] = (counts[id] ?? 0) + 1;
     }
     return counts;
   }
 
   log(admin: string, action: string, target: string, detail = '') {
-    this.db.prepare('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
+    this.stmt('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
   }
 
   /** The admin log keeps moderation accountable for a set time (the privacy policy names it), not forever. */
   pruneAdminLog(maxAgeMs: number): number {
-    return Number(this.db.prepare('DELETE FROM admin_log WHERE at < ?').run(Date.now() - maxAgeMs).changes);
+    return Number(this.stmt('DELETE FROM admin_log WHERE at < ?').run(Date.now() - maxAgeMs).changes);
   }
 
   logEntries(limit: number): LogEntry[] {
-    return this.db.prepare('SELECT id, at, admin, action, target, detail FROM admin_log ORDER BY id DESC LIMIT ?').all(limit) as unknown as LogEntry[];
+    // with the admin's handle (null once the account is gone), so the panel need not look each one up
+    return this.stmt(`SELECT l.id, l.at, l.admin, l.action, l.target, l.detail, u.handle AS adminHandle FROM admin_log l LEFT JOIN users u ON u.uuid = l.admin
+      ORDER BY l.id DESC LIMIT ?`).all(limit) as unknown as LogEntry[];
   }
 
   setShowServer(uuid: string, show: boolean) {
-    this.db.prepare('UPDATE users SET show_server = ? WHERE uuid = ?').run(show ? 1 : 0, uuid);
+    this.stmt('UPDATE users SET show_server = ? WHERE uuid = ?').run(show ? 1 : 0, uuid);
   }
 
   touch(uuid: string) {
-    this.db.prepare('UPDATE users SET last_seen = ? WHERE uuid = ?').run(Date.now(), uuid);
+    this.stmt('UPDATE users SET last_seen = ? WHERE uuid = ?').run(Date.now(), uuid);
   }
 
   lastSeen(uuid: string): number {
-    return (this.db.prepare('SELECT last_seen FROM users WHERE uuid = ?').get(uuid) as { last_seen: number } | undefined)?.last_seen ?? 0;
+    return (this.stmt('SELECT last_seen FROM users WHERE uuid = ?').get(uuid) as { last_seen: number } | undefined)?.last_seen ?? 0;
   }
 
   addSession(tokenHash: string, uuid: string) {
     const now = Date.now();
-    this.db.prepare('INSERT INTO sessions (token_hash, uuid, created_at, last_used) VALUES (?, ?, ?, ?)').run(tokenHash, uuid, now, now);
+    this.stmt('INSERT INTO sessions (token_hash, uuid, created_at, last_used) VALUES (?, ?, ?, ?)').run(tokenHash, uuid, now, now);
   }
 
   /** The player behind a session; sessions unused for `maxIdleMs` are gone. */
   sessionUser(tokenHash: string, maxIdleMs: number): string | undefined {
-    const row = this.db.prepare('SELECT uuid, last_used FROM sessions WHERE token_hash = ?').get(tokenHash) as { uuid: string; last_used: number } | undefined;
+    const row = this.stmt('SELECT uuid, last_used FROM sessions WHERE token_hash = ?').get(tokenHash) as { uuid: string; last_used: number } | undefined;
     if (!row) return undefined;
     const now = Date.now();
     if (now - row.last_used > maxIdleMs) {
@@ -679,62 +699,73 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
       return undefined;
     }
     // writing on every request is wasteful; once an hour is enough for expiry
-    if (now - row.last_used > 3_600_000) this.db.prepare('UPDATE sessions SET last_used = ? WHERE token_hash = ?').run(now, tokenHash);
+    if (now - row.last_used > 3_600_000) this.stmt('UPDATE sessions SET last_used = ? WHERE token_hash = ?').run(now, tokenHash);
     return row.uuid;
   }
 
   removeSession(tokenHash: string) {
-    this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+    this.stmt('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
   }
 
   /** Sessions nobody used for `maxIdleMs` (they would be refused anyway), so the table does not grow for good. */
   removeIdleSessions(maxIdleMs: number): number {
-    return Number(this.db.prepare('DELETE FROM sessions WHERE last_used < ?').run(Date.now() - maxIdleMs).changes);
+    return Number(this.stmt('DELETE FROM sessions WHERE last_used < ?').run(Date.now() - maxIdleMs).changes);
   }
 
   // ---- friends ----
 
   areFriends(x: string, y: string): boolean {
     const [a, b] = pair(x, y);
-    return !!this.db.prepare('SELECT 1 FROM friendships WHERE a = ? AND b = ?').get(a, b);
+    return !!this.stmt('SELECT 1 FROM friendships WHERE a = ? AND b = ?').get(a, b);
   }
 
   friends(uuid: string): (Person & { since: number })[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, f.created_at AS since FROM friendships f
+    return this.stmt(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, f.created_at AS since FROM friendships f
       JOIN users u ON u.uuid = CASE WHEN f.a = ? THEN f.b ELSE f.a END
       WHERE f.a = ? OR f.b = ? ORDER BY u.handle_lower`).all(uuid, uuid, uuid) as unknown as (Person & { since: number })[];
   }
 
+  /**
+   * The friends list's rows in one query: each friend as `friends` gives them, with their account
+   * (for the rank badge) and when they were last seen (for the status), not two more queries each.
+   */
+  friendsWithUsers(uuid: string): { friend: Person & { since: number }; user: User; lastSeen: number }[] {
+    const rows = this.stmt(`SELECT u.uuid, u.handle, u.name, ${AVATAR('u')} AS avatar, f.created_at AS since, u.show_server, u.cape, u.role, u.rank, u.banned, u.loadout, u.last_seen
+      FROM friendships f JOIN users u ON u.uuid = CASE WHEN f.a = ? THEN f.b ELSE f.a END
+      WHERE f.a = ? OR f.b = ? ORDER BY u.handle_lower`).all(uuid, uuid, uuid) as unknown as (UserRow & { since: number; last_seen: number })[];
+    return rows.map((r) => ({ friend: { id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, since: r.since }, user: toUser(r), lastSeen: r.last_seen }));
+  }
+
   addFriendship(x: string, y: string) {
     const [a, b] = pair(x, y);
-    this.db.prepare('INSERT OR IGNORE INTO friendships (a, b, created_at) VALUES (?, ?, ?)').run(a, b, Date.now());
-    this.db.prepare('DELETE FROM requests WHERE (from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)').run(x, y, y, x);
+    this.stmt('INSERT OR IGNORE INTO friendships (a, b, created_at) VALUES (?, ?, ?)').run(a, b, Date.now());
+    this.stmt('DELETE FROM requests WHERE (from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)').run(x, y, y, x);
   }
 
   removeFriendship(x: string, y: string): boolean {
     const [a, b] = pair(x, y);
-    return Number(this.db.prepare('DELETE FROM friendships WHERE a = ? AND b = ?').run(a, b).changes) > 0;
+    return Number(this.stmt('DELETE FROM friendships WHERE a = ? AND b = ?').run(a, b).changes) > 0;
   }
 
   hasRequest(from: string, to: string): boolean {
-    return !!this.db.prepare('SELECT 1 FROM requests WHERE from_uuid = ? AND to_uuid = ?').get(from, to);
+    return !!this.stmt('SELECT 1 FROM requests WHERE from_uuid = ? AND to_uuid = ?').get(from, to);
   }
 
   addRequest(from: string, to: string) {
-    this.db.prepare('INSERT OR IGNORE INTO requests (from_uuid, to_uuid, created_at) VALUES (?, ?, ?)').run(from, to, Date.now());
+    this.stmt('INSERT OR IGNORE INTO requests (from_uuid, to_uuid, created_at) VALUES (?, ?, ?)').run(from, to, Date.now());
   }
 
   removeRequest(from: string, to: string): boolean {
-    return Number(this.db.prepare('DELETE FROM requests WHERE from_uuid = ? AND to_uuid = ?').run(from, to).changes) > 0;
+    return Number(this.stmt('DELETE FROM requests WHERE from_uuid = ? AND to_uuid = ?').run(from, to).changes) > 0;
   }
 
   incoming(uuid: string): Request[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.from_uuid
+    return this.stmt(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.from_uuid
       WHERE r.to_uuid = ? ORDER BY r.created_at DESC`).all(uuid) as unknown as Request[];
   }
 
   outgoing(uuid: string): Request[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.to_uuid
+    return this.stmt(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.to_uuid
       WHERE r.from_uuid = ? ORDER BY r.created_at DESC`).all(uuid) as unknown as Request[];
   }
 
@@ -742,14 +773,14 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
 
   addMessage(from: string, to: string, text: string, invite?: Invite, waypoint?: SharedWaypoint): Message {
     const at = Date.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite, waypoint) VALUES (?, ?, ?, ?, ?, ?)')
+    const { lastInsertRowid } = this.stmt('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite, waypoint) VALUES (?, ?, ?, ?, ?, ?)')
       .run(from, to, text, at, invite ? JSON.stringify(invite) : null, waypoint ? JSON.stringify(waypoint) : null);
     return { id: Number(lastInsertRowid), from, to, text, at, readAt: null, ...(invite ? { invite } : {}), ...(waypoint ? { waypoint } : {}) };
   }
 
   /** The conversation between two players, newest last; `before` pages back by message id. */
   conversation(x: string, y: string, limit: number, before?: number): Message[] {
-    const rows = this.db.prepare(`SELECT ${MESSAGE_COLUMNS} FROM messages
+    const rows = this.stmt(`SELECT ${MESSAGE_COLUMNS} FROM messages
       WHERE ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)) AND id < ?
       ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as MessageRow[];
     return rows.reverse().map(toMessage);
@@ -757,99 +788,102 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
 
   /** One message between the two (either way), or undefined. */
   messageBetween(x: string, y: string, id: number): Message | undefined {
-    const row = this.db.prepare(`SELECT ${MESSAGE_COLUMNS} FROM messages WHERE id = ? AND ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?))`)
+    const row = this.stmt(`SELECT ${MESSAGE_COLUMNS} FROM messages WHERE id = ? AND ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?))`)
       .get(id, x, y, y, x) as unknown as MessageRow | undefined;
     return row && toMessage(row);
   }
 
   /** The author's new text; the old one is not kept. */
   editMessage(id: number, text: string, at = Date.now()) {
-    this.db.prepare('UPDATE messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
+    this.stmt('UPDATE messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
     // keys handed over for the old text cannot open the new one (chatKeys.ts); the picture's stay
-    this.db.prepare("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ? AND field = 'text'").run(id);
+    this.stmt("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ? AND field = 'text'").run(id);
   }
 
   /** Takes a message back: what stays is that there was one (no text, invite or waypoint); it does not count as unread. */
   deleteMessage(id: number, at = Date.now()) {
-    this.db.prepare("UPDATE messages SET text = '', invite = NULL, waypoint = NULL, edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
-    this.db.prepare("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ?").run(id);
+    this.stmt("UPDATE messages SET text = '', invite = NULL, waypoint = NULL, edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
+    this.stmt("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ?").run(id);
   }
 
   /** Marks what `from` sent to `reader` as read; returns the time used, or undefined when nothing was unread. */
   markRead(reader: string, from: string): number | undefined {
     const at = Date.now();
-    const { changes } = this.db.prepare('UPDATE messages SET read_at = ? WHERE to_uuid = ? AND from_uuid = ? AND read_at IS NULL').run(at, reader, from);
+    const { changes } = this.stmt('UPDATE messages SET read_at = ? WHERE to_uuid = ? AND from_uuid = ? AND read_at IS NULL').run(at, reader, from);
     return Number(changes) > 0 ? at : undefined;
   }
 
   unreadCounts(uuid: string): Record<string, number> {
-    const rows = this.db.prepare('SELECT from_uuid AS "from", COUNT(*) AS n FROM messages WHERE to_uuid = ? AND read_at IS NULL AND deleted_at IS NULL GROUP BY from_uuid').all(uuid) as { from: string; n: number }[];
+    const rows = this.stmt('SELECT from_uuid AS "from", COUNT(*) AS n FROM messages WHERE to_uuid = ? AND read_at IS NULL AND deleted_at IS NULL GROUP BY from_uuid').all(uuid) as { from: string; n: number }[];
     return Object.fromEntries(rows.map((r) => [r.from, Number(r.n)]));
   }
 
   /** Time of the newest message with each friend, for sorting conversations. */
   lastMessageTimes(uuid: string): Record<string, number> {
-    const rows = this.db.prepare(`SELECT CASE WHEN from_uuid = ? THEN to_uuid ELSE from_uuid END AS other, MAX(created_at) AS at
-      FROM messages WHERE from_uuid = ? OR to_uuid = ? GROUP BY other`).all(uuid, uuid, uuid) as { other: string; at: number }[];
+    // each side on its own index (messages_from_at, messages_to_at), then the newer of the two per friend
+    const rows = this.stmt(`SELECT other, MAX(at) AS at FROM (
+      SELECT to_uuid AS other, MAX(created_at) AS at FROM messages WHERE from_uuid = ? GROUP BY to_uuid
+      UNION ALL SELECT from_uuid AS other, MAX(created_at) AS at FROM messages WHERE to_uuid = ? GROUP BY from_uuid
+    ) GROUP BY other`).all(uuid, uuid) as { other: string; at: number }[];
     return Object.fromEntries(rows.map((r) => [r.other, Number(r.at)]));
   }
 
   // ---- partner servers ----
 
   partners(): import('./partners.ts').Partner[] {
-    return (this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners ORDER BY address`).all() as unknown as PartnerRow[]).map(toPartner);
+    return (this.stmt(`SELECT ${PARTNER_COLUMNS} FROM partners ORDER BY address`).all() as unknown as PartnerRow[]).map(toPartner);
   }
 
   partner(id: string): import('./partners.ts').Partner | undefined {
-    const p = this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE id = ?`).get(id) as unknown as PartnerRow | undefined;
+    const p = this.stmt(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE id = ?`).get(id) as unknown as PartnerRow | undefined;
     return p ? toPartner(p) : undefined;
   }
 
   partnerByAddress(address: string): import('./partners.ts').Partner | undefined {
-    const p = this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE address = ?`).get(address) as unknown as PartnerRow | undefined;
+    const p = this.stmt(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE address = ?`).get(address) as unknown as PartnerRow | undefined;
     return p ? toPartner(p) : undefined;
   }
 
   /** A partner's animated icon: the sprite sheet's file ('' for none), a frame's side and the frames' delays in ms. */
   setPartnerIcon(id: string, icon: string, size: number, delays: number[]) {
-    this.db.prepare('UPDATE partners SET icon = ?, icon_size = ?, icon_delays = ?, icon_updated_at = ? WHERE id = ?').run(icon, size, JSON.stringify(delays), Date.now(), id);
+    this.stmt('UPDATE partners SET icon = ?, icon_size = ?, icon_delays = ?, icon_updated_at = ? WHERE id = ?').run(icon, size, JSON.stringify(delays), Date.now(), id);
   }
 
   addPartner(p: import('./partners.ts').Partner) {
-    this.db.prepare('INSERT INTO partners (id, address, name, owner, co_owners, background, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    this.stmt('INSERT INTO partners (id, address, name, owner, co_owners, background, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(p.id, p.address, p.name, p.owner, JSON.stringify(p.coOwners), p.background, p.updatedAt);
   }
 
   updatePartner(id: string, name: string, owner: string, coOwners: string[]) {
-    this.db.prepare('UPDATE partners SET name = ?, owner = ?, co_owners = ?, updated_at = ? WHERE id = ?').run(name, owner, JSON.stringify(coOwners), Date.now(), id);
+    this.stmt('UPDATE partners SET name = ?, owner = ?, co_owners = ?, updated_at = ? WHERE id = ?').run(name, owner, JSON.stringify(coOwners), Date.now(), id);
   }
 
   setPartnerBackground(id: string, background: string) {
-    this.db.prepare('UPDATE partners SET background = ?, updated_at = ? WHERE id = ?').run(background, Date.now(), id);
+    this.stmt('UPDATE partners SET background = ?, updated_at = ? WHERE id = ?').run(background, Date.now(), id);
   }
 
   removePartner(id: string) {
-    this.db.prepare('DELETE FROM partners WHERE id = ?').run(id);
+    this.stmt('DELETE FROM partners WHERE id = ?').run(id);
   }
 
   /** The partner's other addresses (normalized), which the game treats as the partner too; its pictures keep their version. */
   setPartnerAliases(id: string, aliases: string[]) {
-    this.db.prepare('UPDATE partners SET aliases = ? WHERE id = ?').run(JSON.stringify(aliases), id);
+    this.stmt('UPDATE partners SET aliases = ? WHERE id = ?').run(JSON.stringify(aliases), id);
   }
 
   /** Whether the game pins this partner on top of its server list, and lets it take turns at the very top. */
   setPartnerPinning(id: string, pinned: boolean, rotate: boolean) {
-    this.db.prepare('UPDATE partners SET pinned = ?, rotate = ?, updated_at = ? WHERE id = ?').run(pinned ? 1 : 0, rotate ? 1 : 0, Date.now(), id);
+    this.stmt('UPDATE partners SET pinned = ?, rotate = ?, updated_at = ? WHERE id = ?').run(pinned ? 1 : 0, rotate ? 1 : 0, Date.now(), id);
   }
 
   // ---- shared logs ----
 
   addLog(id: string, owner: string, size: number, lines: number) {
-    this.db.prepare('INSERT INTO logs (id, owner, size, lines, created_at) VALUES (?, ?, ?, ?, ?)').run(id, owner, size, lines, Date.now());
+    this.stmt('INSERT INTO logs (id, owner, size, lines, created_at) VALUES (?, ?, ?, ?, ?)').run(id, owner, size, lines, Date.now());
   }
 
   sharedLog(id: string): { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined {
-    return this.db.prepare('SELECT id, owner, size, lines, created_at AS createdAt FROM logs WHERE id = ?').get(id) as { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined;
+    return this.stmt('SELECT id, owner, size, lines, created_at AS createdAt FROM logs WHERE id = ?').get(id) as { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined;
   }
 
   /** Shared logs for the admin panel, newest first, with who sent them and the reports that point at them. */
@@ -857,8 +891,8 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
     const where = `WHERE (? = '' OR lower(l.id) LIKE ? ESCAPE '\\' OR lower(coalesce(u.handle, '')) LIKE ? ESCAPE '\\')`;
     const args = [query, like, like];
-    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM logs l LEFT JOIN users u ON u.uuid = l.owner ${where}`).get(...args) as { n: number }).n;
-    const rows = this.db.prepare(`SELECT l.id, l.owner, u.handle AS ownerHandle, l.size, l.lines, l.created_at AS createdAt,
+    const total = (this.stmt(`SELECT COUNT(*) AS n FROM logs l LEFT JOIN users u ON u.uuid = l.owner ${where}`).get(...args) as { n: number }).n;
+    const rows = this.stmt(`SELECT l.id, l.owner, u.handle AS ownerHandle, l.size, l.lines, l.created_at AS createdAt,
       (SELECT COUNT(*) FROM bugs b WHERE b.log_id = l.id) AS bugs
       FROM logs l LEFT JOIN users u ON u.uuid = l.owner ${where} ORDER BY l.created_at DESC LIMIT ? OFFSET ?`).all(...args, limit, offset) as unknown as { id: string; owner: string; ownerHandle: string | null; size: number; lines: number; createdAt: number; bugs: number }[];
     return { logs: rows, total };
@@ -866,18 +900,18 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
 
   /** Logs older than `before`, to remove with their files. */
   oldLogs(before: number): string[] {
-    return (this.db.prepare('SELECT id FROM logs WHERE created_at < ?').all(before) as { id: string }[]).map((r) => r.id);
+    return (this.stmt('SELECT id FROM logs WHERE created_at < ?').all(before) as { id: string }[]).map((r) => r.id);
   }
 
   removeLog(id: string) {
-    this.db.prepare('DELETE FROM logs WHERE id = ?').run(id);
+    this.stmt('DELETE FROM logs WHERE id = ?').run(id);
   }
 
   // ---- bug reports ----
 
   addBug(b: { author: string; title: string; body: string; logId: string; version: string; os: string }): number {
     const now = Date.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO bugs (author, title, body, log_id, version, os, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    const { lastInsertRowid } = this.stmt('INSERT INTO bugs (author, title, body, log_id, version, os, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .run(b.author, b.title, b.body, b.logId, b.version, b.os, 'open', now, now);
     return Number(lastInsertRowid);
   }
@@ -886,72 +920,72 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
     const where = `WHERE (? = '' OR b.status = ?) AND (lower(b.title) LIKE ? ESCAPE '\\' OR lower(b.body) LIKE ? ESCAPE '\\')`;
     const args = [status, status, like, like];
-    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM bugs b ${where}`).get(...args) as { n: number }).n;
-    const rows = this.db.prepare(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
+    const total = (this.stmt(`SELECT COUNT(*) AS n FROM bugs b ${where}`).get(...args) as { n: number }).n;
+    const rows = this.stmt(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
       (SELECT COUNT(*) FROM bug_comments c WHERE c.bug_id = b.id) AS comments
       FROM bugs b LEFT JOIN users u ON u.uuid = b.author ${where} ORDER BY b.updated_at DESC LIMIT ? OFFSET ?`).all(...args, limit, offset) as unknown as Bug[];
     return { bugs: rows, total };
   }
 
   bug(id: number): Bug | undefined {
-    return this.db.prepare(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
+    return this.stmt(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
       (SELECT COUNT(*) FROM bug_comments c WHERE c.bug_id = b.id) AS comments
       FROM bugs b LEFT JOIN users u ON u.uuid = b.author WHERE b.id = ?`).get(id) as Bug | undefined;
   }
 
   setBugStatus(id: number, status: string) {
-    this.db.prepare('UPDATE bugs SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
+    this.stmt('UPDATE bugs SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
   }
 
   removeBug(id: number) {
-    this.db.prepare('DELETE FROM bugs WHERE id = ?').run(id);
+    this.stmt('DELETE FROM bugs WHERE id = ?').run(id);
   }
 
   bugComments(id: number): BugComment[] {
-    return this.db.prepare(`SELECT c.id, c.author, u.handle AS authorHandle, u.rank AS authorRole, c.body, c.created_at AS createdAt
+    return this.stmt(`SELECT c.id, c.author, u.handle AS authorHandle, u.rank AS authorRole, c.body, c.created_at AS createdAt
       FROM bug_comments c LEFT JOIN users u ON u.uuid = c.author WHERE c.bug_id = ? ORDER BY c.id`).all(id) as unknown as BugComment[];
   }
 
   addBugComment(bugId: number, author: string, body: string): number {
     const now = Date.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO bug_comments (bug_id, author, body, created_at) VALUES (?, ?, ?, ?)').run(bugId, author, body, now);
-    this.db.prepare('UPDATE bugs SET updated_at = ? WHERE id = ?').run(now, bugId);
+    const { lastInsertRowid } = this.stmt('INSERT INTO bug_comments (bug_id, author, body, created_at) VALUES (?, ?, ?, ?)').run(bugId, author, body, now);
+    this.stmt('UPDATE bugs SET updated_at = ? WHERE id = ?').run(now, bugId);
     return Number(lastInsertRowid);
   }
 
   removeBugComment(id: number) {
-    this.db.prepare('DELETE FROM bug_comments WHERE id = ?').run(id);
+    this.stmt('DELETE FROM bug_comments WHERE id = ?').run(id);
   }
 
   // ---- profiles shared by code (the files are next to the database, see profileShares.ts) ----
 
   addProfileShare(s: { code: string; owner: string; name: string; gameVersion: string; loader: string; size: number; expiresAt: number }) {
-    this.db.prepare('INSERT INTO profile_shares (code, owner, name, game_version, loader, size, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    this.stmt('INSERT INTO profile_shares (code, owner, name, game_version, loader, size, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(s.code, s.owner, s.name, s.gameVersion, s.loader, s.size, Date.now(), s.expiresAt);
   }
 
   /** A share that has not expired yet, with its owner's handle (null once the account is gone). */
   profileShare(code: string): ProfileShare | undefined {
-    return this.db.prepare(`SELECT ${SHARE_COLUMNS}, u.handle AS ownerHandle FROM profile_shares s LEFT JOIN users u ON u.uuid = s.owner
+    return this.stmt(`SELECT ${SHARE_COLUMNS}, u.handle AS ownerHandle FROM profile_shares s LEFT JOIN users u ON u.uuid = s.owner
       WHERE s.code = ? AND s.expires_at > ?`).get(code, Date.now()) as ProfileShare | undefined;
   }
 
   /** One player's shares that still work, newest first. */
   profileShares(owner: string): ProfileShare[] {
-    return this.db.prepare(`SELECT ${SHARE_COLUMNS}, NULL AS ownerHandle FROM profile_shares s WHERE s.owner = ? AND s.expires_at > ? ORDER BY s.created_at DESC`)
+    return this.stmt(`SELECT ${SHARE_COLUMNS}, NULL AS ownerHandle FROM profile_shares s WHERE s.owner = ? AND s.expires_at > ? ORDER BY s.created_at DESC`)
       .all(owner, Date.now()) as unknown as ProfileShare[];
   }
 
   countShareDownload(code: string) {
-    this.db.prepare('UPDATE profile_shares SET downloads = downloads + 1 WHERE code = ?').run(code);
+    this.stmt('UPDATE profile_shares SET downloads = downloads + 1 WHERE code = ?').run(code);
   }
 
   /** Codes past their time, to remove with their files. */
   expiredProfileShares(now: number): string[] {
-    return (this.db.prepare('SELECT code FROM profile_shares WHERE expires_at <= ?').all(now) as { code: string }[]).map((r) => r.code);
+    return (this.stmt('SELECT code FROM profile_shares WHERE expires_at <= ?').all(now) as { code: string }[]).map((r) => r.code);
   }
 
   removeProfileShare(code: string) {
-    this.db.prepare('DELETE FROM profile_shares WHERE code = ?').run(code);
+    this.stmt('DELETE FROM profile_shares WHERE code = ?').run(code);
   }
 }

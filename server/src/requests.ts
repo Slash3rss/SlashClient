@@ -29,6 +29,8 @@ export const KEEP = 50_000;
 const KEEP_DAYS = 7;
 const KEEP_ROWS = 50_000;
 const FLUSH_MS = 2000;
+/** How long the last hour's summary is kept before it is counted again. */
+export const SUMMARY_MS = 5000;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS request_log (
@@ -150,19 +152,36 @@ export class RequestLog {
     } catch { /* the next hour tries again */ }
   }
 
-  /** Newest first, filtered; with a summary of the last hour. */
-  query(f: { q?: string; errors?: boolean; client?: string; user?: string; limit?: number }) {
+  /**
+   * Newest first, filtered; with a summary of the last hour. `since`: only entries newer than that
+   * time (the panel asking every few seconds gets just what came since its last look).
+   */
+  query(f: { q?: string; errors?: boolean; client?: string; user?: string; limit?: number; since?: number }) {
     const q = (f.q ?? '').toLowerCase();
     const out: RequestEntry[] = [];
     const limit = Math.min(500, f.limit ?? 200);
     for (let i = this.entries.length - 1; i >= 0 && out.length < limit; i--) {
       const e = this.entries[i];
+      // kept in the order they came: everything further back is older still
+      if (f.since !== undefined && e.at <= f.since) break;
       if (f.errors && e.status < 400) continue;
       if (f.client && e.client !== f.client) continue;
       if (f.user && e.user !== f.user) continue;
       if (q && !e.path.toLowerCase().includes(q) && !e.error.includes(q)) continue;
       out.push(e);
     }
+    return { entries: out, kept: this.entries.length, since: this.entries[0]?.at ?? Date.now(), summary: this.summary() };
+  }
+
+  /** The summary walks the whole last hour: counted at most every SUMMARY_MS, however often the panel asks. */
+  private summaryKept?: { at: number; value: ReturnType<RequestLog['countHour']> };
+  private summary() {
+    const now = Date.now();
+    if (!this.summaryKept || now - this.summaryKept.at >= SUMMARY_MS || now < this.summaryKept.at) this.summaryKept = { at: now, value: this.countHour() };
+    return this.summaryKept.value;
+  }
+
+  private countHour() {
     const hour = Date.now() - 3_600_000;
     const recent = this.entries.filter((e) => e.at >= hour);
     const routes = new Map<string, { route: string; count: number; errors: number; totalMs: number; maxMs: number }>();
@@ -179,18 +198,13 @@ export class RequestLog {
     }
     const minute = Date.now() - 60_000;
     return {
-      entries: out,
-      kept: this.entries.length,
-      since: this.entries[0]?.at ?? Date.now(),
-      summary: {
-        lastHour: recent.length,
-        lastMinute: recent.filter((e) => e.at >= minute).length,
-        errors: recent.filter((e) => e.status >= 400).length,
-        serverErrors: recent.filter((e) => e.status >= 500).length,
-        clients,
-        routes: [...routes.values()].sort((a, b) => b.count - a.count).slice(0, 12)
-          .map((r) => ({ route: r.route, count: r.count, errors: r.errors, avgMs: Math.round(r.totalMs / r.count), maxMs: r.maxMs })),
-      },
+      lastHour: recent.length,
+      lastMinute: recent.filter((e) => e.at >= minute).length,
+      errors: recent.filter((e) => e.status >= 400).length,
+      serverErrors: recent.filter((e) => e.status >= 500).length,
+      clients,
+      routes: [...routes.values()].sort((a, b) => b.count - a.count).slice(0, 12)
+        .map((r) => ({ route: r.route, count: r.count, errors: r.errors, avgMs: Math.round(r.totalMs / r.count), maxMs: r.maxMs })),
     };
   }
 }
