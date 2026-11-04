@@ -267,6 +267,18 @@ public class GameWikiShots implements FabricClientGameTest {
 		server.runCommand("item replace entity @p weapon.mainhand with diamond_pickaxe[damage=1555]");
 		context.waitTicks(10);
 		region(context, "ostrzezenie-narzedzie", 0.5, 0.81, 300, 60);
+
+		// a potion drunk: the warning banner before its end, then the toast when it ends
+		context.runOnClient(mc -> TestHooks.potionEnd("banner", 5));
+		drink(context, server, "jump_boost", 160);
+		waitPotion(context, 1, 120);
+		context.waitTicks(5);
+		region(context, "mikstura-baner", 0.5, 0.0, 300, 70);
+		context.runOnClient(mc -> TestHooks.potionEnd("toast", 0));
+		drink(context, server, "haste", 50);
+		waitPotion(context, 1, 120);
+		context.waitTicks(10);
+		region(context, "mikstura-powiadomienie", 1.0, 0.0, 220, 70);
 		server.runCommand("item replace entity @p weapon.mainhand with diamond_sword[damage=700]");
 	}
 
@@ -283,9 +295,20 @@ public class GameWikiShots implements FabricClientGameTest {
 			SlashHud.config.waypoints = true;
 			MapSortTestHooks.worldMap(true, 2f);
 			MapSortTestHooks.friendsOnMap(true);
+			MapSortTestHooks.mapOptions("auto", true, true, false, false, true);
+			SlashHud.config.mapShading = "relief";
 			TestHooks.minimap(true, "square", false, 1.5f, 140);
 		});
 		context.waitTicks(120);
+		// a short flight around the tower and back: the trail on the maps
+		double[] home = context.computeOnClient(mc -> new double[] { mc.player.getX(), mc.player.getY(), mc.player.getZ() });
+		for (int i = 1; i <= 14; i++) {
+			double a = i * Math.PI / 7;
+			server.runCommand(String.format(java.util.Locale.ROOT, "tp @a %.1f %.1f %.1f 135 12", home[0] + 18 * Math.sin(a), home[1], home[2] - 18 + 18 * Math.cos(a)));
+			context.waitTicks(3);
+		}
+		server.runCommand(String.format(java.util.Locale.ROOT, "tp @a %.1f %.1f %.1f 135 12", home[0], home[1], home[2]));
+		context.waitTicks(10);
 		context.runOnClient(mc -> {
 			var p = mc.player;
 			MapSortTestHooks.friend("kumpel", "Kumpel", "minecraft:overworld", p.getX() + 22, p.getY() - 8, p.getZ() - 14);
@@ -296,6 +319,13 @@ public class GameWikiShots implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.minimap(true, "circle", true, 2f, 140));
 		context.waitTicks(10);
 		module(context, "minimapa-okragla", false, "minimap");
+		context.runOnClient(mc -> {
+			SlashHud.config.mapShading = "classic";
+			TestHooks.minimap(true, "square", false, 1.5f, 140);
+		});
+		context.waitTicks(10);
+		module(context, "minimapa-klasyczna", false, "minimap");
+		context.runOnClient(mc -> SlashHud.config.mapShading = "relief");
 		// the waypoints in the world: their markers with names and distances
 		context.runOnClient(mc -> TestHooks.onlyModules());
 		server.runCommand("execute as @p at @s run tp @s ~ ~ ~ facing " + "~-26 ~-10 ~30");
@@ -314,6 +344,58 @@ public class GameWikiShots implements FabricClientGameTest {
 		context.waitTicks(5);
 		full(context, "mapa-swiata");
 		context.setScreen(() -> null);
+		// the same with the chunk grid and the biomes in place of the ground
+		context.runOnClient(mc -> MapSortTestHooks.mapOptions("auto", true, true, true, true, true));
+		context.getInput().pressKey(InputConstants.KEY_M);
+		context.waitTicks(10);
+		context.getInput().setCursorPos(4, 4);
+		context.waitTicks(5);
+		full(context, "mapa-biomy");
+		context.setScreen(() -> null);
+		context.runOnClient(mc -> MapSortTestHooks.mapOptions("auto", true, true, true, false, true));
+		context.getInput().pressKey(InputConstants.KEY_M);
+		context.waitTicks(10);
+		context.getInput().setCursorPos(4, 4);
+		context.waitTicks(5);
+		full(context, "mapa-siatka");
+		context.setScreen(() -> null);
+		context.runOnClient(mc -> MapSortTestHooks.mapOptions("auto", true, true, false, false, true));
+
+		// a cave far away: a block of stone with rooms and tunnels dug out and lit, the player in it
+		// creative there and back: no fall from the tower or in the sky above the cave
+		server.runCommand("gamemode creative @a");
+		server.runCommand("tp @a 3000 170 3000 180 40");
+		context.waitTicks(80);
+		for (String cmd : new String[] {
+			"fill 2984 120 2984 3016 148 3016 stone",
+			"fill 2997 141 2997 3003 144 3003 air",
+			"fill 3004 141 2999 3014 143 3001 air",
+			"fill 2986 141 2999 2996 143 3001 air",
+			"fill 2999 141 2986 3001 143 2996 air",
+			"fill 2988 141 2988 2994 144 2994 air",
+			"fill 3006 141 3006 3012 144 3012 air",
+			"fill 3004 141 3004 3005 143 3005 air",
+			"fill 2995 141 2995 2996 143 2996 air",
+			"fill 3008 140 3008 3010 140 3010 water",
+			"setblock 3000 140 3000 glowstone",
+			"setblock 2991 140 2991 glowstone",
+			"setblock 3009 144 3009 glowstone",
+		}) server.runCommand(cmd);
+		server.runCommand("tp @a 3000 141 3000 135 20");
+		context.runOnClient(mc -> TestHooks.minimap(true, "square", false, 3f, 140));
+		for (int i = 0; i < 60 && !context.computeOnClient(mc -> MapSortTestHooks.caves()); i++) context.waitTick();
+		context.waitTicks(60);
+		module(context, "minimapa-jaskinie", false, "minimap");
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.map.WorldMapScreen(dev.slash3rss.slashclient.hud.skyup.DungeonMap.fullKey));
+		context.waitTicks(10);
+		context.runOnClient(mc -> MapSortTestHooks.mapCenter(3000, 3000, 6f));
+		context.getInput().setCursorPos(4, 4);
+		context.waitTicks(5);
+		full(context, "mapa-jaskinie");
+		context.setScreen(() -> null);
+		server.runCommand(String.format(java.util.Locale.ROOT, "tp @a %.1f %.1f %.1f 135 12", home[0], home[1], home[2]));
+		context.waitTicks(60);
+		server.runCommand("gamemode survival @a");
 		// B: the waypoints' list
 		context.setScreen(dev.slash3rss.slashclient.hud.map.WaypointsScreen::new);
 		context.getInput().setCursorPos(4, 4);
@@ -448,6 +530,22 @@ public class GameWikiShots implements FabricClientGameTest {
 		context.waitTicks(10);
 		full(context, "znajomi");
 		context.setScreen(() -> null);
+		for (String[] tab : new String[][] { { "cape", "kosmetyki" }, { "wings", "kosmetyki-skrzydla" }, { "hat", "kosmetyki-na-glowe" }, { "pet", "kosmetyki-pupile" } }) {
+			context.runOnClient(mc -> {
+				TestHooks.cosmeticsMenu(tab[0]);
+				testName(mc);
+			});
+			context.getInput().setCursorPos(5, 5);
+			context.waitTicks(30);
+			full(context, tab[1]);
+		}
+		context.runOnClient(mc -> {
+			TestHooks.setsMenu(800);
+			testName(mc);
+		});
+		context.waitTicks(30);
+		full(context, "kosmetyki-zestawy");
+		context.setScreen(() -> null);
 		context.runOnClient(mc -> TestHooks.emoteWheel());
 		context.getInput().setCursorPos(1060, 380);
 		context.waitTicks(10);
@@ -541,6 +639,36 @@ public class GameWikiShots implements FabricClientGameTest {
 	}
 
 	// ---------- taking them ----------
+
+	/** The cosmetics menu's sample names a real player's character: a test name in its place. */
+	private static void testName(net.minecraft.client.Minecraft mc) {
+		if (!(dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen screen)) return;
+		try {
+			var field = dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen.class.getDeclaredField("characterName");
+			field.setAccessible(true);
+			field.set(screen, "Gracz");
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** The player drinks a potion of `effect` lasting `ticks`, holding the use key as a player would. */
+	private static void drink(ClientGameTestContext context, TestServerContext server, String effect, int ticks) {
+		server.runCommand("item replace entity @p weapon.mainhand with minecraft:potion[potion_contents={custom_effects:[{id:\"minecraft:" + effect + "\",duration:" + ticks + ",amplifier:1}]}]");
+		context.waitTicks(5);
+		int before = context.computeOnClient(mc -> TestHooks.potionNotifications());
+		potionBase = before;
+		context.getInput().holdKey(o -> o.keyUse);
+		context.waitTicks(40);
+		context.getInput().releaseKey(o -> o.keyUse);
+	}
+
+	private static int potionBase;
+
+	/** Waits up to `ticks` for `more` notifications of the potion than before it was drunk. */
+	private static void waitPotion(ClientGameTestContext context, int more, int ticks) {
+		for (int i = 0; i < ticks && context.computeOnClient(mc -> TestHooks.potionNotifications()) < potionBase + more; i++) context.waitTick();
+	}
 
 	/** The game's own parts (chat, scoreboard, …) shown or not. */
 	private static void gameParts(boolean on) {

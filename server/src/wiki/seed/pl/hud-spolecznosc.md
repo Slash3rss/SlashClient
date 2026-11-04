@@ -43,9 +43,33 @@ Miejsce powiadomień na ekranie zmienisz w edytorze (część **Powiadomienia**)
 
 Klawisz sprayu (domyślnie nieprzypisany – ustaw go w oknie Klawisze) maluje wybrany spray na bloku, na który patrzysz, do 5 kratek od Ciebie. Spray wybierasz w menu kosmetyków (zakładka **Spray**). Między sprayami jest krótka przerwa.
 
-## Kosmetyki w grze
+## Menu kosmetyków
 
-Kosmetyki (peleryny, skrzydła, czapki, ubrania, pupile, efekty i inne) wybierzesz w menu głównym SlashClient, pod podglądem skina, albo w launcherze. W kategorii Dodatki są przełączniki tego, co widzisz u innych:
+Kosmetyki wybierzesz w grze: przycisk **Kosmetyki** w menu głównym SlashClient (pod podglądem skina) otwiera menu z Twoją postacią po lewej – obrócisz ją, przeciągając myszką – i siatką przedmiotów po prawej. Postać przymierza przedmiot, na który najedziesz myszką (to, co nosi się z tyłu, pokazuje odwrócona), a kliknięcie go zakłada. To samo zmienisz w launcherze.
+
+![Menu kosmetyków: zakładka Peleryna](hud-kosmetyki.webp)
+
+Wśród zakładek są: **Zestawy**, **Peleryna**, **Skrzydła**, **Elytra**, **Ślad**, **Aura**, **Pupil**, **Na głowę**, **Ubranie**, **Strój**, **Buty**, **Dłonie**, **Twarz**, **Uszy i rogi**, **Na plecy**, **Ogon**, **Rekwizyt**, **Efekt zabójstwa**, **Tarcza**, **Skórka broni**, **Krąg pod stopami**, **Efekt ruchu**, **Spray**.
+
+![Zakładka Skrzydła](hud-kosmetyki-skrzydla.webp)
+
+![Zakładka Na głowę](hud-kosmetyki-na-glowe.webp)
+
+![Zakładka Pupil](hud-kosmetyki-pupile.webp)
+
+- Nad siatką widać, czy zmieniasz **zestaw całego konta**, czy zestaw jednej postaci (konta Minecraft) – przycisk **Jak całe konto** wraca do wspólnego.
+- Przedmioty, których jeszcze nie masz, są oznaczone, a ich podpowiedź mówi, jak je zdobyć (np. osiągnięciem). Część da się kupić za **Iskry** zdobywane za osiągnięcia SlashClient – kliknięcie pyta o zakup i pokazuje, ile Iskier zostanie.
+- Przedmiot na plecy zajmuje miejsce peleryny i skrzydeł, a ogon kołysze się przy chodzeniu.
+
+### Zestawy
+
+Zakładka **Zestawy** pokazuje przedmioty, które do siebie pasują (np. Lód, Smok, Demon, Anioł, Pirat, Obsydian, Wilk, Kot), jako karty z ich częściami i tym, ile z nich masz. **Załóż zestaw** zakłada naraz wszystkie części, które masz; najedź na brakującą, żeby zobaczyć, jak ją zdobyć. Założony zestaw ma znaczek **Założony**.
+
+![Zakładka Zestawy](hud-kosmetyki-zestawy.webp)
+
+## Kosmetyki innych graczy
+
+W kategorii Dodatki są przełączniki tego, co widzisz u innych:
 
 | Karta | Co robi |
 |---|---|

@@ -27,6 +27,25 @@ Teren wokół Ciebie z góry, Twoje waypointy, gracze i moby w pobliżu oraz Ty 
 
 W Netherze minimapa rysuje teren z poziomu, na którym jesteś, a nie dach z bedrocku – widać korytarze, którymi chodzisz.
 
+Karta **Minimapa** ma też opcje wyglądu, wspólne z mapą świata:
+
+| Ustawienie | Co robi |
+|---|---|
+| Jaskinie | **Pod ziemią** – pod ziemią mapa sama pokazuje jaskinie; **Zawsze**; **Wyłączone** |
+| Cieniowanie | **Rzeźba terenu** (zbocza jaśniejsze i ciemniejsze, widać wzniesienia) albo **Jak mapa w grze** |
+| Ciemniej w nocy | w nocy mapa jest ciemniejsza |
+| Ślad przejścia | kropki tam, gdzie szedłeś; starsze są bledsze |
+
+![Minimapa z cieniowaniem „Jak mapa w grze”](hud-minimapa-klasyczna.webp)
+
+### Tryb jaskiń
+
+Pod ziemią (albo zawsze, jeśli tak ustawisz) mapa nie rysuje powierzchni nad Tobą, tylko podłogę jaskini na Twojej wysokości. Lita skała jest ciemna, więc korytarze, groty i woda dobrze się odcinają. Jaskinie mają na mapie świata osobną warstwę – na górze mapy widać wtedy dopisek **Jaskinie**.
+
+![Minimapa w jaskini](hud-minimapa-jaskinie.webp)
+
+![Mapa świata w trybie jaskiń](hud-mapa-jaskinie.webp)
+
 Mapa rysuje się tylko wtedy, gdy coś się zmieniło (ruszyłeś się, obróciłeś albo teren się zmienił), więc stojąc w miejscu nic nie kosztuje.
 
 ## Mapa świata
@@ -41,10 +60,25 @@ Mapa rysuje się tylko wtedy, gdy coś się zmieniło (ruszyłeś się, obróci�
 - **Prawy przycisk** – nowy waypoint w tym miejscu (na wysokości terenu, gdy jest znana), od razu otwarty do nazwania.
 - **Klik na waypoint** – otwiera go: zmienisz nazwę i kolor, ukryjesz, udostępnisz znajomym albo usuniesz.
 - **M**, **Esc** albo ✕ zamyka mapę.
+- **Ctrl + klik** – teleport w to miejsce, na powierzchnię. Działa tylko tam, gdzie możesz używać komendy `/spreadplayers` (świat jednoosobowy z kodami albo serwer, na którym jesteś operatorem); wtedy podpowiedź na dole mapy mówi „Ctrl+klik: teleport”.
+
+### Siatka i biomy
+
+Przyciski na górnym pasku mapy włączają:
+- **Siatkę** – granice chunków, a grubszymi liniami regionów (512 bloków);
+- **Biomy** – zamiast terenu kolory biomów (oceany niebieskie, pustynie piaskowe, ośnieżone białe…), a nazwa biomu pod kursorem jest przy współrzędnych.
+
+![Mapa świata z siatką chunków](hud-mapa-siatka.webp)
+
+![Mapa świata w widoku biomów](hud-mapa-biomy.webp)
+
+### Zapamiętywanie mapy
+
+Z opcją **Zapamiętuj mapę na dysku** (karta Mapa świata, domyślnie włączona) wszystko, co mapa widziała – teren, biomy, jaskinie i ślad – zostaje do następnego wejścia na ten sam serwer lub świat. Mapy leżą w folderze `.minecraft/slashclient/maps`, osobno dla każdego świata i wymiaru. Zapis idzie w tle co kilka minut, przy wyjściu ze świata i przy zamknięciu gry. Plik, którego nie da się odczytać, jest odkładany na bok (`.bad`), nigdy usuwany.
 
 Na górze widać wymiar, liczbę znanych chunków i skalę. Na mapie są Twoje waypointy, punkty od znajomych, punkt śmierci, gracze i moby w pobliżu oraz znajomi, którzy udostępniają pozycję.
 
-**Ustawienia** (karta **Mapa świata** w kategorii Świat): włączenie klawisza M, **Przybliżenie na start** i to, kogo pokazywać. Na serwerach partnerskich w dungeonie M otwiera mapę dungeonu zamiast mapy świata.
+**Ustawienia** (karta **Mapa świata** w kategorii Świat): włączenie klawisza M, **Przybliżenie na start**, **Zapamiętuj mapę na dysku**, **Jaskinie**, **Siatka**, **Biomy**, **Ślad przejścia** i to, kogo pokazywać. Na serwerach partnerskich w dungeonie M otwiera mapę dungeonu zamiast mapy świata.
 
 ## Waypointy
 

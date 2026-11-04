@@ -95,6 +95,21 @@ A mark by the crosshair when you land a hit (works with the game's crosshair too
 | Arrows and tridents too | a mark for hits from afar |
 | Sound, Which sound, Volume | a ding, a click or an experience orb |
 
+## Potion running out
+
+Tells you when a potion you **drank** runs out – or a few seconds before. Only effects from a potion you drank count: not a beacon's, a golden apple's or the server's. If you later get the same effect from something else, it no longer counts. On by default (Combat → **Potion running out**).
+
+![The banner at the top: the potion is running out](hud-mikstura-baner.webp)
+
+![The toast in the corner: the potion has run out](hud-mikstura-powiadomienie.webp)
+
+| Setting | What it does |
+|---|---|
+| Where | a toast in the corner, a banner at the top, above the hotbar or in the chat |
+| Warn before the end | 0–30 seconds early (0 – only at the end) |
+| Sound | none, pling, bell, amethyst, bottle, experience orb |
+| Volume | 0–100% |
+
 ## Damage indicators
 
 When a mob or player near you loses health, the amount rises above it for a second – yellow, orange for a hard hit, red for a big one. On by default.
