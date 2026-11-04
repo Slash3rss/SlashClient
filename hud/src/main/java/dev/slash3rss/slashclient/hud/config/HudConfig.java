@@ -238,6 +238,14 @@ public final class HudConfig {
 	public boolean mapPlayers = true;
 	public boolean mapHostile = true;
 	public boolean mapPassive = true;
+	/**
+	 * The maps' ground: caves ("auto" once underground, "always", "off"), slopes shaded ("relief" or "classic"), darker
+	 * at night, the trail walked, kept on disk for the next time (MapStore).
+	 */
+	public String mapCave = "auto", mapShading = "relief";
+	public boolean mapNight = true, mapTrail = true, mapSave = true;
+	/** The full map's chunk grid and biome view. */
+	public boolean worldMapGrid = false, worldMapBiomes = false;
 	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
 	public int skyTasksMax = 5;
 	/** The module's widest, in pixels: longer names are cut with "…". */
@@ -836,6 +844,8 @@ public final class HudConfig {
 		read.screenshotCaptionCorner = oneOf(read.screenshotCaptionCorner, ShotCaption.CORNERS);
 		read.hitMarkerStyle = oneOf(read.hitMarkerStyle, HitMarker.STYLES);
 		read.hitMarkerSoundKind = oneOf(read.hitMarkerSoundKind, HitMarker.SOUNDS);
+		read.mapCave = oneOf(read.mapCave, dev.slash3rss.slashclient.hud.map.MinimapTerrain.CAVE_MODES);
+		read.mapShading = oneOf(read.mapShading, dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS);
 		read.potionEndPlace = oneOf(read.potionEndPlace, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES);
 		read.potionEndSound = oneOf(read.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
@@ -921,6 +931,13 @@ public final class HudConfig {
 		mapPlayers = other.mapPlayers;
 		mapHostile = other.mapHostile;
 		mapPassive = other.mapPassive;
+		mapCave = oneOf(other.mapCave, dev.slash3rss.slashclient.hud.map.MinimapTerrain.CAVE_MODES);
+		mapShading = oneOf(other.mapShading, dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS);
+		mapNight = other.mapNight;
+		mapTrail = other.mapTrail;
+		mapSave = other.mapSave;
+		worldMapGrid = other.worldMapGrid;
+		worldMapBiomes = other.worldMapBiomes;
 		skyTasksMax = Math.max(1, Math.min(10, other.skyTasksMax));
 		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;

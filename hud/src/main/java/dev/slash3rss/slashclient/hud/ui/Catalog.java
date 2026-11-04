@@ -338,6 +338,10 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.minimap.rotate", () -> cfg.minimapRotate, v -> cfg.minimapRotate = v));
 					settings.add(new Toggle("slashclient-hud.minimap.coords", () -> cfg.minimapCoords, v -> cfg.minimapCoords = v));
 					settings.add(new Toggle("slashclient-hud.minimap.waypoints", () -> cfg.minimapWaypoints, v -> cfg.minimapWaypoints = v));
+					settings.add(new Choice("slashclient-hud.map.cave", dev.slash3rss.slashclient.hud.map.MinimapTerrain.CAVE_MODES, "slashclient-hud.map.cave.", () -> cfg.mapCave, v -> cfg.mapCave = v));
+					settings.add(new Choice("slashclient-hud.map.shading", dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS, "slashclient-hud.map.shading.", () -> cfg.mapShading, v -> cfg.mapShading = v));
+					settings.add(new Toggle("slashclient-hud.map.night", () -> cfg.mapNight, v -> cfg.mapNight = v));
+					settings.add(new Toggle("slashclient-hud.map.trail", () -> cfg.mapTrail, v -> cfg.mapTrail = v));
 					settings.add(new Toggle("slashclient-hud.map.players", () -> cfg.mapPlayers, v -> cfg.mapPlayers = v));
 					settings.add(new Toggle("slashclient-hud.map.hostile", () -> cfg.mapHostile, v -> cfg.mapHostile = v));
 					settings.add(new Toggle("slashclient-hud.map.passive", () -> cfg.mapPassive, v -> cfg.mapPassive = v));
@@ -672,6 +676,11 @@ public final class Catalog {
 		out.add(new Entry("worldMap", "slashclient-hud.worldMap", "world", "m-worldmap", () -> cfg.worldMap, v -> cfg.worldMap = v, List.of(
 			new Slider("slashclient-hud.worldMap.zoom", dev.slash3rss.slashclient.hud.map.WorldMapScreen.MIN_ZOOM, dev.slash3rss.slashclient.hud.map.WorldMapScreen.MAX_ZOOM, 0.125f, "%.2f×",
 				() -> cfg.worldMapZoom, v -> cfg.worldMapZoom = v),
+			new Toggle("slashclient-hud.map.save", () -> cfg.mapSave, v -> cfg.mapSave = v),
+			new Choice("slashclient-hud.map.cave", dev.slash3rss.slashclient.hud.map.MinimapTerrain.CAVE_MODES, "slashclient-hud.map.cave.", () -> cfg.mapCave, v -> cfg.mapCave = v),
+			new Toggle("slashclient-hud.worldMap.grid", () -> cfg.worldMapGrid, v -> cfg.worldMapGrid = v),
+			new Toggle("slashclient-hud.worldMap.biomes", () -> cfg.worldMapBiomes, v -> cfg.worldMapBiomes = v),
+			new Toggle("slashclient-hud.map.trail", () -> cfg.mapTrail, v -> cfg.mapTrail = v),
 			new Toggle("slashclient-hud.map.players", () -> cfg.mapPlayers, v -> cfg.mapPlayers = v),
 			new Toggle("slashclient-hud.map.hostile", () -> cfg.mapHostile, v -> cfg.mapHostile = v),
 			new Toggle("slashclient-hud.map.passive", () -> cfg.mapPassive, v -> cfg.mapPassive = v)), null));

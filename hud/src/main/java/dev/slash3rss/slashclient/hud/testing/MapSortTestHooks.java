@@ -221,6 +221,41 @@ public final class MapSortTestHooks {
 		m.zoom = zoom;
 	}
 
+	/** The maps' ground: caves ("auto", "always", "off"), the trail, kept on disk, the full map's grid and biomes, darker at night. */
+	public static void mapOptions(String cave, boolean trail, boolean save, boolean grid, boolean biomes, boolean night) {
+		HudConfig c = SlashHud.config;
+		c.mapCave = cave;
+		c.mapTrail = trail;
+		c.mapSave = save;
+		c.worldMapGrid = grid;
+		c.worldMapBiomes = biomes;
+		c.mapNight = night;
+	}
+
+	public static boolean caves() {
+		return MinimapTerrain.caves();
+	}
+
+	public static int trail() {
+		return dev.slash3rss.slashclient.hud.map.MapTrail.shown(Minecraft.getInstance()).size();
+	}
+
+	public static String exploredBiome(int x, int z) {
+		return String.valueOf(MinimapTerrain.exploredBiome(x, z));
+	}
+
+	/** The map written to disk, forgotten and read back: the folder it is in. */
+	public static String mapReload() {
+		dev.slash3rss.slashclient.hud.map.MapStore.reloadForTest();
+		return dev.slash3rss.slashclient.hud.map.MapStore.folderForTest().toString();
+	}
+
+	/** Whether the open map would teleport (Ctrl + click), and the last teleport's command. */
+	public static String mapTeleport() {
+		WorldMapScreen m = map();
+		return WorldMapScreen.canTeleport(Minecraft.getInstance()) + "," + (m == null ? "" : m.teleported);
+	}
+
 	/** The open waypoint renamed, as if typed into its field. */
 	public static void mapRename(String name) {
 		WorldMapScreen m = map();

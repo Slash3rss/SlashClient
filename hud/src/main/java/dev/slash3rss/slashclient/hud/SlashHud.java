@@ -263,6 +263,8 @@ public class SlashHud implements ClientModInitializer {
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> SkyTasks.flush());
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> SkyTasks.flush());
 		//#endif
+		// the map seen kept on disk when the game closes (on leaving a world, by MapStore.tick in the menus)
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> dev.slash3rss.slashclient.hud.map.MapStore.flush());
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
 			dev.slash3rss.slashclient.hud.map.MapEntities.forget();
@@ -361,6 +363,8 @@ public class SlashHud implements ClientModInitializer {
 			DungeonMap.tick(mc);
 			LootHighlight.tick(mc);
 			Minimap.tick(mc);
+			if (mc.level == null) dev.slash3rss.slashclient.hud.map.MapStore.tick(mc);
+			dev.slash3rss.slashclient.hud.map.MapTrail.tick(mc);
 			// sorting's clicks also go out between the window's frames; friends see where we are (when we share it)
 			InventorySort.pump(mc);
 			dev.slash3rss.slashclient.hud.social.FriendPositions.tick(mc);

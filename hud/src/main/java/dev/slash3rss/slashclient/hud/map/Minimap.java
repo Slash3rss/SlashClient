@@ -23,7 +23,8 @@ import dev.slash3rss.slashclient.hud.modules.Modules;
  * The picture is painted on the CPU into a texture of its own, only when something it shows
  * changed (the player moved or turned, or the ground under it was read anew), so a still player
  * costs nothing and a turning one one small picture a frame. North up, a picture moves only in
- * whole pixels, so it is painted again only when some pixel would show another block.
+ * whole pixels, so it is painted again only when some pixel would show another block. Darker at night (by the
+ * setting), and the trail walked as dots.
  */
 public final class Minimap implements HudModule {
 	public static final String[] SHAPES = { "square", "circle" };
@@ -40,6 +41,8 @@ public final class Minimap implements HudModule {
 	private static int[] cols = new int[0], rows = new int[0], paintedCols, paintedRows;
 	/** When the last tick ran, to place the player between ticks. */
 	private static long tickedAt;
+	/** How bright the ground was painted (MinimapTerrain.night). */
+	private static float night = 1f;
 	/** For the test: how long painting took, all told, and how often. */
 	static long paintNanos, paints;
 
@@ -128,7 +131,8 @@ public final class Minimap implements HudModule {
 		boolean rotate = cfg.minimapRotate, circle = circle();
 		float yaw = rotate ? mc.player.getYRot() : 180f;
 		long key = MinimapTerrain.version;
-		key = key * 31 + Float.floatToIntBits(scale) + (circle ? 1 : 0) + W * 7L;
+		night = MinimapTerrain.night(mc);
+		key = key * 31 + Float.floatToIntBits(scale) + (circle ? 1 : 0) + W * 7L + Float.floatToIntBits(night) * 13L;
 		boolean again;
 		if (rotate) {
 			// what the picture shows, in its own steps: half a pixel of movement, a quarter of a degree
@@ -165,6 +169,7 @@ public final class Minimap implements HudModule {
 		float[] n = edge(north[0], north[1], r - 6, circle);
 		String letter = "N";
 		g.text(mc.font, letter, cx + Math.round(n[0]) - mc.font.width(letter) / 2 + 1, cy + Math.round(n[1]) - 3, 0xFFF87171, true);
+		trail(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		if (cfg.minimapWaypoints) waypoints(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		entities(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		friends(g, mc, cx, cy, at, scale, cos, sin, r, circle);
@@ -206,7 +211,7 @@ public final class Minimap implements HudModule {
 				// the screen's right and up in the world: right is (-cos, -sin), ahead (-sin, cos)
 				float ox = (-cos * sx + sin * sy) * inv, oz = (-sin * sx - cos * sy) * inv;
 				c = MinimapTerrain.sample((int) Math.floor(px + ox), (int) Math.floor(pz + oz));
-				view.setPixel(qx, py, c == 0 ? UNKNOWN : c);
+				view.setPixel(qx, py, c == 0 ? UNKNOWN : MinimapTerrain.dim(c, night));
 			}
 		}
 	}
@@ -248,7 +253,7 @@ public final class Minimap implements HudModule {
 					continue;
 				}
 				int c = MinimapTerrain.sample(cols[qx], z);
-				view.setPixel(qx, py, c == 0 ? UNKNOWN : c);
+				view.setPixel(qx, py, c == 0 ? UNKNOWN : MinimapTerrain.dim(c, night));
 			}
 		}
 	}
@@ -262,6 +267,22 @@ public final class Minimap implements HudModule {
 	private static float[] edge(float sx, float sy, float reach, boolean circle) {
 		float k = circle ? (float) (reach / Math.max(1e-4, Math.hypot(sx, sy))) : reach / Math.max(1e-4f, Math.max(Math.abs(sx), Math.abs(sy)));
 		return new float[] { sx * k, sy * k };
+	}
+
+	/** The trail walked, as dots inside the map. */
+	private static void trail(GuiGraphicsExtractor g, Minecraft mc, int cx, int cy, double[] at, float scale, float cos, float sin, float r, boolean circle) {
+		List<int[]> points = MapTrail.shown(mc);
+		float reach = r - 2;
+		double far = reach * 1.42 / scale;
+		int n = points.size();
+		for (int i = 0; i < n; i++) {
+			int[] p = points.get(i);
+			double dx = p[0] + 0.5 - at[0], dz = p[1] + 0.5 - at[1];
+			if (dx * dx + dz * dz > far * far) continue;
+			float[] s = toScreen(dx, dz, scale, cos, sin);
+			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
+			if (inside) MapTrail.dot(g, cx + s[0], cy + s[1], 1, i, n);
+		}
 	}
 
 	/** The player's waypoints in this dimension: a diamond on the map, or an arrow on its edge pointing to it. */

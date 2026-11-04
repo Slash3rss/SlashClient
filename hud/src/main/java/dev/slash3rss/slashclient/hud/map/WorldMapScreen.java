@@ -26,6 +26,11 @@ import dev.slash3rss.slashclient.hud.SlashHud;
  * the game knows about nearby (MapEntities), and friends who share their position. Dragging moves it, the wheel zooms around the mouse, Space or "Do mnie" comes back
  * to the player; a right click puts a new waypoint there, a click on one opens it to rename,
  * recolour, hide, share or delete. M, Escape or ✕ closes it.
+ *
+ * Its bar switches on a grid of chunks (and of regions, 512 blocks) and the biomes in place of the ground (the biome
+ * under the mouse named by the coordinates); underground it shows the caves, as the minimap does. The trail walked
+ * shows as dots, and at night the ground is darker. Where the player may use /spreadplayers (singleplayer with cheats,
+ * or an operator), Ctrl + click teleports there, onto the ground.
  */
 public class WorldMapScreen extends Screen {
 	private static NativeImage view;
@@ -144,23 +149,26 @@ public class WorldMapScreen extends Screen {
 		oy = BAR + 4;
 		aw = width - 12;
 		// the help under the map: on two lines in a narrow window instead of losing its end
-		List<Component> help = helpLines(width - 12);
+		List<Component> help = helpLines(width - 12, canTeleport(mc));
 		ah = height - oy - 6 - 10 * help.size();
 		vx = centerX - aw / 2.0 / zoom;
 		vz = centerZ - ah / 2.0 / zoom;
 		// drawn at most 640 pixels across, stretched to the area; again when the view or the ground changes
 		int pw = Math.max(1, Math.min(aw, 640)), ph = Math.max(1, Math.round((float) ah * pw / aw));
 		ensure(pw, ph);
-		String now = pw + "," + ph + "," + vx + "," + vz + "," + zoom;
+		float night = MinimapTerrain.night(mc);
+		String now = pw + "," + ph + "," + vx + "," + vz + "," + zoom + "," + night + "," + SlashHud.config.worldMapBiomes + "," + MinimapTerrain.cave;
 		if (!now.equals(lastView) || (lastVersion != MinimapTerrain.exploredVersion && frame++ % 10 == 0)) {
 			lastView = now;
 			lastVersion = MinimapTerrain.exploredVersion;
-			paint(pw, ph, zoom * pw / aw);
+			paint(pw, ph, zoom * pw / aw, night);
 			texture.upload();
 		}
 		g.fill(ox - 1, oy - 1, ox + aw + 1, oy + ah + 1, 0xFF05070B);
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, 0, 0, aw, ah, pw, ph, pw, ph, 0xFFFFFFFF);
 		g.enableScissor(ox, oy, ox + aw, oy + ah);
+		if (SlashHud.config.worldMapGrid) drawGrid(g);
+		drawTrail(g, mc);
 		drawWaypoints(g, mc, mx, my);
 		drawEntities(g, mc);
 		drawFriends(g, mc);
@@ -171,7 +179,10 @@ public class WorldMapScreen extends Screen {
 		if (selected != null) drawPanel(g, mc, mx, my);
 		// where the mouse points, and how to use the map
 		if (Ui.inside(mx, my, ox, oy, aw, ah)) {
-			String at = "X " + (int) Math.floor(wx(mx)) + "   Z " + (int) Math.floor(wz(my));
+			int bx = (int) Math.floor(wx(mx)), bz = (int) Math.floor(wz(my));
+			String at = "X " + bx + "   Z " + bz;
+			String biome = MinimapTerrain.exploredBiome(bx, bz);
+			if (biome != null && MinimapTerrain.explored(bx, bz) != 0) at = MapBiomes.name(biome) + "   " + at;
 			Ui.draw(g, Component.literal(at), ox + aw - Ui.width(Component.literal(at)) - 4, oy + ah - 11, 0xFFE5E7EB);
 		}
 		for (int i = 0; i < help.size(); i++) {
@@ -182,10 +193,11 @@ public class WorldMapScreen extends Screen {
 	}
 
 	/** The help's parts ("Drag: move", "Wheel: zoom", …) on as few lines of at most `w` pixels as they fit. */
-	private static List<Component> helpLines(int w) {
+	private static List<Component> helpLines(int w, boolean teleport) {
 		List<Component> out = new ArrayList<>();
 		String line = "";
-		for (String part : Ui.tr("slashclient-hud.worldMap.help").getString().split(" · ")) {
+		String all = Ui.tr("slashclient-hud.worldMap.help").getString() + (teleport ? " · " + Ui.tr("slashclient-hud.worldMap.teleport").getString() : "");
+		for (String part : all.split(" · ")) {
 			String longer = line.isEmpty() ? part : line + " · " + part;
 			if (!line.isEmpty() && Ui.width(Ui.text(longer)) > w) {
 				out.add(Ui.text(line));
@@ -196,23 +208,92 @@ public class WorldMapScreen extends Screen {
 		return out;
 	}
 
-	/** The ground into the picture: `ps` picture pixels a block, from the view's corner. */
-	private void paint(int pw, int ph, float ps) {
+	/**
+	 * The ground into the picture: `ps` picture pixels a block, from the view's corner, at `night` of its brightness. In
+	 * the biome view, each biome's colour with a little of the ground's light and shade, so the land's shape still shows.
+	 */
+	private void paint(int pw, int ph, float ps, float night) {
+		boolean biomes = SlashHud.config.worldMapBiomes;
 		for (int py = 0; py < ph; py++) {
 			int z = (int) Math.floor(vz + (py + 0.5) / ps);
 			for (int px = 0; px < pw; px++) {
 				int x = (int) Math.floor(vx + (px + 0.5) / ps);
 				int c = MinimapTerrain.explored(x, z);
-				view.setPixel(px, py, c == 0 ? UNKNOWN : c);
+				if (c != 0 && biomes) {
+					int b = MapBiomes.color(MinimapTerrain.exploredBiome(x, z));
+					if (b != 0) {
+						int light = ((c >> 16 & 0xFF) + (c >> 8 & 0xFF) + (c & 0xFF)) / 3;
+						c = 0xFF000000 | MinimapTerrain.shade(b, 0.75f + light / 255f * 0.4f);
+					}
+				}
+				view.setPixel(px, py, c == 0 ? UNKNOWN : MinimapTerrain.dim(c, night));
 			}
 		}
+	}
+
+	/** Lines between chunks (when they are at least 4 pixels apart) and, stronger, between regions of 512 blocks. */
+	private void drawGrid(GuiGraphicsExtractor g) {
+		for (int step : new int[] { 16, 512 }) {
+			if (step * zoom < 4) continue;
+			int color = step == 16 ? 0x30FFFFFF : 0x70FFFFFF;
+			for (int x = (int) Math.floor(vx / step) * step; sx(x) <= ox + aw; x += step) {
+				int at = Math.round(sx(x));
+				if (at >= ox) g.fill(at, oy, at + 1, oy + ah, color);
+			}
+			for (int z = (int) Math.floor(vz / step) * step; sy(z) <= oy + ah; z += step) {
+				int at = Math.round(sy(z));
+				if (at >= oy) g.fill(ox, at, ox + aw, at + 1, color);
+			}
+		}
+	}
+
+	/** The trail walked, as dots (bigger when zoomed in). */
+	private void drawTrail(GuiGraphicsExtractor g, Minecraft mc) {
+		List<int[]> points = MapTrail.shown(mc);
+		int size = zoom >= 2 ? 3 : zoom >= 0.5f ? 2 : 1, n = points.size();
+		for (int i = 0; i < n; i++) {
+			int[] p = points.get(i);
+			float x = sx(p[0] + 0.5), y = sy(p[1] + 0.5);
+			if (x < ox || y < oy || x > ox + aw || y > oy + ah) continue;
+			MapTrail.dot(g, x, y, size, i, n);
+		}
+	}
+
+	/** Whether the player may teleport (the server sends /spreadplayers among the commands they can use). */
+	public static boolean canTeleport(Minecraft mc) {
+		var connection = mc.getConnection();
+		return connection != null && connection.getCommands().getRoot().getChild("spreadplayers") != null;
+	}
+
+	/** Onto the ground at a column (in the Nether under its roof), with the game's own command. */
+	void teleport(int x, int z) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null || !canTeleport(mc)) return;
+		boolean roof = mc.level.dimensionType().hasCeiling();
+		String cmd = String.format(java.util.Locale.ROOT, "spreadplayers %d.5 %d.5 0 1 %sfalse @s", x, z, roof ? "under 120 " : "");
+		mc.player.connection.sendCommand(cmd);
+		teleported = cmd;
+		centerX = x + 0.5;
+		centerZ = z + 0.5;
+	}
+
+	/** The last teleport's command (for the test). */
+	public String teleported = "";
+
+	private static boolean controlDown(Minecraft mc) {
+		//#if MC >= 1.21.9
+		return mc.hasControlDown();
+		//#else
+		//$ return Screen.hasControlDown();
+		//#endif
 	}
 
 	/** The top bar: the title and dimension, how much is known, "To me" and close. */
 	private void drawBar(GuiGraphicsExtractor g, Minecraft mc, int mx, int my) {
 		g.fill(0, 0, width, BAR, 0xE00A0D14);
 		Ui.icon(g, "m-worldmap", 8, 6, 10, Ui.ACCENT_LIGHT);
-		Component title = Ui.trBold("slashclient-hud.worldMap").append(Ui.text("  ·  " + dimensionName(mc)).withStyle(s -> s.withBold(false).withColor(Ui.TEXT_2 & 0xFFFFFF)));
+		String where = dimensionName(mc) + (MinimapTerrain.cave ? "  ·  " + Ui.tr("slashclient-hud.worldMap.caves").getString() : "");
+		Component title = Ui.trBold("slashclient-hud.worldMap").append(Ui.text("  ·  " + where).withStyle(s -> s.withBold(false).withColor(Ui.TEXT_2 & 0xFFFFFF)));
 		Ui.draw(g, title, 24, 7, Ui.TEXT);
 		int cx = width - CLOSE - 6;
 		Ui.button(g, "map:close", cx, 4, CLOSE, CLOSE, "close", Component.empty(), false, mx, my);
@@ -221,10 +302,32 @@ public class WorldMapScreen extends Screen {
 		int bw = Ui.buttonWidth(me, "m-coords", CLOSE, 3);
 		Ui.button(g, "map:center", cx - bw - 6, 4, bw, CLOSE, "m-coords", me, false, mx, my);
 		hits.add(new Hit(cx - bw - 6, 4, bw, CLOSE, this::centerOnPlayer));
+		// the grid and the biome view, lit while on
+		int left = cx - bw - 6;
+		Component biomes = Ui.tr("slashclient-hud.worldMap.biomes");
+		int biomesW = Ui.buttonWidth(biomes, "m-biome", CLOSE, 3);
+		left -= biomesW + 4;
+		Ui.button(g, "map:biomes", left, 4, biomesW, CLOSE, "m-biome", biomes, SlashHud.config.worldMapBiomes, mx, my);
+		hits.add(new Hit(left, 4, biomesW, CLOSE, () -> {
+			SlashHud.config.worldMapBiomes = !SlashHud.config.worldMapBiomes;
+			SlashHud.config.save();
+		}));
+		Component grid = Ui.tr("slashclient-hud.worldMap.grid");
+		int gridW = Ui.buttonWidth(grid, "layout", CLOSE, 3);
+		left -= gridW + 4;
+		Ui.button(g, "map:grid", left, 4, gridW, CLOSE, "layout", grid, SlashHud.config.worldMapGrid, mx, my);
+		hits.add(new Hit(left, 4, gridW, CLOSE, () -> {
+			SlashHud.config.worldMapGrid = !SlashHud.config.worldMapGrid;
+			SlashHud.config.save();
+		}));
+		bw = cx - left - 6;
 		Component scale = zoom >= 1 ? Ui.tr("slashclient-hud.worldMap.scale", String.format(java.util.Locale.ROOT, "%.0f", zoom))
 			: Ui.text(String.format(java.util.Locale.ROOT, "1:%.0f", 1 / zoom));
 		Component info = Ui.tr("slashclient-hud.worldMap.known", MinimapTerrain.exploredChunks()).append(Ui.text("  ·  ")).append(scale);
-		Ui.draw(g, info, cx - bw - 14 - Ui.width(info), 7, Ui.MUTED);
+		// where the bar is too narrow, only the scale, or nothing, rather than over the title
+		int titleEnd = 24 + Ui.width(title) + 10;
+		if (cx - bw - 14 - Ui.width(info) < titleEnd) info = scale;
+		if (cx - bw - 14 - Ui.width(info) >= titleEnd) Ui.draw(g, info, cx - bw - 14 - Ui.width(info), 7, Ui.MUTED);
 	}
 
 	public static String dimensionName(Minecraft mc) {
@@ -411,6 +514,10 @@ public class WorldMapScreen extends Screen {
 		if (!Ui.inside(e.x(), e.y(), ox, oy, aw, ah)) return false;
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
 			addAt((int) Math.floor(wx(e.x())), (int) Math.floor(wz(e.y())));
+			return true;
+		}
+		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && controlDown(Minecraft.getInstance()) && canTeleport(Minecraft.getInstance())) {
+			teleport((int) Math.floor(wx(e.x())), (int) Math.floor(wz(e.y())));
 			return true;
 		}
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
