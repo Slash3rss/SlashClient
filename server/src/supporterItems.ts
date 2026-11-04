@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { cosmeticSettingsChanged } from './db.ts';
 
 /**
  * "Tylko dla wspierających od poziomu N" set in the admin panel's cosmetics tab: any item can be
@@ -27,4 +28,6 @@ export function setSupporterLevel(sql: DatabaseSync, id: string, level: number |
   sql.exec(SUPPORTER_SCHEMA);
   if (level === undefined) sql.prepare('DELETE FROM cosmetic_supporter WHERE id = ?').run(id);
   else sql.prepare('INSERT INTO cosmetic_supporter (id, level) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET level = excluded.level').run(id, level);
+  // db.cosmeticSettings() keeps the levels in memory: it reads them again
+  cosmeticSettingsChanged(sql);
 }

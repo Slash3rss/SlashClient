@@ -3,7 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { Db, type Message, type User } from './db.ts';
+import { Db, type CosmeticSetting, type Message, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
@@ -50,7 +50,7 @@ import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
 import { serverVoteRoutes } from './serverVotes.ts';
-import { featureKey, featuresFor } from './features.ts';
+import { bannerOf, featureKey, featuresFor, featuresOf } from './features.ts';
 import { disabledPage, downloadDownPage, errorPage, homeRedirect, noInstallerPage, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
@@ -414,9 +414,10 @@ export function createApp(cfg: Config) {
   }
 
   // a feature switched or the banner changed: every launcher connected asks /v1/features again
+  // (the event carries what /v1/features says, so a launcher that reads it need not ask; older ones ignore it)
   settings.onChange((changes) => {
     if (!changes.some((c) => c.key.startsWith('feature.') || c.key.startsWith('banner.'))) return;
-    const data = JSON.stringify({ type: 'features' });
+    const data = JSON.stringify({ type: 'features', features: featuresOf(settings), banner: bannerOf(settings) });
     for (const set of sockets.values()) for (const ws of set) ws.send(data);
   });
 
@@ -434,8 +435,7 @@ export function createApp(cfg: Config) {
   }
 
   /** What a player in a game shows: the character's own set or the account's, only what they may still wear. */
-  function wornBy(owner: User, character: string | undefined): Record<string, string> {
-    const settings = db.cosmeticSettings();
+  function wornBy(owner: User, character: string | undefined, settings = db.cosmeticSettings()): Record<string, string> {
     const granted = db.grants(owner.id);
     const badge = wearOf(owner);
     const own = character ? db.characterLoadout(owner.id, character) : null;
@@ -446,6 +446,56 @@ export function createApp(cfg: Config) {
     return worn;
   }
 
+  // ---- the game's lookup: what each player in sight shows, kept a little while ----
+  // (every HUD on a full server asks about the same players; each answer took many queries per player)
+
+  /** How long one player's badge and set are kept; a change of theirs (cosmeticsChanged) drops them at once. */
+  const LOOKUP_KEEP_MS = 30_000;
+  type LookupEntry = { owner: string; badge: ReturnType<typeof gameBadge>; worn: Record<string, string> };
+  /** Account → (Minecraft uuid, character and what the HUD knows) → its entry; null: an account gone or banned. */
+  const lookupKept = new Map<string, Map<string, { at: number; value: LookupEntry | null }>>();
+  /** What the kept entries were counted with: the admin's cosmetics settings and the admin log (any admin action). */
+  let lookupMark = -1;
+  // a setting changed in the panel (a feature, a limit): counted again too
+  settings.onChange(() => lookupKept.clear());
+  /** The cosmetics settings, read once per request and only when needed. */
+  const lazyCosmeticSettings = () => {
+    let kept: Map<string, CosmeticSetting> | undefined;
+    return () => (kept ??= db.cosmeticSettings());
+  };
+
+  function lookupEntry(uuid: string, link: { user: string; character?: string }, known: string[], settings: () => Map<string, CosmeticSetting>): LookupEntry | undefined {
+    const mark = db.changeMark();
+    if (mark !== lookupMark) {
+      lookupKept.clear();
+      lookupMark = mark;
+    }
+    const now = Date.now();
+    const key = `${uuid.toLowerCase()}|${link.character ?? ''}|${known.join(',')}`;
+    let mine = lookupKept.get(link.user);
+    const hit = mine?.get(key);
+    if (hit && now - hit.at < LOOKUP_KEEP_MS && now >= hit.at) return hit.value ?? undefined;
+    const owner = db.user(link.user);
+    let value: LookupEntry | null = null;
+    if (owner && !owner.banned) {
+      const held = ranks.held(owner);
+      // the Minecraft account played as may show a badge of its own
+      const badge = gameBadge(ranks.shown(owner, held, link.character), held, known);
+      // only what the player may still wear: the admin may have switched it off, or the rank may be gone
+      value = { owner: owner.id, badge, worn: wornBy(owner, link.character, settings()) };
+    }
+    if (!mine) lookupKept.set(link.user, (mine = new Map()));
+    mine.set(key, { at: now, value });
+    // players who left are not kept for good
+    if (lookupKept.size > 20_000) {
+      for (const [user, entries] of lookupKept) {
+        for (const [k, e] of entries) if (now - e.at >= LOOKUP_KEEP_MS) entries.delete(k);
+        if (!entries.size) lookupKept.delete(user);
+      }
+    }
+    return value ?? undefined;
+  }
+
   // ---- cosmetics changed: everyone who may see that player in a game hears it at once ----
   // (HUDs ask /v1/mc/lookup only every few minutes, so without this a new cape showed late)
 
@@ -454,6 +504,8 @@ export function createApp(cfg: Config) {
   const cosmeticsTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   function cosmeticsChanged(userId: string) {
+    // the game's next lookup counts this player again (a rank, a supporter's tier, a ban: all come through here)
+    lookupKept.delete(userId);
     if (cosmeticsTimers.has(userId)) return;
     const timer = setTimeout(() => {
       cosmeticsTimers.delete(userId);
@@ -1411,25 +1463,28 @@ export function createApp(cfg: Config) {
       // live on Twitch or Kick with an allowed game, not hidden (streams.ts): "● NA ŻYWO" above the head, for HUDs that know it ('live', 0.9.24+)
       const live: Record<string, { platform: string }> = {};
       const wantsLive = known.includes('live');
+      // the players' accounts first (each one's badge and set kept a while, lookupEntry), then their clans in one query
+      const found: [string, string][] = [];
+      const settingsNow = lazyCosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
-        const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
-        if (!owner || owner.banned) continue;
-        const held = ranks.held(owner);
-        // the Minecraft account played as may show a badge of its own
-        const badge = gameBadge(ranks.shown(owner, held, link?.character), held, known);
+        const entry = link && now - link.at < IN_GAME_TTL_MS ? lookupEntry(u, link, known, settingsNow) : undefined;
+        if (!entry) continue;
+        const { badge, worn } = entry;
         if (badge) rankOf[u] = badge.rank;
         if (badge?.color) badgeColors[u] = badge.color;
         if (badge?.supporterColor) supporterColors[u] = badge.supporterColor;
-        // only what the player may still wear: the admin may have switched it off, or the rank may be gone
-        const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
         if (Object.keys(worn).length) cosmetics[u] = worn;
-        const tag = clanTag(owner.id);
-        if (tag) clanTags[u] = tag;
-        const logo = tag ? clans.logoOf(owner.id) : undefined;
-        if (logo) clanLogos[u] = logo;
-        const stream = wantsLive ? streams.friendView(owner.id) : undefined;
+        found.push([u, entry.owner]);
+      }
+      // a clan's tag (and logo) and a live stream change on their own: read fresh every time
+      const tags = clans.tagsOf([...new Set(found.map(([, owner]) => owner))]);
+      for (const [u, owner] of found) {
+        const tagged = tags.get(owner);
+        if (tagged) clanTags[u] = tagged.tag;
+        if (tagged && tagged.logo !== null) clanLogos[u] = { id: tagged.clan, v: tagged.logo };
+        const stream = wantsLive ? streams.friendView(owner) : undefined;
         if (stream) live[u] = { platform: stream.platform };
       }
       return { active, capes, ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
@@ -1446,8 +1501,13 @@ export function createApp(cfg: Config) {
       if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
       const now = Date.now();
       const character = key.replace(/-/g, '');
+      // a game that just started (not a launcher repeating itself every few minutes): players around see its set at once,
+      // not at their HUD's next lookup (the same `cosmetics` event as for a change)
+      const before = linked.get(key);
+      const started = !before || before.user !== me || before.character !== character || now - before.at >= IN_GAME_TTL_MS;
       linked.set(key, { user: me, at: now, character });
       inGame.set(key, now);
+      if (started) cosmeticsChanged(me);
       // servers in offline mode (many Polish networks, e.g. behind a proxy) give players a uuid made
       // from their name: the same player's cape and rank go with that one too, while this game runs
       const name = db.minecraftAccounts(me).find((m) => m.uuid === key.replace(/-/g, ''))?.name;

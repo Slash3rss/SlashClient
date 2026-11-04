@@ -1,6 +1,6 @@
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
-import type { Db } from './db.ts';
+import { cosmeticSettingsChanged, type Db } from './db.ts';
 import { ITEMS, capeSetting, item, sellable, supporterLevel } from './cosmetics.ts';
 import { supporterLevels } from './supporterItems.ts';
 
@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK
   setPrice(id: string, price: number | null | undefined) {
     if (price === undefined) this.sql.prepare('DELETE FROM shop_prices WHERE id = ?').run(id);
     else this.sql.prepare('INSERT INTO shop_prices (id, price) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET price = excluded.price').run(id, price);
+    // db.cosmeticSettings() keeps the prices in memory: it reads them again
+    cosmeticSettingsChanged(this.sql);
   }
 
   /** The items sold now. */

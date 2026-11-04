@@ -5,10 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, before, describe, it } from 'node:test';
+import WebSocket from 'ws';
 import { createApp } from '../src/app.ts';
 import { Db } from '../src/db.ts';
+import { Wallet } from '../src/economy.ts';
 import { RequestLog } from '../src/requests.ts';
 import { statements } from '../src/statements.ts';
+import { SUPPORTER_SCHEMA, setSupporterLevel } from '../src/supporterItems.ts';
 
 // What makes the server answer faster (kept statements, fewer queries, caches) must not change any answer.
 
@@ -170,5 +173,127 @@ describe('request log for the panel', () => {
     assert.equal(news.kept, 3);
     // the summary is the one counted a moment ago
     assert.equal(news.summary.lastHour, 2);
+  });
+});
+
+/** A Minecraft account of the player, in a game with the launcher (what the HUD asks about). */
+async function inGame(token: string, userId: string, n: number) {
+  const hex = String(n).repeat(32).slice(0, 32);
+  app.db.link('minecraft', hex, userId, `Mc${n}`);
+  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  assert.equal((await call('POST', '/v1/mc/link', token, { uuid })).status, 200);
+  return uuid;
+}
+const NEW_HUD = ['friend_pink', 'supporter', 'colors', 'live'];
+const lookup = async (uuids: string[], knownRanks?: string[]) => (await call('POST', '/v1/mc/lookup', undefined, { uuids, ...(knownRanks ? { knownRanks } : {}) })).text;
+
+async function connect(token: string, presence?: unknown) {
+  const ws = new WebSocket(base.replace('http', 'ws') + '/v1/ws');
+  const events: any[] = [];
+  ws.on('message', (d) => events.push(JSON.parse(String(d))));
+  await new Promise((r) => ws.once('open', r));
+  ws.send(JSON.stringify({ type: 'auth', token, presence }));
+  const waitFor = async (pred: (e: any) => boolean) => {
+    for (let i = 0; i < 100; i++) {
+      const hit = events.find(pred);
+      if (hit) return hit;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    throw new Error('event did not come');
+  };
+  await waitFor((e) => e.type === 'ready');
+  return { ws, events, waitFor };
+}
+
+describe('cosmetics settings kept in memory', () => {
+  it('reads them again after every change, from the panel, the shop and the supporters', () => {
+    const db = new Db(path.join(dir, 'settings.db'));
+    const wallet = new Wallet(db.sql);
+    db.sql.exec(SUPPORTER_SCHEMA);
+    assert.equal(db.cosmeticSettings().size, 0);
+    db.setCosmetic('rose', false, true);
+    assert.deepEqual({ ...db.cosmeticSettings().get('rose') }, { id: 'rose', enabled: false, exclusive: true });
+    wallet.setPrice('galaxy', 250);
+    assert.equal(db.cosmeticSettings().get('galaxy')?.price, 250);
+    wallet.setPrice('galaxy', undefined);
+    assert.equal(db.cosmeticSettings().get('galaxy'), undefined);
+    setSupporterLevel(db.sql, 'ember', 2);
+    assert.equal(db.cosmeticSettings().get('ember')?.supporter, 2);
+    // each caller gets its own map; the settings themselves cannot be changed in place
+    const mine = db.cosmeticSettings();
+    mine.delete('rose');
+    assert.ok(db.cosmeticSettings().has('rose'));
+    assert.throws(() => {
+      (db.cosmeticSettings().get('rose') as { enabled: boolean }).enabled = true;
+    });
+    db.close();
+  });
+});
+
+describe("the game's lookup", () => {
+  it('answers the same for the same state, and at once after a change', async () => {
+    const boss = await login('Szef');
+    const ala = await login('LookAla');
+    const ola = await login('LookOla');
+    const alaMc = await inGame(ala.token, ala.user.id, 3);
+    const olaMc = await inGame(ola.token, ola.user.id, 4);
+    await call('POST', '/v1/me', ala.token, { cape: 'ember', loadout: { wings: 'angel' } });
+    const first = await lookup([alaMc, olaMc], NEW_HUD);
+    assert.equal(await lookup([alaMc, olaMc], NEW_HUD), first);
+    assert.deepEqual(JSON.parse(first).cosmetics[alaMc], { wings: 'angel', cape: 'ember' });
+    // an older HUD is answered for what it knows, not with what the newer one got
+    assert.equal(JSON.parse(await lookup([alaMc])).cosmetics[alaMc].cape, 'ember');
+    // her own change: at once
+    await call('POST', '/v1/me', ala.token, { cape: 'galaxy' });
+    assert.equal(JSON.parse(await lookup([alaMc, olaMc], NEW_HUD)).cosmetics[alaMc].cape, 'galaxy');
+    // a rank given in the panel: at once
+    await call('POST', `/v1/admin/users/${ola.user.id}`, boss.token, { rank: 'friend' });
+    assert.equal(JSON.parse(await lookup([alaMc, olaMc], NEW_HUD)).ranks[olaMc], 'friend');
+    // an item switched off in the panel: at once, for everyone wearing it
+    await call('POST', '/v1/admin/cosmetics/angel', boss.token, { enabled: false });
+    assert.equal(JSON.parse(await lookup([alaMc, olaMc], NEW_HUD)).cosmetics[alaMc].wings, undefined);
+    await call('POST', '/v1/admin/cosmetics/angel', boss.token, { enabled: true });
+    // a ban: gone at once
+    await call('POST', `/v1/admin/users/${ala.user.id}`, boss.token, { banned: true });
+    const banned = JSON.parse(await lookup([alaMc, olaMc], NEW_HUD));
+    assert.equal(banned.cosmetics[alaMc], undefined);
+    assert.ok(banned.active.includes(alaMc));
+  });
+
+  it('shows a game that just started to the players around at once', async () => {
+    const eva = await login('StartEva');
+    const piotr = await login('StartPiotr');
+    await call('POST', '/v1/me', eva.token, { cape: 'ember' });
+    const piotrLive = await connect(piotr.token, { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } });
+    const evaLive = await connect(eva.token, { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } });
+    const evaMc = await inGame(eva.token, eva.user.id, 5);
+    const got = await piotrLive.waitFor((e) => e.type === 'cosmetics');
+    assert.ok(got.uuids.includes(evaMc), JSON.stringify(got));
+    assert.deepEqual(got.cosmetics[evaMc], { cape: 'ember' });
+    // the launcher saying it again every few minutes is no news
+    await new Promise((r) => setTimeout(r, 400));
+    await call('POST', '/v1/mc/link', eva.token, { uuid: evaMc });
+    await new Promise((r) => setTimeout(r, 450));
+    assert.equal(piotrLive.events.filter((e) => e.type === 'cosmetics').length, 1);
+    piotrLive.ws.close();
+    evaLive.ws.close();
+  });
+});
+
+describe('live events', () => {
+  it('sends the features and the banner with the features event', async () => {
+    const boss = await login('Szef');
+    const live = await connect(boss.token);
+    const before = (await call('GET', '/v1/features')).body;
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'feature.clans': false } });
+    const e = await live.waitFor((x) => x.type === 'features');
+    const now = (await call('GET', '/v1/features')).body;
+    assert.deepEqual(e.features, now.features);
+    assert.deepEqual(e.banner, now.banner);
+    assert.notDeepEqual(before.features, now.features);
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'feature.clans': true } });
+    live.ws.close();
+    // the server sees the connection end (and notes the player's last visit) before it shuts down
+    await new Promise((r) => setTimeout(r, 200));
   });
 });

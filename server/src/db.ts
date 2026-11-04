@@ -177,6 +177,13 @@ const toPartner = (p: PartnerRow): import('./partners.ts').Partner => {
 };
 const SHARE_COLUMNS ='s.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
 
+/** How many times each connection's cosmetics settings changed (Db.cosmeticSettings keeps them while this stays). */
+const cosmeticVersions = new WeakMap<DatabaseSync, number>();
+/** Call after writing an item's settings, price or supporter level outside Db (economy.ts, supporterItems.ts). */
+export function cosmeticSettingsChanged(sql: DatabaseSync) {
+  cosmeticVersions.set(sql, (cosmeticVersions.get(sql) ?? 0) + 1);
+}
+
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
@@ -550,8 +557,36 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     return out;
   }
 
+  /**
+   * Every item's admin settings, kept in memory: the game's lookup and every catalog read them, and
+   * they change only in the admin panel (setCosmetic, the shop's prices, supporters' levels: each of
+   * those writes calls cosmeticSettingsChanged). Each call gets its own map of the same settings.
+   */
   cosmeticSettings(): Map<string, CosmeticSetting> {
-    const rows = this.stmt('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
+    const version = cosmeticVersions.get(this.db) ?? 0;
+    if (this.cosmeticsKept?.version !== version) {
+      const value = this.readCosmeticSettings();
+      // shared by every caller until the next change: nobody may change one in place
+      for (const s of value.values()) Object.freeze(s);
+      this.cosmeticsKept = { version, value };
+    }
+    return new Map(this.cosmeticsKept.value);
+  }
+
+  private cosmeticsKept?: { version: number; value: Map<string, CosmeticSetting> };
+
+  /**
+   * Goes up with every admin action (the admin log) and every change of the cosmetics settings, so
+   * what is kept from them (the game's lookup, app.ts) knows to count again.
+   */
+  changeMark(): number {
+    return (cosmeticVersions.get(this.db) ?? 0) + this.logged;
+  }
+
+  private logged = 0;
+
+  private readCosmeticSettings(): Map<string, CosmeticSetting> {
+    const rows =this.stmt('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
     const out = new Map<string, CosmeticSetting>(rows.map((r) => [r.id, { id: r.id, enabled: !!r.enabled, exclusive: !!r.exclusive }]));
     // the shop's prices (economy.ts keeps them; not there in a database without the shop)
     try {
@@ -576,6 +611,7 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   setCosmetic(id: string, enabled: boolean, exclusive: boolean) {
     this.stmt('INSERT INTO cosmetics (id, enabled, exclusive) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, exclusive = excluded.exclusive')
       .run(id, enabled ? 1 : 0, exclusive ? 1 : 0);
+    cosmeticSettingsChanged(this.db);
   }
 
   grants(uuid: string): string[] {
@@ -659,6 +695,7 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
 
   log(admin: string, action: string, target: string, detail = '') {
     this.stmt('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
+    this.logged++;
   }
 
   /** The admin log keeps moderation accountable for a set time (the privacy policy names it), not forever. */
