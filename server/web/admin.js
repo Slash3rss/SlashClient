@@ -1,21 +1,44 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
 import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, fmtDate, guard, hasUnsaved, icon, promptModal, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
-import { storagePage } from './adminStorage.js';
-import { shopSection, walletSection } from './adminSparks.js';
-import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
-import { challengesPage } from './adminChallenges.js';
-import { referralsPage } from './adminReferrals.js';
-import { clansPage } from './adminClans.js';
-import { communitiesPage } from './adminCommunities.js';
-import { supportPage } from './adminSupport.js';
-import { legalPage } from './adminLegal.js';
-import { homePage } from './adminHome.js';
-import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
-import { settingsPage, supporterEditor } from './adminSettings.js';
-import { streamsPage } from './adminStreams.js';
-import { fishAtlasPage } from './adminFishAtlas.js';
-import { statusRulesSection } from './adminStatusRules.js';
-import { dashboardPage } from './adminDashboard.js';
+
+// Each tab's code is fetched the first time the tab opens (or the pointer rests on its button), so the panel
+// shows up without parsing all of them first. The server versions these import() addresses like static imports.
+const lazy = (load) => {
+  let p;
+  // a failed fetch (offline for a moment) is tried again next time
+  return () => (p ??= load().catch((err) => { p = undefined; throw err; }));
+};
+const mods = {
+  storage: lazy(() => import('./adminStorage.js')),
+  sparks: lazy(() => import('./adminSparks.js')),
+  achievements: lazy(() => import('./adminAchievements.js')),
+  challenges: lazy(() => import('./adminChallenges.js')),
+  referrals: lazy(() => import('./adminReferrals.js')),
+  clans: lazy(() => import('./adminClans.js')),
+  communities: lazy(() => import('./adminCommunities.js')),
+  support: lazy(() => import('./adminSupport.js')),
+  legal: lazy(() => import('./adminLegal.js')),
+  home: lazy(() => import('./adminHome.js')),
+  ranks: lazy(() => import('./adminRanks.js')),
+  settings: lazy(() => import('./adminSettings.js')),
+  streams: lazy(() => import('./adminStreams.js')),
+  fishAtlas: lazy(() => import('./adminFishAtlas.js')),
+  statusRules: lazy(() => import('./adminStatusRules.js')),
+  dashboard: lazy(() => import('./adminDashboard.js')),
+};
+/** Loaded modules by name, for their helpers used while drawing (only after `need(name)` was awaited). */
+const M = {};
+const need = (...names) => Promise.all(names.map((n) => mods[n]().then((m) => (M[n] = m))));
+/** What each tab needs before it draws: its own module, or the helpers of others it shows. */
+const NEEDS = {
+  dashboard: ['dashboard'], users: ['ranks', 'sparks'], ranks: ['ranks'], cosmetics: ['achievements', 'settings', 'sparks'], achievements: ['achievements'],
+  challenges: ['challenges'], referrals: ['referrals'], partners: ['statusRules'], clans: ['clans'], communities: ['communities'],
+  storage: ['storage'], support: ['support'], streams: ['streams'], fishAtlas: ['fishAtlas'], home: ['home'], legal: ['legal'], settings: ['settings'],
+};
+/** The tabs that show cosmetics by name. */
+const CAPES = new Set(['dashboard', 'users', 'log']);
+/** Starts fetching a tab's code early (hovering its button), without waiting or complaining. */
+const warm = (id) => { for (const n of NEEDS[id] ?? []) mods[n]().catch(() => {}); };
 
 // the menu in groups, so a page is found by what it is about
 const GROUPS = [
@@ -120,13 +143,24 @@ async function enter(fn) {
   start();
 }
 
+/**
+ * The names and slots of the cosmetics (for the dashboard, accounts and the log), asked for once, when a tab
+ * first needs them; the same objects are filled, so what already holds them sees the names.
+ */
+let capesLoad;
+const capesReady = () => (capesLoad ??= api('GET', '/v1/cosmetics').catch(() => ({ items: [] })).then((cos) => {
+  // `items` since 0.8 (every slot); `capes` only for a server older than that
+  const items = cos.items ?? cos.capes ?? [];
+  Object.assign(capeNames, Object.fromEntries(items.map((c) => [c.id, c.name])));
+  Object.assign(capeSlots, Object.fromEntries(items.map((c) => [c.id, c.slot ?? 'cape'])));
+}));
+
 async function start() {
+  // the opening tab's code comes while the account is checked
+  warm(tab);
   me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
   if (!me) return gate();
   if (!me.admin) return gate(`Konto ${me.name} (@${me.handle}) nie ma uprawnień admina.`);
-  const cos = await api('GET', '/v1/cosmetics').catch(() => ({ capes: [] }));
-  capeNames = Object.fromEntries((cos.items ?? cos.capes).map((c) => [c.id, c.name]));
-  capeSlots = Object.fromEntries((cos.items ?? cos.capes).map((c) => [c.id, c.slot ?? 'cape']));
   layout();
 }
 
@@ -168,7 +202,7 @@ function layout() {
   for (const [group, tabs] of GROUPS) {
     side.append(el('small', { class: 'side-group', textContent: group }));
     for (const [id, name, cls] of tabs) {
-      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, dataset: { tab: id }, onclick: () => go(id) }, icon(cls), name));
+      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, dataset: { tab: id }, onclick: () => go(id), onpointerenter: () => warm(id), onfocus: () => warm(id) }, icon(cls), name));
     }
   }
   side.append(el('div', { class: 'me' }, avatarEl(me), el('div', { class: 'grow' }, el('b', { textContent: me.name }), el('small', { class: 'muted', textContent: ` @${me.handle}` })),
@@ -178,10 +212,26 @@ function layout() {
   PAGES[tab]?.();
 }
 
-const PAGES = { dashboard: () => dashboard(), users: () => usersPage(), ranks: () => ranksPage(), cosmetics: () => cosmeticsPage(), achievements: () => achievementsPage(),
-  challenges: () => challengesPage(), referrals: () => referralsPage(), partners: () => partnersPage(), clans: () => clansPage(), communities: () => communitiesPage(), requests: () => requestsPage(),
-  logs: () => logsPage(), storage: () => storagePage(), support: () => supportPage(), streams: () => streamsPage(), fishAtlas: () => fishAtlasPage(),
-  home: () => homePage(), legal: () => legalPage(), settings: () => settingsPage(), log: () => logPage() };
+const DRAW = { dashboard: () => dashboard(), users: () => usersPage(), ranks: () => M.ranks.ranksPage(), cosmetics: () => cosmeticsPage(), achievements: () => M.achievements.achievementsPage(),
+  challenges: () => M.challenges.challengesPage(), referrals: () => M.referrals.referralsPage(), partners: () => partnersPage(), clans: () => M.clans.clansPage(),
+  communities: () => M.communities.communitiesPage(), requests: () => requestsPage(),
+  logs: () => logsPage(), storage: () => M.storage.storagePage(), support: () => M.support.supportPage(), streams: () => M.streams.streamsPage(), fishAtlas: () => M.fishAtlas.fishAtlasPage(),
+  home: () => M.home.homePage(), legal: () => M.legal.legalPage(), settings: () => M.settings.settingsPage(), log: () => logPage() };
+/** A tab: its code first (once), then the page; one left meanwhile for another tab does not draw over it. */
+const PAGES = Object.fromEntries(Object.entries(DRAW).map(([id, draw]) => [id, async () => {
+  // the cosmetics' names come along with the code (they never fail: without them ids show)
+  if (CAPES.has(id)) void capesReady();
+  if (NEEDS[id]) {
+    try {
+      await need(...NEEDS[id]);
+    } catch (err) {
+      if (tab === id) toast(errorText(err), true);
+      return;
+    }
+    if (tab !== id) return;
+  }
+  return draw();
+}]));
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
 const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el('small', {}, icon(cls), label), el('b', { textContent: String(value) }), note ? el('em', { textContent: note }) : '');
@@ -189,7 +239,7 @@ const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el(
 // ---------- dashboard (adminDashboard.js) ----------
 
 function dashboard() {
-  return dashboardPage({ go: (id) => void go(id), capeNames, capeSlots });
+  return M.dashboard.dashboardPage({ go: (id) => void go(id), capeNames, capeSlots, ready: capesReady() });
 }
 
 // ---------- accounts ----------
@@ -207,9 +257,9 @@ async function usersPage() {
 }
 
 async function loadUsers() {
-  const res = await guard(() => api('GET', `/v1/admin/users?q=${encodeURIComponent(users.q)}&limit=${users.limit}&offset=${users.offset}`));
-  // the ranks' colours for the chips (adminRanks.js)
-  await ranksReady();
+  // with the ranks' colours for the chips (adminRanks.js) and the cosmetics' names, all at once
+  const [res] = await Promise.all([guard(() => api('GET', `/v1/admin/users?q=${encodeURIComponent(users.q)}&limit=${users.limit}&offset=${users.offset}`)),
+    M.ranks.ranksReady(), capesReady()]);
   const box = $('#users-box');
   if (!res || !box) return;
   if (!res.users.length) return box.replaceChildren(el('p', { class: 'muted', textContent: 'Brak kont.' }));
@@ -240,7 +290,7 @@ function capeCell(u) {
 const badges = (u) => el('div', { class: 'row' },
   u.banned ? el('span', { class: 'chip red' }, icon('fa-solid fa-ban'), 'Zablokowany') : '',
   u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
-  ...rankChips(u.ranks),
+  ...M.ranks.rankChips(u.ranks),
   !u.banned && !(u.role === 'admin' || u.configAdmin) ? el('span', { class: 'chip green', textContent: 'Aktywny' }) : '');
 
 function closeDrawer() {
@@ -249,7 +299,7 @@ function closeDrawer() {
 }
 
 async function openUser(id) {
-  const u = await guard(() => api('GET', `/v1/admin/users/${id}`));
+  const [u] = await Promise.all([guard(() => api('GET', `/v1/admin/users/${id}`)), capesReady()]);
   if (!u) return;
   closeDrawer();
   const update = async (body, done) => {
@@ -277,9 +327,9 @@ async function openUser(id) {
       el('dt', { textContent: 'Przyznane' }), el('dd', { textContent: u.grants.map((g) => capeNames[g] ?? g).join(', ') || '—' })),
     el('div', {}, el('h4', { textContent: 'Peleryna' }), el('div', { class: 'row' }, u.cape ? capeEl(u.cape, true) : '', capeSel)),
     // sparks from achievements: the balance, giving and taking with a reason (adminSparks.js)
-    walletSection(id),
+    M.sparks.walletSection(id),
     // several ranks, each until a day or for good (adminRanks.js)
-    userRanksSection(id, loadUsers),
+    M.ranks.userRanksSection(id, loadUsers),
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),
@@ -350,11 +400,30 @@ function priceEditor(c, o, done) {
       o.price !== o.defaultPrice ? el('button', { type: 'button', class: 'icon-btn', title: `Przywróć domyślną (${o.defaultPrice ?? 'poza sklepem'})`, onclick: () => send({ reset: true }) }, icon('fa-solid fa-rotate-left')) : ''));
 }
 
+const cosmeticsLoad = () => Promise.all([guard(() => api('GET', '/v1/admin/cosmetics')), api('GET', '/v1/admin/cosmetics/obtain').catch(() => undefined)]);
+
 async function cosmeticsPage() {
-  const [res, obtain] = await Promise.all([guard(() => api('GET', '/v1/admin/cosmetics')), api('GET', '/v1/admin/cosmetics/obtain').catch(() => undefined)]);
+  const [res, obtain] = await cosmeticsLoad();
   if (!res) return;
   const all = res.items ?? res.capes;
-  const cards = all.map((c) => {
+  const cardOf = new Map();
+  let shop;
+  // one item changed: only its card is drawn again, in place, so the page stays where it was scrolled to
+  // (the shop list above follows, a price may have changed); a card gone from the page draws it all again
+  const changed = async (id) => {
+    const [fresh, freshObtain] = await cosmeticsLoad();
+    if (!fresh) return;
+    const c = (fresh.items ?? fresh.capes).find((x) => x.id === id);
+    const old = cardOf.get(id);
+    // (the tab left meanwhile, or the page drawn again)
+    if (!old?.isConnected) return;
+    if (!c) return cosmeticsPage();
+    const next = card(c, freshObtain);
+    old.replaceWith(next);
+    cardOf.set(id, next);
+    shop?.reload?.();
+  };
+  const card = (c, obtain) => {
     const toggle = (label, key, hint) => {
       const box = el('input', { type: 'checkbox', checked: c[key] });
       box.addEventListener('change', async () => {
@@ -362,33 +431,39 @@ async function cosmeticsPage() {
           : key === 'exclusive' && box.checked ? { title: `„${c.name}” tylko z przyznania?`, text: 'Peleryna zostanie zdjęta tym, którzy jej nie mają przyznanej.', ok: 'Kontynuuj' } : null;
         // "Anuluj" puts the switch back where it was
         if (warn && c.wearing && !await confirmModal(warn)) { box.checked = !box.checked; return; }
-        if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}`, { [key]: box.checked }))) { toast('Zapisano.'); cosmeticsPage(); } else box.checked = !box.checked;
+        if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}`, { [key]: box.checked }))) { toast('Zapisano.'); changed(c.id); } else box.checked = !box.checked;
       });
       return el('label', { class: 'opt', title: hint }, label, el('span', { class: 'switch' }, box, el('span')));
     };
     const handle = el('input', { type: 'text', placeholder: '@nick' });
     const grant = el('form', { class: 'row', onsubmit: async (e) => {
       e.preventDefault();
-      if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}/grants`, { handle: handle.value.trim() }))) { toast('Przyznano.'); cosmeticsPage(); }
+      if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}/grants`, { handle: handle.value.trim() }))) { toast('Przyznano.'); changed(c.id); }
     } }, handle, el('button', { type: 'submit', class: 'icon-btn', title: 'Przyznaj' }, icon('fa-solid fa-plus')));
     return el('div', { class: 'glass cos' }, cosmeticEl(c.id, c.slot ?? 'cape'),
       el('div', { class: 'opts' },
         el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), c.rank ? el('span', { class: `chip ${{ admin: 'red', support: 'sky', partner: 'gold', friend: 'green', friend_pink: 'pink' }[c.rank] ?? ''}`, textContent: c.rank }) : '', el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
         // how it can be got now (obtain.ts on the server: free, shop, achievements, rank, grant only)
-        obtain?.items[c.id] ? obtainLine(obtain.items[c.id], openAchievement) : '',
+        obtain?.items[c.id] ? M.achievements.obtainLine(obtain.items[c.id], openAchievement) : '',
         toggle('Włączona', 'enabled', 'Wyłączonej nie można wybrać i nikt jej nie widzi'),
         toggle('Ekskluzywna', 'exclusive', 'Tylko dla graczy, którym ją przyznasz'),
-        obtain?.items[c.id] ? priceEditor(c, obtain.items[c.id], cosmeticsPage) : '',
+        obtain?.items[c.id] ? priceEditor(c, obtain.items[c.id], () => changed(c.id)) : '',
         // only for supporters from a tier level (adminSettings.js)
-        obtain?.items[c.id] ? supporterEditor(c, obtain.items[c.id], cosmeticsPage) : '',
+        obtain?.items[c.id] ? M.settings.supporterEditor(c, obtain.items[c.id], () => changed(c.id)) : '',
         c.exclusive ? el('div', {}, el('small', { class: 'muted', textContent: 'Przyznana:' }),
           el('div', { class: 'grantees' }, ...(c.grantees.length ? c.grantees.map((g) => el('span', { class: 'chip blue' }, `@${g.handle}`,
-            el('button', { title: 'Odbierz', onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/cosmetics/${c.id}/grants/${g.id}`))) cosmeticsPage(); } }, icon('fa-solid fa-xmark'))))
+            el('button', { title: 'Odbierz', onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/cosmetics/${c.id}/grants/${g.id}`))) changed(c.id); } }, icon('fa-solid fa-xmark'))))
             : [el('span', { class: 'muted small', textContent: 'nikomu' })])), grant) : ''));
+  };
+  const cards = all.map((c) => {
+    const node = card(c, obtain);
+    cardOf.set(c.id, node);
+    return node;
   });
+  shop = M.sparks.shopSection();
   $('#main').replaceChildren(head('Kosmetyki'),
     el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich. Przy każdym przedmiocie widać, jak można go zdobyć; osiągnięcia otwierają się w kreatorze.' }),
-    shopSection(),
+    shop,
     el('div', { class: 'cosmetics' }, ...SLOTS.flatMap(([slot, name, ic]) => {
       const mine = cards.filter((_, i) => (all[i].slot ?? 'cape') === slot);
       return mine.length ? [el('h3', { class: 'slot-head' }, icon(ic), name), ...mine] : [];
@@ -481,7 +556,7 @@ async function partnersPage() {
     el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z modem SlashClient. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
     add,
     el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])),
-    statusRulesSection());
+    M.statusRules.statusRulesSection());
 }
 
 // ---------- requests from launchers, games and pages ----------
@@ -514,9 +589,34 @@ async function requestsPage() {
 
   let loads = 0;
   let failing = false;
-  async function load() {
+  // what the list shows, newest first, and its table's body (new rows go on top of it)
+  let shown = [];
+  let tbody;
+  // one request: its id when the server sends one, else everything about it (the same moment, path, answer and asker)
+  const keyOf = (e) => e.id ?? `${e.at}|${e.method}|${e.path}|${e.status}|${e.ms}|${e.ip}|${e.user}|${e.client}|${e.version}`;
+  const rowOf = (e) => {
+    const [cname, cicon] = CLIENTS[e.client] ?? [e.client, 'fa-solid fa-question'];
+    return el('tr', {},
+      el('td', { title: fmtDate(e.at), textContent: clock(e.at) }),
+      el('td', {}, e.handle ? el('button', { class: 'chip', title: 'Tylko zapytania tego konta', onclick: () => { reqState.user = e.user; reqState.handle = e.handle; load(); } }, `@${e.handle}`)
+        : el('span', { class: 'muted small', textContent: e.ip })),
+      el('td', { class: 'hide-sm' }, el('span', { class: 'chip', title: e.version ? `${cname} ${e.version}` : cname }, icon(cicon), e.version || cname)),
+      el('td', { class: 'req-path' }, el('b', { textContent: e.method }), ' ', el('code', { textContent: e.path })),
+      el('td', {}, el('span', { class: `chip ${statusClass(e.status)}`, title: e.error, textContent: e.error ? `${e.status} ${e.error}` : String(e.status) })),
+      el('td', { class: 'hide-sm', textContent: `${e.ms} ms` }));
+  };
+  const LIMIT = 200;
+  /**
+   * `poll`: the refresh every 5 s asks only for what came after the newest row shown (`since`) and puts it on
+   * top, instead of the whole list again. A server that does not know `since` sends the whole list; the rows
+   * already shown are then left out the same way.
+   */
+  async function load(poll = false) {
     if (!document.body.contains(list)) return clearInterval(reqTimer);
     const p = new URLSearchParams({ q: reqState.q, client: reqState.client, user: reqState.user, errors: reqState.errors ? '1' : '' });
+    const merge = poll && !!tbody?.isConnected && shown.length > 0;
+    // a millisecond back: another request finished in the same millisecond as the newest is not missed
+    if (merge) p.set('since', String(shown[0].at - 1));
     const mine = ++loads;
     const res = await api('GET', `/v1/admin/requests?${p}`).catch((err) => {
       // while the server does not answer, the list says so; the message pops up once, not every 5 s
@@ -529,13 +629,13 @@ async function requestsPage() {
     if (!res || mine !== loads) return;
     failing = false;
     const s = res.summary;
-    stats.replaceChildren(
+    if (s) stats.replaceChildren(
       stat('fa-solid fa-gauge-high', 'Na minutę', s.lastMinute),
       stat('fa-solid fa-clock', 'Ostatnia godzina', s.lastHour),
       stat('fa-solid fa-triangle-exclamation', 'Błędy (godzina)', s.errors, s.serverErrors ? `w tym ${s.serverErrors} po stronie serwera` : ''),
       stat('fa-solid fa-users-viewfinder', 'Klienci (godzina)', Object.values(s.clients).reduce((a, b) => a + b, 0),
         Object.entries(s.clients).map(([k, n]) => `${(CLIENTS[k] ?? [k])[0]} ${n}`).join(' · ')));
-    routesBox.replaceChildren(el('h3', { textContent: 'Najczęstsze w ostatniej godzinie' }), s.routes.length
+    if (s) routesBox.replaceChildren(el('h3', { textContent: 'Najczęstsze w ostatniej godzinie' }), s.routes.length
       ? el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Zapytanie' }), el('th', { textContent: 'Ile' }), el('th', { textContent: 'Błędy' }), el('th', { class: 'hide-sm', textContent: 'Śr. czas' }), el('th', { class: 'hide-sm', textContent: 'Najdłużej' }))),
         el('tbody', {}, ...s.routes.map((r) => el('tr', {},
           el('td', {}, el('code', { textContent: r.route })),
@@ -546,23 +646,24 @@ async function requestsPage() {
       : el('p', { class: 'muted', textContent: 'Jeszcze nic.' }));
     who.replaceChildren(reqState.user ? el('button', { class: 'chip blue', title: 'Pokaż wszystkich', onclick: () => { reqState.user = ''; reqState.handle = ''; load(); } },
       icon('fa-solid fa-user'), `@${reqState.handle}`, icon('fa-solid fa-xmark')) : '');
-    const rows = res.entries.map((e) => {
-      const [cname, cicon] = CLIENTS[e.client] ?? [e.client, 'fa-solid fa-question'];
-      return el('tr', {},
-        el('td', { title: fmtDate(e.at), textContent: clock(e.at) }),
-        el('td', {}, e.handle ? el('button', { class: 'chip', title: 'Tylko zapytania tego konta', onclick: () => { reqState.user = e.user; reqState.handle = e.handle; load(); } }, `@${e.handle}`)
-          : el('span', { class: 'muted small', textContent: e.ip })),
-        el('td', { class: 'hide-sm' }, el('span', { class: 'chip', title: e.version ? `${cname} ${e.version}` : cname }, icon(cicon), e.version || cname)),
-        el('td', { class: 'req-path' }, el('b', { textContent: e.method }), ' ', el('code', { textContent: e.path })),
-        el('td', {}, el('span', { class: `chip ${statusClass(e.status)}`, title: e.error, textContent: e.error ? `${e.status} ${e.error}` : String(e.status) })),
-        el('td', { class: 'hide-sm', textContent: `${e.ms} ms` }));
-    });
-    list.replaceChildren(el('h3', { textContent: `Ostatnie zapytania (${res.entries.length} z ${res.kept} zapamiętanych od ${clock(res.since)})` }), rows.length
-      ? el('div', { class: 'scroll-x' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Kiedy' }), el('th', { textContent: 'Kto' }), el('th', { class: 'hide-sm', textContent: 'Klient' }), el('th', { textContent: 'Zapytanie' }), el('th', { textContent: 'Status' }), el('th', { class: 'hide-sm', textContent: 'Czas' }))), el('tbody', {}, ...rows)))
+    const heading = () => `Ostatnie zapytania (${shown.length} z ${res.kept} zapamiętanych od ${clock(res.since)})`;
+    if (merge) {
+      const seen = new Set(shown.map(keyOf));
+      const fresh = res.entries.filter((e) => !seen.has(keyOf(e)));
+      shown = [...fresh, ...shown].slice(0, LIMIT);
+      tbody.prepend(...fresh.map(rowOf));
+      while (tbody.rows.length > shown.length) tbody.lastElementChild.remove();
+      list.querySelector('h3').textContent = heading();
+      return;
+    }
+    shown = res.entries.slice(0, LIMIT);
+    tbody = el('tbody', {}, ...shown.map(rowOf));
+    list.replaceChildren(el('h3', { textContent: heading() }), shown.length
+      ? el('div', { class: 'scroll-x' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Kiedy' }), el('th', { textContent: 'Kto' }), el('th', { class: 'hide-sm', textContent: 'Klient' }), el('th', { textContent: 'Zapytanie' }), el('th', { textContent: 'Status' }), el('th', { class: 'hide-sm', textContent: 'Czas' }))), tbody))
       : el('p', { class: 'muted', textContent: 'Nic nie pasuje.' }));
   }
   await load();
-  reqTimer = setInterval(() => { if (reqState.live && !document.hidden) load(); }, 5000);
+  reqTimer = setInterval(() => { if (reqState.live && !document.hidden) load(true); }, 5000);
 }
 
 // ---------- players' logs ----------
@@ -608,15 +709,20 @@ async function logsPage() {
 
 // ---------- log ----------
 
+/** Admins' handles by id, for a server that does not send `adminHandle` in the log: asked once per admin, kept while the panel is open. */
+const people = {};
+const nameOf = (id) => (people[id] ??= api('GET', `/v1/admin/users/${id}`).then((u) => u?.handle ?? id.slice(0, 8), () => {
+  // a failed lookup is not kept: the next visit asks again
+  delete people[id];
+  return id.slice(0, 8);
+}));
+
 async function logPage() {
-  const res = await guard(() => api('GET', '/v1/admin/log'));
+  const [res] = await Promise.all([guard(() => api('GET', '/v1/admin/log')), capesReady()]);
   if (!res) return;
-  const people = {};
-  // the lookup itself is kept, so the rows of one admin ask for them once, not once a row
-  const nameOf = (id) => (people[id] ??= api('GET', `/v1/admin/users/${id}`).then((u) => u?.handle ?? id.slice(0, 8), () => id.slice(0, 8)));
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
-    el('td', { textContent: `@${await nameOf(e.admin)}` }),
+    el('td', { textContent: `@${e.adminHandle || await nameOf(e.admin)}` }),
     el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' || e.action === 'cosmetic_supporter' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|community\.|ach_(create|edit|reset|delete)|home_|support_(provider|test|settings|tier)|setting)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
@@ -627,6 +733,7 @@ async function logPage() {
 
 addEventListener('hashchange', () => {
   const next = location.hash.slice(1).split(':')[0];
-  if (me?.admin && next && next !== tab && TABS.some(([id]) => id === next)) void go(next); else if (me?.admin && next === 'achievements' && tab === 'achievements' && foreignHash()) achievementsPage();
+  if (me?.admin && next && next !== tab && TABS.some(([id]) => id === next)) void go(next);
+  else if (me?.admin && next === 'achievements' && tab === 'achievements') need('achievements').then(([a]) => { if (a.foreignHash()) a.achievementsPage(); }, () => {});
 });
 start().catch((err) => toast(errorText(err), true));

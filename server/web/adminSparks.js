@@ -55,5 +55,7 @@ export function shopSection() {
       })));
   };
   load();
+  // the cosmetics tab asks again after a card's price changed (admin.js)
+  box.reload = load;
   return box;
 }

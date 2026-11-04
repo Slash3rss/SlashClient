@@ -105,7 +105,8 @@ const charts = (...cards) => el('div', { class: 'dash-grid charts' }, ...cards.f
 export async function dashboardPage(ctx, fresh = false) {
   const main = $('#main');
   if (!main.querySelector('.dash')) main.replaceChildren(el('p', { class: 'muted', textContent: 'Liczenie…' }));
-  const s = await guard(() => api('GET', `/v1/admin/stats?days=${period}${fresh ? '&fresh=1' : ''}`));
+  // `ready`: the cosmetics' names (admin.js), asked for at the same time as the numbers
+  const [s] = await Promise.all([guard(() => api('GET', `/v1/admin/stats?days=${period}${fresh ? '&fresh=1' : ''}`)), ctx.ready]);
   if (!s || !$('#main')) return;
   const days = s.days ?? period;
   const a = s.activity;
