@@ -122,7 +122,23 @@ public final class Badges {
 
 	private static final long HEARTBEAT_MS = 4 * 60_000;
 	/** How long an answer about a player is trusted before asking again. */
-	private static final long RECHECK_MS = 2 * 60_000;
+	static final long RECHECK_MS = 2 * 60_000;
+	/**
+	 * The same when changes come live (the launcher passes the server's events on): a player who changes
+	 * what they wear or their rank is then told to us, so the server is asked far less often. Players
+	 * without SlashClient get one quicker second look (they may have joined a moment before their game
+	 * reported itself to the server), then the long wait.
+	 */
+	static final long LIVE_RECHECK_MS = 5 * 60_000, LIVE_RECHECK_OTHERS_MS = 10 * 60_000;
+	/**
+	 * Players already known are asked about again in groups, not one by one every second: when the first
+	 * is due, everyone due within RECHECK_WINDOW_MS goes in the same request, and such requests are at
+	 * least RECHECK_GAP_MS apart. Players never asked about still go within a second. (The server limits
+	 * the game's requests per address, shared by everyone at home.)
+	 */
+	static final long RECHECK_WINDOW_MS = 45_000, RECHECK_GAP_MS = 10_000;
+	/** After leaving, a quick way back to the same server (a network's lobby to a game) keeps what we knew. */
+	static final long KEEP_ON_REJOIN_MS = 60_000;
 	/**
 	 * SlashClient players in sight, when changes of what they wear do not come live (no launcher, an older
 	 * one, or it is not connected to the server): asked again this often, so a new cape shows soon anyway.
@@ -131,6 +147,13 @@ public final class Badges {
 
 	/** uuid → when it was last checked, and whether it uses SlashClient. */
 	private static final Map<UUID, Long> checkedAt = new ConcurrentHashMap<>();
+	/** Players the server said do not use SlashClient: once, and more than once (then the long wait applies). */
+	private static final Set<UUID> notOnce = ConcurrentHashMap.newKeySet(), settled = ConcurrentHashMap.newKeySet();
+	/** When players already known were last asked about again. */
+	private static long lastRecheck;
+	/** The server we play on (null: singleplayer), and when we were last in a game. */
+	private static String joinedAddress;
+	private static long lastInGame;
 	private static final Set<UUID> slash = ConcurrentHashMap.newKeySet();
 	// HTTP/1.1: on plain http Java would try an "h2c" upgrade, which a server with WebSockets takes for one and drops
 	private static final HttpClient HTTP = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build();
@@ -212,6 +235,7 @@ public final class Badges {
 
 	/** Once a second: report ourselves now and then, and ask about players we know nothing recent of. */
 	public static void tick(Minecraft mc) {
+		if (mc.player != null) lastInGame = System.currentTimeMillis();
 		if (++tick % 20 != 0 || !enabled() || server == null || mc.player == null || mc.getConnection() == null || busy) return;
 		long now = System.currentTimeMillis();
 		if (now - lastHeartbeat > HEARTBEAT_MS) {
@@ -226,15 +250,12 @@ public final class Badges {
 		seen.add(mc.player.getUUID());
 		if (mc.level != null) for (var p : mc.level.players()) seen.add(p.getUUID());
 		for (PlayerInfo p : mc.getConnection().getOnlinePlayers()) seen.add(p.getProfile().id());
+		boolean liveChanges = dev.slash3rss.slashclient.hud.social.Social.liveCosmetics();
 		java.util.Set<UUID> inView = new java.util.HashSet<>();
-		if (mc.level != null && !dev.slash3rss.slashclient.hud.social.Social.liveCosmetics()) {
+		if (mc.level != null && !liveChanges) {
 			for (var p : mc.level.players()) if (slash.contains(p.getUUID())) inView.add(p.getUUID());
 		}
-		List<UUID> ask = new ArrayList<>();
-		for (UUID id : seen) {
-			if (id != null && now - checkedAt.getOrDefault(id, 0L) > (inView.contains(id) ? IN_VIEW_RECHECK_MS : RECHECK_MS)) ask.add(id);
-			if (ask.size() >= 200) break;
-		}
+		List<UUID> ask = due(seen, now, id -> recheckAfter(id, liveChanges, inView.contains(id)));
 		if (ask.isEmpty()) return;
 		ask.forEach(id -> checkedAt.put(id, now));
 		JsonObject body = new JsonObject();
@@ -267,8 +288,14 @@ public final class Badges {
 			// players live now (servers before 0.9.24 send none)
 			JsonObject liveOf = o.has("live") && o.get("live").isJsonObject() ? o.getAsJsonObject("live") : new JsonObject();
 			for (UUID id : ask) {
-				if (active.contains(id)) slash.add(id);
-				else slash.remove(id);
+				if (active.contains(id)) {
+					slash.add(id);
+					notOnce.remove(id);
+					settled.remove(id);
+				} else {
+					slash.remove(id);
+					if (!notOnce.add(id)) settled.add(id);
+				}
 				// the server answers with the uuid as it was asked
 				var items = wornBy.get(id.toString());
 				// a live change that came while this answer was on its way is newer: it stays
@@ -303,6 +330,69 @@ public final class Badges {
 				else live.remove(id);
 			}
 		});
+	}
+
+	/** How long an answer about this player is trusted. */
+	static long recheckAfter(UUID id, boolean liveChanges, boolean inView) {
+		if (!liveChanges) return inView ? IN_VIEW_RECHECK_MS : RECHECK_MS;
+		if (slash.contains(id)) return LIVE_RECHECK_MS;
+		return settled.contains(id) ? LIVE_RECHECK_OTHERS_MS : RECHECK_MS;
+	}
+
+	/**
+	 * Whom to ask about now, out of the players seen (at most 200): everyone never asked about (or to be
+	 * asked about again at once), and, when someone known is due and the last such request was at least
+	 * RECHECK_GAP_MS ago, everyone due within RECHECK_WINDOW_MS too. A request going out anyway takes them along.
+	 */
+	static List<UUID> due(java.util.Collection<UUID> seen, long now, java.util.function.ToLongFunction<UUID> after) {
+		List<UUID> fresh = new ArrayList<>(), soon = new ArrayList<>();
+		boolean anyDue = false;
+		for (UUID id : seen) {
+			if (id == null) continue;
+			Long at = checkedAt.get(id);
+			if (at == null) {
+				fresh.add(id);
+				continue;
+			}
+			long left = at + after.applyAsLong(id) - now;
+			if (left <= RECHECK_WINDOW_MS) soon.add(id);
+			anyDue |= left < 0;
+		}
+		List<UUID> ask = new ArrayList<>(fresh);
+		if (!soon.isEmpty() && (anyDue && now - lastRecheck >= RECHECK_GAP_MS || !fresh.isEmpty())) {
+			ask.addAll(soon);
+			lastRecheck = now;
+		}
+		return ask.size() > 200 ? List.copyOf(ask.subList(0, 200)) : ask;
+	}
+
+	/** For the in-game test: whom a lookup now would ask about, with the same wait for everyone. */
+	public static List<UUID> dueForTest(List<UUID> seen, long now, long after) {
+		return due(seen, now, id -> after);
+	}
+
+	/** For the in-game test: as if the server had been asked about this player at that moment (0: never). */
+	public static void checkedAtForTest(UUID id, long at) {
+		if (at <= 0) checkedAt.remove(id);
+		else checkedAt.put(id, at);
+	}
+
+	/** For the in-game test: the wait after an answer about this player, with changes coming live or not. */
+	public static long recheckAfterForTest(UUID id, boolean liveChanges) {
+		return recheckAfter(id, liveChanges, false);
+	}
+
+	/** For the in-game test: as if the server had said this player does not use SlashClient (once, or more often). */
+	public static void notSlashForTest(UUID id, boolean settledToo) {
+		slash.remove(id);
+		notOnce.add(id);
+		if (settledToo) settled.add(id);
+		else settled.remove(id);
+	}
+
+	/** For the in-game test: no recheck request just before. */
+	public static void clearRecheckGapForTest() {
+		lastRecheck = 0;
 	}
 
 	/** In the background; the server being away only means no logos, never a stutter. */
@@ -344,10 +434,32 @@ public final class Badges {
 		checkedAt.clear();
 	}
 
+	/**
+	 * Joined a server or world (also a network's switch from its lobby to a game). Back on the same server
+	 * within KEEP_ON_REJOIN_MS, what we knew stays (no logos and capes blinking off, no asking about
+	 * everyone again); otherwise it is forgotten. True when it was kept.
+	 */
+	public static boolean joined(String address) {
+		long now = System.currentTimeMillis();
+		boolean same = address != null && address.equalsIgnoreCase(joinedAddress) && now - lastInGame < KEEP_ON_REJOIN_MS;
+		joinedAddress = address;
+		lastInGame = now;
+		if (!same) reset();
+		return same;
+	}
+
+	/** For the in-game test: as if we had last been in a game `ago` milliseconds before. */
+	public static void leftForTest(long ago) {
+		lastInGame = System.currentTimeMillis() - ago;
+	}
+
 	/** A new server or world: what we knew about its players does not count any more. */
 	public static void reset() {
 		checkedAt.clear();
 		slash.clear();
+		notOnce.clear();
+		settled.clear();
+		lastRecheck = 0;
 		lastHeartbeat = 0;
 		// the other players' ranks, clans and streams too, so a long session does not keep everyone ever met;
 		// our own stay, so our logo does not lose its colour until the next answer

@@ -303,6 +303,8 @@ public final class Social {
 		}
 		communityMedia = media;
 		boolean was = cosmeticsEvents && reachable;
+		// changes while the launcher was away did not come: the cosmetics menu asks for the catalog anew
+		dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen.catalogChanged();
 		cosmeticsEvents = connected && passes;
 		// connected again (launcher or server): changes made meanwhile did not come, so everyone in sight is asked about anew
 		if (cosmeticsEvents && !was) dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.missedChanges();
@@ -500,6 +502,8 @@ public final class Social {
 			case "spray" -> dev.slash3rss.slashclient.hud.cosmetics.Sprays.received(e);
 			// a SlashClient achievement unlocked (play streak, hours…): "Achievement unlocked" and its name, with the reward
 			case "achievement" -> {
+				// it may have given an item: the cosmetics menu asks for the catalog anew
+				dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen.catalogChanged();
 				// "quiet": one of several unlocked at once; the 'achievements-summary' after them makes the toast
 				if (e.has("achievement") && e.get("achievement").isJsonObject() && !quiet(e) && !quiet(e.getAsJsonObject("achievement")))
 					achievement(e.getAsJsonObject("achievement"));

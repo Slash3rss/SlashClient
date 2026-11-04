@@ -142,6 +142,8 @@ public final class Cosmetics {
 		if (!e.has("uuids") || !e.get("uuids").isJsonArray()) return;
 		var sets = e.has("cosmetics") && e.get("cosmetics").isJsonObject() ? e.getAsJsonObject("cosmetics") : null;
 		long now = System.currentTimeMillis();
+		var user = Minecraft.getInstance().getUser();
+		UUID self = user == null ? null : user.getProfileId();
 		for (var el : e.getAsJsonArray("uuids")) {
 			if (!el.isJsonPrimitive()) continue;
 			UUID id;
@@ -150,6 +152,8 @@ public final class Cosmetics {
 			} catch (IllegalArgumentException ignored) {
 				continue;
 			}
+			// our own change (a new rank, a grant) may make more items ours: the menu asks for the catalog anew
+			if (id.equals(self)) CosmeticsScreen.catalogChanged();
 			var set = sets == null ? null : sets.get(el.getAsString());
 			if (set == null || !set.isJsonObject()) {
 				Badges.recheck(id);
@@ -184,9 +188,12 @@ public final class Cosmetics {
 		return user == null || !id.equals(user.getProfileId());
 	}
 
-	public static void reset() {
-		worn.clear();
-		liveAt.clear();
+	/** Another server or world; `keepWorn`: back on the same server at once (Badges.joined), what the players there wear stays. */
+	public static void reset(boolean keepWorn) {
+		if (!keepWorn) {
+			worn.clear();
+			liveAt.clear();
+		}
 		CosmeticsScreen.forgetOwn();
 		emotes.clear();
 	}

@@ -15,8 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Friends on the minimap (and the full map). A friend who shares their position (off by default,
- * chosen in the launcher's account window or here; with all friends or only some) sends it every
- * 2 seconds while they play on a server; the SlashClient server passes it on only to friends on
+ * chosen in the launcher's account window or here; with all friends or only some) sends it while
+ * they play on a server: at most every 2 seconds when they move or turn, otherwise every 5 seconds
+ * so friends know they are still there; the SlashClient server passes it on only to friends on
  * the same server, and keeps nothing. Here: what came, shown only for the server and dimension the
  * player is in, and forgotten after a few seconds without news. Sending ours works the same way.
  *
@@ -29,8 +30,23 @@ public final class FriendPositions {
 	public record Pos(String id, String name, String server, String dimension, double x, double y, double z, float yaw, List<UUID> uuids, long at) {}
 
 	/** A position older than this is no longer shown (the friend left, or stopped sharing). */
-	static final long STALE_MS = 8_000;
-	private static final int EVERY_TICKS = 40;
+	public static final long STALE_MS = 8_000;
+	/** Checked this often whether ours should go out. */
+	private static final int EVERY_TICKS = 10;
+	/** Ours goes out at most this often while moving, and at least this often standing still (well below STALE_MS). */
+	public static final long MOVING_MS = 2_000, STILL_MS = 5_000;
+	/** Moved this far (blocks) or turned this much (degrees) since the last one sent: a new one goes out. */
+	private static final double MOVED = 0.5, TURNED = 10;
+	/**
+	 * The server would not take ours (we are not on that server for it yet, or too many): asked again
+	 * after BACKOFF_MS, then twice as long each time, at most MAX_BACKOFF_MS; a success or another server
+	 * starts over. Right after joining it is only the launcher not having said where we are yet, so
+	 * then the usual wait applies.
+	 */
+	static final long BACKOFF_MS = 30_000, MAX_BACKOFF_MS = 5 * 60_000, JOIN_GRACE_MS = 20_000;
+	/** What went out last (server, dimension, x, y, z, yaw) and when; null: nothing yet. */
+	private static volatile Object[] lastSent;
+	private static volatile long lastSentAt, joinedAt, backoff, retryAt;
 	private static final Map<String, Pos> positions = new ConcurrentHashMap<>();
 	/** Our own choice as the server keeps it: "off", "all" or "some" (null: not asked yet). */
 	private static volatile String mode;
@@ -162,33 +178,95 @@ public final class FriendPositions {
 		});
 	}
 
-	/** Every tick: every 2 seconds, while sharing and on a server, where we are goes out (one request at a time). */
+	/** Joined a server or world: a wait after the server's refusals starts over. */
+	public static void joined() {
+		joinedAt = System.currentTimeMillis();
+		backoff = 0;
+		retryAt = 0;
+		lastSent = null;
+	}
+
+	/**
+	 * Every tick: while sharing and on a server, where we are goes out (one request at a time) when we
+	 * moved, turned or changed place (at most every 2 seconds), or 5 seconds after the last one.
+	 */
 	public static void tick(Minecraft mc) {
 		if (++ticks % EVERY_TICKS != 0 || !sharing() || !available() || sending || mc.player == null || mc.level == null) return;
 		String server = Social.currentServer();
 		if (server == null) return;
+		String key = server.toLowerCase(Locale.ROOT), dimension = Waypoints.dimensionId(Waypoints.dimension(mc));
+		double x = Math.round(mc.player.getX() * 10) / 10.0, y = Math.round(mc.player.getY() * 10) / 10.0, z = Math.round(mc.player.getZ() * 10) / 10.0;
+		double yaw = Math.round(mc.player.getYRot() * 10) / 10.0;
+		long now = System.currentTimeMillis();
+		Object[] last = lastSent;
+		// another server: the server's refusals there say nothing about this one
+		if (last != null && !key.equals(last[0])) {
+			backoff = 0;
+			retryAt = 0;
+		}
+		if (now < retryAt || !due(last, lastSentAt, now, key, dimension, x, y, z, yaw)) return;
 		JsonObject body = new JsonObject();
-		body.addProperty("server", server.toLowerCase(Locale.ROOT));
-		body.addProperty("dimension", Waypoints.dimensionId(Waypoints.dimension(mc)));
-		body.addProperty("x", Math.round(mc.player.getX() * 10) / 10.0);
-		body.addProperty("y", Math.round(mc.player.getY() * 10) / 10.0);
-		body.addProperty("z", Math.round(mc.player.getZ() * 10) / 10.0);
-		body.addProperty("yaw", Math.round(mc.player.getYRot() * 10) / 10.0);
+		body.addProperty("server", key);
+		body.addProperty("dimension", dimension);
+		body.addProperty("x", x);
+		body.addProperty("y", y);
+		body.addProperty("z", z);
+		body.addProperty("yaw", yaw);
+		lastSent = new Object[] { key, dimension, x, y, z, yaw };
+		lastSentAt = now;
 		sending = true;
 		Thread.ofVirtual().start(() -> {
 			try {
 				Social.api("POST", "/v1/mc/position", body);
+				backoff = 0;
+				retryAt = 0;
 			} catch (Exception e) {
 				String msg = String.valueOf(e.getMessage());
 				// an older launcher's bridge does not know the path: nothing more this run
 				if (msg.contains("HTTP 403") && msg.contains("forbidden")) unsupported = true;
 				// switched off elsewhere (the launcher): asked again
 				else if (msg.contains("not_sharing")) mode = "off";
+				else if (refused(msg)) {
+					long at = System.currentTimeMillis();
+					// just joined: the launcher has not told the server where we are yet, so the usual wait
+					if (at - joinedAt >= JOIN_GRACE_MS || msg.contains("rate_limited") || msg.contains("slow_down")) {
+						backoff = backoff == 0 ? BACKOFF_MS : Math.min(MAX_BACKOFF_MS, backoff * 2);
+						retryAt = at + backoff;
+					}
+				}
 				SlashHud.LOG.debug("SlashClient: position: {}", msg);
 			} finally {
 				sending = false;
 			}
 		});
+	}
+
+	/** The server would not take it: not on that server for it (409) or too many (429). */
+	static boolean refused(String msg) {
+		return msg.contains("not_on_server") || msg.contains("other_server") || msg.contains("rate_limited") || msg.contains("slow_down")
+			|| msg.contains("HTTP 409") || msg.contains("HTTP 429") || msg.contains("\"status\":409") || msg.contains("\"status\":429");
+	}
+
+	/** Whether ours goes out now, after `last` (null: none yet) sent at `lastAt`. */
+	static boolean due(Object[] last, long lastAt, long now, String server, String dimension, double x, double y, double z, double yaw) {
+		if (last == null || !server.equals(last[0]) || !dimension.equals(last[1])) return true;
+		long since = now - lastAt;
+		if (since >= STILL_MS) return true;
+		if (since < MOVING_MS) return false;
+		double dx = x - (double) last[2], dy = y - (double) last[3], dz = z - (double) last[4];
+		double turn = Math.abs(((yaw - (double) last[5]) % 360 + 540) % 360 - 180);
+		return dx * dx + dy * dy + dz * dz >= MOVED * MOVED || turn >= TURNED;
+	}
+
+	/** For the in-game test: whether a position goes out now, after one sent `ago` ms before at the first place. */
+	public static boolean dueForTest(long ago, String server, String dimension, double x, double y, double z, double yaw, double x2, double y2, double z2, double yaw2, String server2, String dimension2) {
+		long now = System.currentTimeMillis();
+		return due(new Object[] { server, dimension, x, y, z, yaw }, now - ago, now, server2, dimension2, x2, y2, z2, yaw2);
+	}
+
+	/** For the in-game test: whether an error from the server makes ours wait. */
+	public static boolean refusedForTest(String msg) {
+		return refused(msg);
 	}
 
 	// ---------- for the in-game test ----------
