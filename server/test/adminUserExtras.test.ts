@@ -191,6 +191,14 @@ describe("the account drawer's further sections", () => {
     // reset
     res = await call('POST', `/v1/admin/users/${id}/extras/streak`, boss.token, { days: 0 });
     assert.equal(res.body.streak.current, 0);
+    // a streak that is over starts again today (and joins the days played before the gap: the plan says so)
+    res = await call('POST', `/v1/admin/users/${id}/extras/streak`, boss.token, { days: 3, dryRun: true });
+    assert.deepEqual(res.body.plan.fill, [today, addDays(today, -1)]);
+    assert.equal(res.body.plan.after, 7);
+    // never longer than the account is old
+    const fresh = await login('SeriaNowa');
+    assert.equal((await call('POST', `/v1/admin/users/${fresh.user.id}/extras/streak`, boss.token, { days: 2 })).body.error, 'bad_days');
+    assert.equal((await call('POST', `/v1/admin/users/${fresh.user.id}/extras/streak`, boss.token, { days: 1 })).body.streak.current, 1);
     assert.equal((await call('POST', `/v1/admin/users/${id}/extras/streak`, boss.token, { days: 400 })).body.error, 'bad_days');
     assert.equal((await call('POST', `/v1/admin/users/${id}/extras/streak`, boss.token, { days: -1 })).body.error, 'bad_days');
     assert.ok((await call('GET', '/v1/admin/log', boss.token)).body.entries.some((e: any) => e.action === 'streak_set' && e.target === 'Seria'));

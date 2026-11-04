@@ -33,6 +33,8 @@ export const COUNTERS: Counter[] = ['media', 'shares', 'cloud', 'parties_created
 export const MAX_STREAK = 3650;
 
 const DAY_MS = 86_400_000;
+/** The start of a moment's UTC day (the streak's days are UTC days). */
+const dayStart = (at: number) => Date.parse(`${dayOf(at)}T00:00:00Z`);
 
 export interface UserExtrasContext {
   db: Db;
@@ -105,8 +107,10 @@ export function adminUserExtrasRoutes(ctx: UserExtrasContext): [string, RegExp, 
     const fill: string[] = [];
     const cut: { day: string; seconds: number }[] = [];
     if (wanted > before.current) {
+      // a streak that is over starts again today; one still going grows back from its last day
+      const from = before.current ? anchor : today;
       for (let i = 0; i < wanted; i++) {
-        const d = addDays(anchor, -i);
+        const d = addDays(from, -i);
         if ((seconds.get(d) ?? 0) < DAY_MIN_SECONDS) fill.push(d);
       }
     } else if (wanted < before.current) {
@@ -338,7 +342,7 @@ export function adminUserExtrasRoutes(ctx: UserExtrasContext): [string, RegExp, 
       const at = now();
       const created = (sql.prepare('SELECT created_at FROM users WHERE uuid = ?').get(id) as { created_at: number }).created_at;
       // not before the account was made
-      const most = Math.min(MAX_STREAK, Math.floor((at - created) / DAY_MS) + 2);
+      const most = Math.min(MAX_STREAK, Math.floor((dayStart(at) - dayStart(created)) / DAY_MS) + 1);
       if (typeof days !== 'number' || !Number.isInteger(days) || days < 0 || days > most) fail(400, 'bad_days');
       const plan = streakPlan(id, days as number, at);
       if (dryRun === true) return { plan };
