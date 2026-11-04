@@ -1757,7 +1757,11 @@ public final class TestHooks {
 		java.util.Map.entry("emberwings", 1200), java.util.Map.entry("sapphire", 1000), java.util.Map.entry("obsidianwings", 1000),
 		java.util.Map.entry("dragonscale", 600), java.util.Map.entry("hellfire", 600), java.util.Map.entry("heavens", 600), java.util.Map.entry("jollyroger", 500),
 		java.util.Map.entry("autumnleaves", 400), java.util.Map.entry("sapphirecape", 700),
-		java.util.Map.entry("dragonelytra", 800), java.util.Map.entry("obsidianelytra", 700), java.util.Map.entry("sapphireelytra", 700));
+		java.util.Map.entry("dragonelytra", 800), java.util.Map.entry("obsidianelytra", 700), java.util.Map.entry("sapphireelytra", 700),
+		java.util.Map.entry("shield_crest", 500), java.util.Map.entry("shield_obsidian", 500), java.util.Map.entry("sword_knight", 600), java.util.Map.entry("sword_saber", 600),
+		java.util.Map.entry("tricorn", 400), java.util.Map.entry("eyepatch", 300), java.util.Map.entry("dragonhorns", 500), java.util.Map.entry("wolfears", 300),
+		java.util.Map.entry("pandaears", 300), java.util.Map.entry("catpaws", 300), java.util.Map.entry("bunnytail", 300),
+		java.util.Map.entry("infernal", 600), java.util.Map.entry("frostaura", 500), java.util.Map.entry("feathers", 400), java.util.Map.entry("leaves_fall", 400));
 
 	/** The cosmetics menu with the shop's capes and wings at their prices (the coral cape and the sapphire wings already bought) and this many Sparks. */
 	public static void shopMenu(String slot, int balance) {

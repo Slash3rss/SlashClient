@@ -108,9 +108,9 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 		java.util.List<String> list = context.computeOnClient(mc -> TestHooks.cosmeticsSets());
 		if (list.isEmpty() || !list.stream().anyMatch(s -> s.startsWith("frost "))) throw new AssertionError("No frost set on the sets' tab: " + list);
 		String frost = list.stream().filter(s -> s.startsWith("frost ")).findFirst().orElseThrow();
-		// the ice cape (an achievement's, not ours) and the glacier elytra (for sale) are missing; the parts this version has not got are not shown
+		// the ice cape (an achievement's, not ours), the glacier elytra and the frost aura (for sale) are missing
 		String[] n = frost.substring(6).split("/");
-		if (Integer.parseInt(n[1]) - Integer.parseInt(n[0]) != 2) throw new AssertionError("The frost set should miss two parts: " + frost);
+		if (Integer.parseInt(n[1]) - Integer.parseInt(n[0]) != 3) throw new AssertionError("The frost set should miss three parts: " + frost);
 		String body = context.computeOnClient(mc -> TestHooks.cosmeticsSetBody("frost"));
 		if (body.contains("ice\"") && body.contains("\"cape\"") || body.contains("glacier") || !body.contains("\"wings\":\"frost\"") || !body.contains("\"character\":\"test\""))
 			throw new AssertionError("Wearing the frost set would send " + body);

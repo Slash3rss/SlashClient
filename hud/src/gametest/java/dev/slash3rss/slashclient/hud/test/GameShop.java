@@ -175,6 +175,12 @@ public class GameShop implements FabricClientGameTest {
 
 	private static void hover(ClientGameTestContext context, String id) {
 		double[] at = context.computeOnClient(mc -> TestHooks.shopTile(id));
+		// scrolled to the end, a tile higher up the list is out of sight: back up a row at a time until it shows
+		for (int i = 0; i < 20 && at == null; i++) {
+			context.runOnClient(mc -> TestHooks.scrollCosmeticsBy(-40));
+			context.waitTicks(1);
+			at = context.computeOnClient(mc -> TestHooks.shopTile(id));
+		}
 		if (at == null) throw new AssertionError("No tile for " + id);
 		context.getInput().setCursorPos(at[0], at[1]);
 		context.waitTicks(8);
