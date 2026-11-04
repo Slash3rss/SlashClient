@@ -632,6 +632,11 @@ describe('social server', () => {
     assert.ok(!bartekLive.events.some((e) => e.type === 'cosmetics'));
 
     await call('POST', '/v1/mc/link', kasia.token, { uuid: kasiaMc });
+    // her game starting: those around see what she wears at once (server 0.9.70+)
+    const started = await bartekLive.waitFor((e) => e.type === 'cosmetics');
+    assert.deepEqual(started.cosmetics[kasiaMc], { cape: 'galaxy' });
+    bartekLive.events.length = 0;
+    kasiaLive.events.length = 0;
     // a burst of changes (slots clicked through) goes out as one event, with the last state
     const before = Date.now();
     await call('POST', '/v1/me', kasia.token, { cape: 'ember' });

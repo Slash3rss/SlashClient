@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +12,7 @@ import { Wallet } from '../src/economy.ts';
 import { RequestLog } from '../src/requests.ts';
 import { statements } from '../src/statements.ts';
 import { SUPPORTER_SCHEMA, setSupporterLevel } from '../src/supporterItems.ts';
+import { serveWeb } from '../src/web.ts';
 
 // What makes the server answer faster (kept statements, fewer queries, caches) must not change any answer.
 
@@ -277,6 +278,92 @@ describe("the game's lookup", () => {
     assert.equal(piotrLive.events.filter((e) => e.type === 'cosmetics').length, 1);
     piotrLive.ws.close();
     evaLive.ws.close();
+  });
+});
+
+describe("the site's files in browsers", () => {
+  /** What serveWeb answered: status, headers and the body. */
+  async function serve(web: string, pathname: string, ifModifiedSince?: string, version?: string) {
+    const out = { status: 0, headers: {} as Record<string, string>, body: '' as string | Buffer };
+    const res = {
+      writeHead: (status: number, headers: Record<string, string>) => Object.assign(out, { status, headers }),
+      end: (data?: string | Buffer) => {
+        out.body = data ?? '';
+      },
+    } as never;
+    const ok = await serveWeb(web, pathname, res, ifModifiedSince, version);
+    return { ok, ...out };
+  }
+
+  it('keeps versioned CSS and JS for good, pictures a day, and checks pages and the rest every time', async () => {
+    const web = path.join(dir, 'web');
+    mkdirSync(path.join(web, 'img'), { recursive: true });
+    mkdirSync(path.join(web, 'vendor', 'fonts'), { recursive: true });
+    writeFileSync(path.join(web, 'index.html'), '<!doctype html><link href="/style.css" rel="stylesheet"><script src="/app.js"></script>');
+    writeFileSync(path.join(web, 'style.css'), 'body{}');
+    writeFileSync(path.join(web, 'app.js'), "import './other.js';");
+    writeFileSync(path.join(web, 'img', 'cape.png'), 'png');
+    writeFileSync(path.join(web, 'logo.png'), 'png');
+    writeFileSync(path.join(web, 'vendor', 'fonts', 'x.woff2'), 'font');
+    const page = await serve(web, '/');
+    assert.equal(page.headers['Cache-Control'], 'no-cache');
+    const version = /style\.css\?v=([\w]+)"/.exec(String(page.body))![1];
+    assert.equal((await serve(web, '/style.css', undefined, version)).headers['Cache-Control'], 'public, max-age=31536000, immutable');
+    assert.equal((await serve(web, '/app.js', undefined, version)).headers['Cache-Control'], 'public, max-age=31536000, immutable');
+    // without the version, or with another one (an older deploy's), as before
+    assert.equal((await serve(web, '/style.css')).headers['Cache-Control'], 'no-cache');
+    assert.equal((await serve(web, '/style.css', undefined, 'old')).headers['Cache-Control'], 'no-cache');
+    assert.equal((await serve(web, '/', undefined, version)).headers['Cache-Control'], 'no-cache');
+    const picture = await serve(web, '/img/cape.png');
+    assert.equal(picture.headers['Cache-Control'], 'public, max-age=86400, stale-while-revalidate=604800');
+    assert.ok(picture.headers['Last-Modified']);
+    assert.equal((await serve(web, '/vendor/fonts/x.woff2')).headers['Cache-Control'], 'public, max-age=86400, stale-while-revalidate=604800');
+    // pictures elsewhere are checked every time
+    assert.equal((await serve(web, '/logo.png')).headers['Cache-Control'], 'no-cache');
+    const again = await serve(web, '/img/cape.png', picture.headers['Last-Modified']);
+    assert.equal(again.status, 304);
+    assert.equal(again.headers['Cache-Control'], 'public, max-age=86400, stale-while-revalidate=604800');
+  });
+
+  it('serves a file changed on disk at once, though it keeps files in memory', async () => {
+    const web = path.join(dir, 'web2');
+    mkdirSync(web, { recursive: true });
+    const file = path.join(web, 'note.txt');
+    writeFileSync(file, 'first');
+    assert.equal(String((await serve(web, '/note.txt')).body), 'first');
+    assert.equal(String((await serve(web, '/note.txt')).body), 'first');
+    writeFileSync(file, 'second version');
+    utimesSync(file, new Date(), new Date(Date.now() + 5000));
+    assert.equal(String((await serve(web, '/note.txt')).body), 'second version');
+  });
+});
+
+describe('public API answers with an ETag', () => {
+  it('answers "not changed" to a client that has the catalog, the switches and the ranks already', async () => {
+    for (const url of ['/v1/cosmetics', '/v1/features', '/v1/ranks']) {
+      const first = await call('GET', url, undefined, undefined, { 'X-SlashClient': 'launcher/0.9.69' });
+      assert.equal(first.status, 200);
+      const tag = first.headers.get('etag');
+      assert.match(tag ?? '', /^W\/"/, url);
+      assert.equal(first.headers.get('cache-control'), 'no-cache');
+      assert.match(first.headers.get('vary') ?? '', /X-SlashClient/);
+      const again = await fetch(base + url, { headers: { 'If-None-Match': tag!, 'X-SlashClient': 'launcher/0.9.69' } });
+      assert.equal(again.status, 304, url);
+      assert.equal(await again.text(), '');
+      // a stale tag: the whole answer
+      const stale = await fetch(base + url, { headers: { 'If-None-Match': 'W/"old"', 'X-SlashClient': 'launcher/0.9.69' } });
+      assert.equal(stale.status, 200);
+      assert.equal(await stale.text(), first.text);
+    }
+  });
+
+  it('never keeps what a signed-in player gets', async () => {
+    const ala = await login('TagAla');
+    const mine = await call('GET', '/v1/cosmetics', ala.token);
+    assert.equal(mine.headers.get('cache-control'), 'no-store');
+    assert.equal(mine.headers.get('etag'), null);
+    assert.equal((await call('GET', '/v1/me', ala.token)).headers.get('cache-control'), 'no-store');
+    assert.equal((await call('GET', '/v1/health')).headers.get('etag'), null);
   });
 });
 

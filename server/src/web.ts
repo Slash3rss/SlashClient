@@ -44,8 +44,46 @@ function pageOf(pathname: string): string | undefined {
   return undefined;
 }
 
-/** Serves a file of the site; false when there is none (the caller answers 404). */
-export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse, ifModifiedSince?: string): Promise<boolean> {
+/**
+ * How long a browser keeps a file. Everything is checked on each visit (a cheap 304 when unchanged),
+ * so an update reaches everyone at once, except: the CSS and JS the site links with this server's
+ * version (`?v=`, a new address after every deploy) are kept for good, and the pictures and fonts
+ * under /img and /vendor a day (then shown while checked again in the background for a week).
+ */
+function cacheControl(rel: string, type: string, version: string | undefined): string {
+  if (version === VERSION && (type.startsWith('text/css') || type.startsWith('text/javascript'))) return 'public, max-age=31536000, immutable';
+  if (/^(img|vendor)[\\/]/.test(rel) && /^(image|font)\//.test(type)) return 'public, max-age=86400, stale-while-revalidate=604800';
+  return 'no-cache';
+}
+
+/** Files as served (rewritten ones after the rewrite), by path, while their time and size on disk stay the same. */
+const kept = new Map<string, { mtimeMs: number; size: number; data: Buffer | string }>();
+let keptBytes = 0;
+/** At most so much in memory, and no file bigger than this (those are read each time, as before). */
+const KEEP_BYTES = 64 * 1024 * 1024;
+const KEEP_FILE_BYTES = 2 * 1024 * 1024;
+
+async function contentOf(file: string, info: { mtimeMs: number; size: number }, rewritten: boolean, type: string): Promise<Buffer | string> {
+  const hit = kept.get(file);
+  if (hit && hit.mtimeMs === info.mtimeMs && hit.size === info.size) return hit.data;
+  let data: Buffer | string = await readFile(file);
+  if (rewritten) data = versioned(data.toString('utf8'), type);
+  if (hit) {
+    kept.delete(file);
+    keptBytes -= hit.size;
+  }
+  if (info.size <= KEEP_FILE_BYTES && keptBytes + info.size <= KEEP_BYTES) {
+    kept.set(file, { mtimeMs: info.mtimeMs, size: info.size, data });
+    keptBytes += info.size;
+  }
+  return data;
+}
+
+/**
+ * Serves a file of the site; false when there is none (the caller answers 404). `version`: the
+ * address's `?v=` (the site's links carry this server's, see `versioned`).
+ */
+export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse, ifModifiedSince?: string, version?: string): Promise<boolean> {
   const root = path.resolve(webDir);
   let rel: string;
   try {
@@ -61,21 +99,20 @@ export async function serveWeb(webDir: string, pathname: string, res: http.Serve
   try {
     const info = await stat(file);
     if (!info.isFile()) return false;
-    // every file is checked on each visit (a cheap 304 when unchanged), so an update reaches everyone at once
     const rewritten = type.startsWith('text/html') || type.startsWith('text/javascript');
+    const cache = cacheControl(rel, type, version);
     // a rewritten file changes with the version too, so never older than the server's start
     const modified = new Date(Math.max(Math.floor(info.mtimeMs / 1000) * 1000, rewritten ? STARTED : 0));
     if (ifModifiedSince && !Number.isNaN(Date.parse(ifModifiedSince)) && Date.parse(ifModifiedSince) >= modified.getTime()) {
-      res.writeHead(304, { 'Cache-Control': 'no-cache', 'Last-Modified': modified.toUTCString() });
+      res.writeHead(304, { 'Cache-Control': cache, 'Last-Modified': modified.toUTCString() });
       res.end();
       return true;
     }
-    let data: Buffer | string = await readFile(file);
-    if (rewritten) data = versioned(data.toString('utf8'), type);
+    const data = await contentOf(file, info, rewritten, type);
     const headers: Record<string, string> = {
       'Content-Type': type,
       'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': cache,
       'Last-Modified': modified.toUTCString(),
     };
     if (type.startsWith('text/html')) {

@@ -2111,8 +2111,19 @@ export function createApp(cfg: Config) {
       if (!m || method !== req.method) continue;
       try {
         const result = await fn(req, m.slice(1), url);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result ?? null));
+        const text = JSON.stringify(result ?? null);
+        // the same for everyone who asks without signing in (the catalog, the switches, the ranks): a browser or a
+        // launcher that has it already gets a short "not changed"; everything else, personal or not, is never kept
+        const tag = method === 'GET' && !req.headers.authorization && PUBLIC_GETS.test(url.pathname) ? weakTag(text) : undefined;
+        if (tag) {
+          // the catalog differs by the asking launcher's version (X-SlashClient) and by browser or not (User-Agent)
+          const headers = { 'Cache-Control': 'no-cache', ETag: tag, Vary: 'X-SlashClient, User-Agent' };
+          if (tagMatches(req.headers['if-none-match'], tag)) res.writeHead(304, headers).end();
+          else res.writeHead(200, { 'Content-Type': 'application/json', ...headers }).end(text);
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(text);
+        }
         // what it did may unlock an achievement (a screenshot shared, a party, a group…)
         try {
           achievements.after(method, url.pathname, (req as SeenRequest).slashUser);
@@ -2186,7 +2197,7 @@ export function createApp(cfg: Config) {
       return;
     }
     // everything that is not the API is the website
-    if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
+    if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'], url.searchParams.get('v') ?? undefined)) return;
     // a browser asking for a page that is not there gets the site's own page, the API its JSON
     if (wantsPage(req, url.pathname)) {
       res.writeHead(404, ERROR_PAGE_HEADERS);
@@ -2631,6 +2642,20 @@ export function createApp(cfg: Config) {
       });
     }),
   };
+}
+
+/** API answers that are the same for everyone (asked without signing in): they get an ETag. */
+const PUBLIC_GETS = /^\/v1\/(cosmetics|features|ranks)$/;
+/** A weak ETag of an answer's text. */
+const weakTag = (text: string) => `W/"${createHash('sha1').update(text).digest('base64url')}"`;
+/** Whether If-None-Match names this tag (weakly: W/ or not), or is "*". */
+function tagMatches(header: string | undefined, tag: string): boolean {
+  if (!header) return false;
+  const bare = tag.replace(/^W\//, '');
+  return header.split(',').some((t) => {
+    const v = t.trim();
+    return v === '*' || v.replace(/^W\//, '') === bare;
+  });
 }
 
 /** The site's own error pages (not found, switched off, failed): no scripts, nothing from elsewhere, not in a frame. */
