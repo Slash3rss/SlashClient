@@ -25,7 +25,7 @@ import dev.slash3rss.slashclient.hud.SlashHud;
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
  * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears, back item, tail, ring, movement effect,
- * spray, prop), the player's figure (for a spray its picture on a block) beside the panel trying on the item under
+ * spray, prop) or a set of items that go together (the "Sets" tab), the player's figure (for a spray its picture on a block) beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
@@ -84,10 +84,22 @@ public class CosmeticsScreen extends Screen {
 		}
 	}
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
+	/** A set from the server (0.9.70): its id, its name in the game's language, and its parts (slot, item id) in order. */
+	private record SetDef(String id, String name, List<String[]> parts) {}
+	/** A set as it shows: the parts this version knows and the catalog has (as their entries). */
+	private record SetView(SetDef def, List<Entry> parts) {
+		List<Entry> owned() {
+			return parts.stream().filter(Entry::available).toList();
+		}
+	}
 
 	private final Screen parent;
 	private final List<Hit> hits = new ArrayList<>();
 	private volatile List<Entry> items = List.of();
+	/** The sets the server sends (none from servers before 0.9.70: then no tab). */
+	private volatile List<SetDef> sets = List.of();
+	/** The parts of the set under the mouse, tried on by the figure (null none); `hoverSetNow` is this frame's. */
+	private Map<String, String> triedSet, hoverSetNow;
 	/** What is worn now, slot → id. */
 	private final Map<String, String> worn = new HashMap<>();
 	/** The played Minecraft account, when linked to the SlashClient account (uuid without dashes), and its name. */
@@ -209,6 +221,33 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("dragonscale", "Smocza łuska"), Map.entry("hellfire", "Piekło"), Map.entry("heavens", "Niebiosa"), Map.entry("jollyroger", "Bandera"),
 		Map.entry("autumnleaves", "Jesień"), Map.entry("sapphirecape", "Szafir"),
 		Map.entry("dragonelytra", "Smocza"), Map.entry("obsidianelytra", "Obsydian"), Map.entry("sapphireelytra", "Szafir"));
+	/** For the sets' test: the shop's sample with some of the server's sets (as in server/src/cosmetics.ts, frost first), open on their tab. */
+	public static CosmeticsScreen sampleSets(int balance, Map<String, Integer> prices, java.util.Set<String> owned) {
+		CosmeticsScreen screen = sampleShop("sets", balance, prices, owned);
+		List<SetDef> list = new ArrayList<>();
+		for (String[] s : SAMPLE_SETS) {
+			List<String[]> parts = new ArrayList<>();
+			for (int i = 2; i < s.length; i++) parts.add(s[i].split(":", 2));
+			list.add(new SetDef(s[0], s[1], List.copyOf(parts)));
+		}
+		screen.sets = List.copyOf(list);
+		// the ice cape earned with an achievement, not ours yet: its tooltip says how
+		List<Entry> entries = new ArrayList<>();
+		for (Entry e : screen.items) entries.add(e.id().equals("ice") && e.slot().equals("cape")
+			? new Entry("ice", "cape", "Lód", "", false, "Osiągnięcie „Pięciu znajomych”: Miej 5 znajomych w SlashClient.") : e);
+		screen.items = List.copyOf(entries);
+		return screen;
+	}
+	private static final String[][] SAMPLE_SETS = {
+		{"frost", "Lód", "cape:ice", "wings:frost", "elytra:glacier", "aura:frostaura", "trail:snow", "ring:ring_frost", "weapon:sword_ice", "shield:shield_ice", "kill:shatter"},
+		{"dragon", "Smok", "cape:dragonscale", "wings:dragon", "elytra:dragonelytra", "ears:dragonhorns", "tail:dragontail", "shield:shield_dragon", "weapon:bow_dragon"},
+		{"demon", "Demon", "cape:hellfire", "wings:demon", "ears:devilhorns", "tail:deviltail", "face:oni", "shield:shield_demon", "aura:infernal"},
+		{"angel", "Anioł", "cape:heavens", "wings:angel", "hat:halo", "back:angelpack", "ring:ring_halo", "trail:feathers"},
+		{"pirate", "Pirat", "suit:pirate", "hat:tricorn", "face:eyepatch", "weapon:sword_saber", "cape:jollyroger", "pet:parrot"},
+		{"obsidian", "Obsydian", "cape:obsidian", "wings:obsidianwings", "elytra:obsidianelytra", "shield:shield_obsidian"},
+		{"wolf", "Wilk", "ears:wolfears", "tail:wolftail"},
+		{"cat", "Kot", "ears:catears", "tail:cattail", "hands:catpaws", "pet:cat"},
+	};
 
 	@Override
 	protected void init() {
@@ -267,6 +306,20 @@ public class CosmeticsScreen extends Screen {
 	/** For the test: the panel (GUI pixels: x, y, width, height), the slot tabs' rows and how many show, and the tiles in a row. */
 	public int[] layoutForTest() {
 		return new int[] {px, py, pw, ph, tabRows, tabShown, Math.max(1, (pw - 24 + GAP) / (TILE_W + GAP))};
+	}
+
+	/** For the test: each set shown, "id owned/all", in order. */
+	public List<String> setsForTest() {
+		return setViews().stream().map(v -> v.def().id() + " " + v.owned().size() + "/" + v.parts().size()).toList();
+	}
+
+	/** For the test: what "Wear the set" would send to the server ("" when none of it is ours). */
+	public String setBodyForTest(String id) {
+		for (SetView v : setViews()) if (v.def().id().equals(id)) {
+			JsonObject body = setBody(v.owned(), character);
+			return body == null ? "" : body.toString();
+		}
+		return "";
 	}
 
 	/** For the test: another slot, as a click on its tab. */
@@ -348,6 +401,18 @@ public class CosmeticsScreen extends Screen {
 				o.has("price") && o.get("price").isJsonPrimitive() ? o.get("price").getAsInt() : 0));
 		}
 		items = List.copyOf(list);
+		// the sets (servers from 0.9.70; older ones send none): each part's slot and item
+		List<SetDef> found = new ArrayList<>();
+		if (catalog.has("sets") && catalog.get("sets").isJsonArray()) for (JsonElement e : catalog.getAsJsonArray("sets")) {
+			if (!e.isJsonObject()) continue;
+			JsonObject o = e.getAsJsonObject();
+			if (!o.has("id") || !o.has("parts") || !o.get("parts").isJsonObject()) continue;
+			List<String[]> parts = new ArrayList<>();
+			for (var p : o.getAsJsonObject("parts").entrySet()) if (p.getValue().isJsonPrimitive()) parts.add(new String[] {p.getKey(), p.getValue().getAsString()});
+			String name = polish || !o.has("nameEn") ? o.has("name") ? o.get("name").getAsString() : o.get("id").getAsString() : o.get("nameEn").getAsString();
+			found.add(new SetDef(o.get("id").getAsString(), name, List.copyOf(parts)));
+		}
+		sets = List.copyOf(found);
 		JsonObject wallet = catalog.has("wallet") && catalog.get("wallet").isJsonObject() ? catalog.getAsJsonObject("wallet") : null;
 		balance = wallet != null && wallet.has("balance") ? wallet.get("balance").getAsInt() : -1;
 	}
@@ -392,7 +457,7 @@ public class CosmeticsScreen extends Screen {
 		if (buyBusy || balance < e.price()) return;
 		buyBusy = true;
 		buyError = null;
-		String wornSlot = slot;
+		String wornSlot = e.slot();
 		Thread.ofVirtual().start(() -> {
 			try {
 				var test = shopForTest;
@@ -496,17 +561,55 @@ public class CosmeticsScreen extends Screen {
 	private void wear(Entry item) {
 		if (busy || status == null || !status.isEmpty()) return;
 		String id = item == null ? "" : item.id();
+		// the item's own slot (from the sets' tab or after buying it there, not the tab's)
+		String in = item == null ? slot : item.slot();
 		// a kill effect shows what it looks like at once
-		if (slot.equals("kill") && !id.isEmpty()) KillEffects.preview(minecraft, id);
+		if (in.equals("kill") && !id.isEmpty()) KillEffects.preview(minecraft, id);
 		JsonObject body = new JsonObject();
 		if (character != null) body.addProperty("character", character);
-		if (slot.equals("cape")) body.addProperty("cape", id);
+		if (in.equals("cape")) body.addProperty("cape", id);
 		else {
 			JsonObject l = new JsonObject();
-			l.addProperty(slot, id);
+			l.addProperty(in, id);
 			body.add("loadout", l);
 		}
 		send(body);
+	}
+
+	/** The sets with any part this version knows and the catalog has, their parts as entries in the set's order. */
+	private List<SetView> setViews() {
+		List<SetView> out = new ArrayList<>();
+		List<Entry> all = items;
+		for (SetDef s : sets) {
+			List<Entry> parts = new ArrayList<>();
+			for (String[] p : s.parts()) for (Entry e : all) if (e.slot().equals(p[0]) && e.id().equals(p[1])) {
+				parts.add(e);
+				break;
+			}
+			if (!parts.isEmpty()) out.add(new SetView(s, List.copyOf(parts)));
+		}
+		return out;
+	}
+
+	/** One request that puts on all these parts: the cape apart, the rest as the loadout; null when there are none. */
+	static JsonObject setBody(List<Entry> owned, String character) {
+		if (owned.isEmpty()) return null;
+		JsonObject body = new JsonObject();
+		if (character != null) body.addProperty("character", character);
+		JsonObject loadout = new JsonObject();
+		for (Entry e : owned) {
+			if (e.slot().equals("cape")) body.addProperty("cape", e.id());
+			else loadout.addProperty(e.slot(), e.id());
+		}
+		if (loadout.size() > 0) body.add("loadout", loadout);
+		return body;
+	}
+
+	/** "Wear the set": every part of it we have, at once (the parts we lack stay as they are). */
+	private void wearSet(SetView v) {
+		if (busy || status == null || !status.isEmpty()) return;
+		JsonObject body = setBody(v.owned(), character);
+		if (body != null) send(body);
 	}
 
 	private void send(JsonObject body) {
@@ -536,6 +639,8 @@ public class CosmeticsScreen extends Screen {
 		// while the "buy it?" box is open the figure wears what is being bought
 		tried = buying != null ? buying.id() : hoverNow;
 		hoverNow = null;
+		triedSet = buying != null ? null : hoverSetNow;
+		hoverSetNow = null;
 		boolean world = minecraft.level != null;
 		// kill effects play in the world, around the real player seen from behind; else the camera stays as it was
 		if (world && camera != null) {
@@ -567,7 +672,9 @@ public class CosmeticsScreen extends Screen {
 			synchronized (worn) {
 				set = new HashMap<>(worn);
 			}
-			if (tried != null) set.put(slot, tried);
+			if (tried != null) set.put(buying != null ? buying.slot() : slot, tried);
+			// a set under the mouse: the figure wears its parts we have
+			if (triedSet != null) set.putAll(triedSet);
 			// wings take the cape's place: on the cape's tab the cape shows; running, they would hide the trail;
 			// a back item takes the place of both: on their tabs they show
 			if (slot.equals("cape") || slot.equals("trail")) set.remove("wings");
@@ -638,12 +745,19 @@ public class CosmeticsScreen extends Screen {
 		}
 		// the slots, as small tabs wrapped to rows; when they would leave less than two rows of items,
 		// as many rows show as fit and the rest scroll to (the picked slot's row always in view)
-		int[] tabRow = new int[SLOTS.length], tabX = new int[SLOTS.length], tabW = new int[SLOTS.length];
+		// the sets' tab after the slots, when the server sends sets with parts we know
+		List<SetView> setList = setViews();
+		String[] tabs = SLOTS;
+		if (!setList.isEmpty()) {
+			tabs = java.util.Arrays.copyOf(SLOTS, SLOTS.length + 1);
+			tabs[SLOTS.length] = "sets";
+		} else if (slot.equals("sets")) pick("cape");
+		int[] tabRow = new int[tabs.length], tabX = new int[tabs.length], tabW = new int[tabs.length];
 		int right = px + pw - 12;
 		for (int pass = 0; pass < 2; pass++) {
 			int tx = x, row = 0;
-			for (int i = 0; i < SLOTS.length; i++) {
-				int w = Ui.width(Ui.tr("slashclient-hud.cosmetics.slot." + SLOTS[i])) + 14;
+			for (int i = 0; i < tabs.length; i++) {
+				int w = Ui.width(Ui.tr("slashclient-hud.cosmetics.slot." + tabs[i])) + 14;
 				if (tx + w > right && tx > x) {
 					tx = x;
 					row++;
@@ -664,17 +778,17 @@ public class CosmeticsScreen extends Screen {
 		if (!slot.equals(tabFor)) {
 			// a newly picked slot (also by the test, or when the screen opens): its row in view
 			tabFor = slot;
-			int at = tabRow[Math.max(0, java.util.Arrays.asList(SLOTS).indexOf(slot))];
+			int at = tabRow[Math.max(0, java.util.Arrays.asList(tabs).indexOf(slot))];
 			if (at < tabScroll) tabScroll = at;
 			else if (at >= tabScroll + tabShown) tabScroll = at - tabShown + 1;
 		}
 		tabScroll = Math.max(0, Math.min(maxTabScroll, tabScroll));
 		tabTop = y;
 		tabBottom = y + tabShown * TAB_ROW - 4;
-		for (int i = 0; i < SLOTS.length; i++) {
+		for (int i = 0; i < tabs.length; i++) {
 			int row = tabRow[i] - tabScroll;
 			if (row < 0 || row >= tabShown) continue;
-			String s = SLOTS[i];
+			String s = tabs[i];
 			int tx = tabX[i], ty = y + row * TAB_ROW, w = tabW[i];
 			Ui.button(g, "cos:slot:" + s, tx, ty, w, 15, null, Ui.tr("slashclient-hud.cosmetics.slot." + s), s.equals(slot), mx, my);
 			if (worn.containsKey(s)) g.fill(tx + w - 4, ty + 2, tx + w - 2, ty + 4, 0xFF4ADE80);
@@ -724,6 +838,10 @@ public class CosmeticsScreen extends Screen {
 			Ui.draw(g, Ui.fit(SprayPreview.keyHint(), pw - 36 - bw), x + bw + 6, y, Ui.MUTED);
 			y += 17;
 		}
+		if (slot.equals("sets")) {
+			y = Ui.wrapped(g, Ui.tr("slashclient-hud.cosmetics.sets.hint"), x, y - 4, pw - 24, Ui.MUTED) + 4;
+			drawSets(g, mx, my, x, y, setList);
+		} else {
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);
@@ -750,6 +868,7 @@ public class CosmeticsScreen extends Screen {
 		g.disableScissor();
 		// where in the list we are; taken with the mouse it scrolls too
 		bar.draw(g, px + pw - 8, gridTop, gridBottom - gridTop, scroll, maxScroll, mx, my);
+		}
 		Ui.end();
 		if (buying != null) {
 			// the "buy it?" box: everything else waits until it is answered
@@ -882,6 +1001,114 @@ public class CosmeticsScreen extends Screen {
 			tipY = y - 2;
 		}
 		// only the part of it that shows takes clicks (the grid scrolls under the slot tabs)
+		int top = Math.max(y, gridTop), bottom = Math.min(y + TILE_H, gridBottom);
+		if (sale && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> offer(e)));
+		else if (!locked && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> wear(e)));
+	}
+
+	/** The rows of the sets' tab, scrolled like the item grid: a card per set. */
+	private void drawSets(GuiGraphicsExtractor g, int mx, int my, int x, int y, List<SetView> list) {
+		int inner = pw - 24, perRow = Math.max(1, (inner - 12 + GAP) / (TILE_W + GAP));
+		gridTop = y;
+		gridBottom = py + ph - 8;
+		int total = 0;
+		for (SetView v : list) total += setHeight(v, perRow) + GAP;
+		maxScroll = Math.max(0, total - GAP - (gridBottom - gridTop));
+		scroll = Math.max(0, Math.min(maxScroll, scroll));
+		g.enableScissor(px, gridTop - 3, px + pw, gridBottom);
+		Ui.beginClip("cosmetics sets", px, gridTop - 3, pw, gridBottom - gridTop + 3);
+		tileAt.clear();
+		int cy = y - scroll;
+		for (SetView v : list) {
+			int h = setHeight(v, perRow);
+			if (cy + h >= gridTop && cy <= gridBottom) drawSet(g, mx, my, x, cy, inner, h, v, perRow);
+			cy += h + GAP;
+		}
+		Ui.end();
+		g.disableScissor();
+		bar.draw(g, px + pw - 8, gridTop, gridBottom - gridTop, scroll, maxScroll, mx, my);
+	}
+
+	private static int setHeight(SetView v, int perRow) {
+		int rows = (v.parts().size() + perRow - 1) / perRow;
+		return 6 + 15 + 5 + rows * (TILE_H + GAP) - GAP + 6;
+	}
+
+	/**
+	 * One set: its name and how many of its parts are ours ("4/7"), "Wear the set" (all the parts we have at
+	 * once), and the parts as tiles: the missing ones dimmed, with their price (a click offers to buy) or a
+	 * lock (the tooltip says how to earn them). Under the mouse the figure tries on the parts we have.
+	 */
+	private void drawSet(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h, SetView v, int perRow) {
+		List<Entry> owned = v.owned();
+		boolean worn;
+		synchronized (this.worn) {
+			worn = !owned.isEmpty() && owned.stream().allMatch(e -> e.id().equals(this.worn.get(e.slot())));
+		}
+		boolean visible = my >= gridTop && my < gridBottom;
+		Ui.round(g, x, y, w, h, 6, 0x50000000);
+		Ui.roundOutline(g, x, y, w, h, 6, worn ? Ui.ACCENT_LIGHT : Ui.BORDER);
+		Component name = Ui.bold(v.def().name());
+		Component count = Ui.text(owned.size() + "/" + v.parts().size());
+		Component label = Ui.tr(worn ? "slashclient-hud.cosmetics.sets.worn" : "slashclient-hud.cosmetics.sets.wear");
+		int bw = Ui.width(label) + (worn ? 24 : 14), bx = x + w - 6 - bw, by = y + 5;
+		int nameW = Math.max(20, bx - 8 - (x + 6) - Ui.width(count) - 6);
+		Ui.draw(g, Ui.fit(name, nameW), x + 6, y + 9, Ui.TEXT);
+		Ui.draw(g, count, x + 6 + Math.min(nameW, Ui.width(name)) + 6, y + 9, owned.size() == v.parts().size() ? Ui.GREEN : Ui.MUTED);
+		int top = Math.max(by, gridTop), bottom = Math.min(by + 15, gridBottom);
+		if (owned.isEmpty() || worn) {
+			// nothing of it is ours yet, or it is on already: the button only says so
+			Ui.round(g, bx, by, bw, 15, 4, Ui.CARD);
+			Ui.roundOutline(g, bx, by, bw, 15, 4, worn ? Ui.withAlpha(Ui.ACCENT, 0x88) : Ui.BORDER);
+			if (worn) Ui.icon(g, "check", bx + 5, by + 4, 7, Ui.GREEN);
+			Ui.draw(g, Ui.fit(label, bw - 10), bx + (worn ? 15 : 7), by + 4, worn ? Ui.TEXT_2 : Ui.MUTED);
+		} else {
+			Ui.button(g, "cos:set:" + v.def().id(), bx, by, bw, 15, null, label, true, mx, my);
+			if (bottom > top) hits.add(new Hit(bx, top, bw, bottom - top, () -> wearSet(v)));
+		}
+		for (int i = 0; i < v.parts().size(); i++) {
+			Entry e = v.parts().get(i);
+			int tx = x + 6 + (i % perRow) * (TILE_W + GAP), ty = y + 26 + (i / perRow) * (TILE_H + GAP);
+			partTile(g, mx, my, tx, ty, v.def().id(), e);
+			tileAt.put(v.def().id() + ":" + e.id(), new int[] {tx, ty});
+		}
+		if (visible && Ui.inside(mx, my, x, y, w, h) && !owned.isEmpty()) {
+			Map<String, String> parts = new HashMap<>();
+			for (Entry e : owned) parts.put(e.slot(), e.id());
+			hoverSetNow = parts;
+		}
+	}
+
+	/** A part of a set: as an item's tile; a click on one for sale offers to buy it, on one we have wears just it. */
+	private void partTile(GuiGraphicsExtractor g, int mx, int my, int x, int y, String set, Entry e) {
+		boolean over = Ui.inside(mx, my, x, y, TILE_W, TILE_H) && my >= gridTop && my < gridBottom;
+		boolean locked = !e.available(), sale = e.forSale();
+		String now;
+		synchronized (worn) {
+			now = worn.get(e.slot());
+		}
+		float t = Ui.hover("cos:set:" + set + ":" + e.id(), over && (!locked || sale));
+		Ui.round(g, x, y, TILE_W, TILE_H, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
+		Ui.roundOutline(g, x, y, TILE_W, TILE_H, 5, e.id().equals(now) ? Ui.ACCENT_LIGHT : sale ? Ui.blend(0x40FACC15, 0xA0FACC15, t) : Ui.blend(Ui.BORDER, Ui.withAlpha(Ui.ACCENT, 0x88), t));
+		picture(g, x, y, e, sale ? Ui.blend(0x90FFFFFF, 0xFFFFFFFF, t) : locked ? 0x50FFFFFF : 0xFFFFFFFF);
+		if (sale) {
+			Component price = Ui.bold(Sparks.compact(e.price()));
+			int w = 8 + 1 + Ui.width(price), sx = x + (TILE_W - w) / 2;
+			Ui.round(g, x + 2, y + TILE_H - 11, TILE_W - 4, 9, 3, 0xE00A0D14);
+			Sparks.icon(g, sx, y + TILE_H - 10, 7);
+			Ui.draw(g, price, sx + 9, y + TILE_H - 10, Sparks.GOLD);
+		}
+		if (locked) Ui.icon(g, e.hint().isEmpty() && !sale ? "close" : "lock", x + TILE_W - 10, y + 3, 7, Sparks.GOLD);
+		if (over) {
+			Component slotName = Ui.tr("slashclient-hud.cosmetics.slot." + e.slot());
+			tooltip = sale ? Ui.text(e.name() + " · " + Sparks.format(e.price()))
+				: locked && !e.hint().isEmpty() ? Ui.fit(Ui.text(e.hint()), width - 20)
+				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), Ui.tr("slashclient-hud.rank." + e.rank()))
+				: Ui.text(e.name());
+			tooltip2 = sale ? Ui.tr("slashclient-hud.cosmetics.shopHint", Sparks.name()) : locked && !e.hint().isEmpty() ? Ui.text(e.name()) : slotName;
+			tipX = x + TILE_W / 2;
+			tipY = y - 2;
+		}
 		int top = Math.max(y, gridTop), bottom = Math.min(y + TILE_H, gridBottom);
 		if (sale && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> offer(e)));
 		else if (!locked && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> wear(e)));

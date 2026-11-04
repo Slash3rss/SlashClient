@@ -15,6 +15,7 @@ import { initVersionMove } from './versionMove';
 import { initJavaChoice } from './javaChoice';
 import { createAchievements } from './achievements';
 import { buyWithConfirm } from './sparkShop';
+import { renderSets, type CosmeticSet } from './cosmeticSets';
 import { createReferrals } from './referrals';
 import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
@@ -4455,6 +4456,8 @@ const KILL_ICON_COLORS: Record<string, string> = {
 };
 const RANK_NAMES: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel' };
 let cosmeticSlot: Slot = 'cape';
+/** The sets' tab is open instead of a slot's (servers from 0.9.70 send sets). */
+let cosmeticSets = false;
 /** The Minecraft account (uuid without dashes) shown in the Accounts tab: it may have a set of its own. */
 let cosmeticCharacter = '';
 
@@ -4546,13 +4549,16 @@ function cosmeticPicture(slot: Slot, id: string): Node {
 type CosmeticsMe = { cape?: string; loadout?: Partial<Record<Slot, string>>; minecraft?: { uuid: string; name: string; loadout: Partial<Record<Slot, string>> | null }[] };
 type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
 /** What the cosmetics were last drawn from: picking another slot's tab draws from it at once, without asking the server. */
-let cosmeticsKept: { me?: CosmeticsMe; catalog: CatalogItem[]; walletBalance?: number } | undefined;
+let cosmeticsKept: { me?: CosmeticsMe; catalog: CatalogItem[]; walletBalance?: number; sets?: CosmeticSet[] } | undefined;
 
 /** The cosmetics menu; `fresh` asks the server for what is worn and offered (a slot's tab picked uses what was just read). */
 async function renderSlashCapes(fresh = true) {
   const pictures = await loadGamePictures();
   const data = (!fresh && cosmeticsKept) || (cosmeticsKept = await readCosmetics());
   const { me, catalog, walletBalance } = data;
+  // the sets with a part this launcher knows (older servers send none: no tab)
+  const sets = (data.sets ?? []).filter((s) => Object.entries(s.parts).some(([slot, id]) => catalog.some((c) => c.id === id && c.slot === slot)));
+  if (!sets.length) cosmeticSets = false;
   // a Minecraft account linked to the SlashClient account has a set of its own; others wear the account's
   const character = me?.minecraft?.find((m) => m.uuid === cosmeticCharacter);
   const worn: Partial<Record<Slot, string>> = character?.loadout ? { ...character.loadout } : { ...me?.loadout, cape: me?.cape ?? '' };
@@ -4568,14 +4574,24 @@ async function renderSlashCapes(fresh = true) {
   const slots = SLOTS.filter(([slot]) => catalog.some((c) => c.slot === slot));
   if (!slots.some(([slot]) => slot === cosmeticSlot)) cosmeticSlot = 'cape';
   $('#slot-tabs').replaceChildren(...slots.map(([slot, name, icon]) => {
-    const b = el('button', { type: 'button', className: `slot-tab${slot === cosmeticSlot ? ' active' : ''}${worn[slot] ? ' worn' : ''}`, title: t(name) },
+    const b = el('button', { type: 'button', className: `slot-tab${slot === cosmeticSlot && !cosmeticSets ? ' active' : ''}${worn[slot] ? ' worn' : ''}`, title: t(name) },
       el('i', { className: `fa-solid ${icon}` }), ` ${t(name)}`);
     b.addEventListener('click', () => {
       cosmeticSlot = slot;
+      cosmeticSets = false;
       renderSlashCapes(false);
     });
     return b;
   }));
+  if (sets.length) {
+    // the sets after the slots: items of several slots that go together
+    const b = el('button', { type: 'button', className: `slot-tab set-tab${cosmeticSets ? ' active' : ''}`, title: t('Zestawy') }, el('i', { className: 'fa-solid fa-layer-group' }), ` ${t('Zestawy')}`);
+    b.addEventListener('click', () => {
+      cosmeticSets = true;
+      renderSlashCapes(false);
+    });
+    $('#slot-tabs').append(b);
+  }
   $('#slot-tabs').classList.toggle('hidden', slots.length < 2);
   // the tabs scroll after a few rows (style.css): the picked one stays in view
   const activeTab = $('#slot-tabs').querySelector<HTMLElement>('.slot-tab.active');
@@ -4583,6 +4599,7 @@ async function renderSlashCapes(fresh = true) {
     activeTab.offsetTop - $('#slot-tabs').offsetTop + activeTab.offsetHeight - $('#slot-tabs').clientHeight);
   $('#slash-cape-note').textContent = !signedIn
     ? t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.')
+    : cosmeticSets ? t('Przedmioty, które do siebie pasują. „Załóż zestaw” zakłada naraz wszystkie części, które masz; pod spodem widać, jak zdobyć resztę.')
     : cosmeticSlot === 'cape' ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')
     : cosmeticSlot === 'wings' ? t('Skrzydła zastępują pelerynę na plecach; z prawdziwą elytrą widać elytrę.')
     : cosmeticSlot === 'elytra' ? t('Wygląd elytry, gdy ją założysz (bez tego elytra ma wzór peleryny).')
@@ -4605,7 +4622,7 @@ async function renderSlashCapes(fresh = true) {
     : cosmeticSlot === 'spray' ? t('Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.')
     : cosmeticSlot === 'prop' ? t('Pchasz go przed sobą, gdy masz wolne ręce. Z przedmiotem w ręce, przy jedzeniu, pływaniu czy lataniu się chowa.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
-  if (signedIn && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
+  if (signedIn && !cosmeticSets && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {
     const id = item?.id ?? '';
@@ -4646,7 +4663,27 @@ async function renderSlashCapes(fresh = true) {
     });
     return b;
   };
-  $('#slash-cape-grid').replaceChildren(
+  $('#slash-cape-grid').classList.toggle('set-list', cosmeticSets);
+  if (cosmeticSets) {
+    $('#slash-cape-grid').replaceChildren(...renderSets({
+      sets, catalog, worn, signedIn,
+      picture: (item) => cosmeticPicture(item.slot, item.id),
+      sparks, rankName: (rank) => RANK_NAMES[rank] ?? rank,
+      // every part we have, in one request; parts we lack stay as they are
+      wear: async (set, body, owned, all) => {
+        const res = await guard(() => api.socialApi('POST', '/v1/me', character ? { character: character.uuid, ...body } : body));
+        if (!res) return;
+        if (body.cape) await wearCape(body.cape);
+        toast(t('Zestaw {0}: założone {1} z {2}.', getLang() === 'en' ? set.nameEn : set.name, owned, all));
+        renderSlashCapes();
+      },
+      buy: async (item) => {
+        if ((await buyWithConfirm(item, walletBalance ?? achievements.balance(), { api, toast, errorText }, cosmeticPicture(item.slot, item.id))) !== undefined) renderSlashCapes();
+      },
+      // under the mouse the figure tries the set on (what the preview draws itself: not the cape's picture)
+      tryOn: (parts) => cosmeticPreview?.show({ ...worn, ...(parts ? Object.fromEntries(parts.map((p) => [p.slot, p.id])) : {}), kill: undefined, move: undefined, shield: undefined, weapon: undefined }),
+    }));
+  } else $('#slash-cape-grid').replaceChildren(
     tile(undefined, el('i', { className: 'fa-solid fa-ban' })),
     ...catalog.filter((c) => c.slot === cosmeticSlot).map((c) => tile(c, cosmeticPicture(c.slot, c.id))));
   // the preview wears what other players will see, and the note says which cape that is
@@ -4691,12 +4728,14 @@ async function readCosmetics(): Promise<NonNullable<typeof cosmeticsKept>> {
   const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
   const me: CosmeticsMe | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
   let walletBalance: number | undefined;
-  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number } }) => {
+  let sets: CosmeticSet[] | undefined;
+  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number }; sets?: CosmeticSet[] }) => {
     walletBalance = r.wallet?.balance;
+    sets = Array.isArray(r.sets) ? r.sets : undefined;
     return r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }));
   }).catch(() => undefined))
     ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
-  return { me, catalog, walletBalance };
+  return { me, catalog, walletBalance, sets };
 }
 
 $('#cosmetic-shop').addEventListener('click', () => achievements.showShop());

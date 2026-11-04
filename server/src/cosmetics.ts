@@ -463,3 +463,42 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
 
 /** What a player wears in every slot ('' or missing = nothing). */
 export type Loadout = Partial<Record<Slot, string>>;
+
+/**
+ * Sets: items from several slots that go together (one theme). Wearing a set puts on every part the
+ * player has, at once (one POST /v1/me with `cape` and `loadout`); the parts they lack say how to get
+ * them, as their items do. A part whose item is not in ITEMS (or not known to the client) is left out.
+ * When a part clashes with a suit (a suit hides a hat or shoes) it is worn anyway; the game shows what it always does.
+ */
+export interface CosmeticSet {
+  id: string;
+  name: string;
+  nameEn: string;
+  /** slot → item id, in the order the set shows them */
+  parts: Loadout;
+}
+
+export const SETS: CosmeticSet[] = [
+  { id: 'dragon', name: 'Smok', nameEn: 'Dragon', parts: { cape: 'dragonscale', wings: 'dragon', elytra: 'dragonelytra', ears: 'dragonhorns', tail: 'dragontail', shield: 'shield_dragon', weapon: 'bow_dragon' } },
+  { id: 'demon', name: 'Demon', nameEn: 'Demon', parts: { cape: 'hellfire', wings: 'demon', ears: 'devilhorns', tail: 'deviltail', face: 'oni', shield: 'shield_demon', aura: 'infernal' } },
+  { id: 'angel', name: 'Anioł', nameEn: 'Angel', parts: { cape: 'heavens', wings: 'angel', hat: 'halo', back: 'angelpack', ring: 'ring_halo', trail: 'feathers' } },
+  { id: 'pirate', name: 'Pirat', nameEn: 'Pirate', parts: { suit: 'pirate', hat: 'tricorn', face: 'eyepatch', weapon: 'sword_saber', cape: 'jollyroger', pet: 'parrot' } },
+  { id: 'knight', name: 'Rycerz', nameEn: 'Knight', parts: { suit: 'knight', hat: 'crown', back: 'backshield', cape: 'regal', aura: 'royal', weapon: 'sword_knight', shield: 'shield_crest' } },
+  { id: 'autumn', name: 'Jesień', nameEn: 'Autumn', parts: { cape: 'autumnleaves', elytra: 'autumn', top: 'autumnscarf', aura: 'leaves_autumn', ring: 'ring_leaves_autumn', trail: 'leaves_fall', pet: 'pet_wheelbarrow_autumn' } },
+  { id: 'frost', name: 'Lód', nameEn: 'Frost', parts: { cape: 'ice', wings: 'frost', elytra: 'glacier', aura: 'frostaura', trail: 'snow', ring: 'ring_frost', weapon: 'sword_ice', shield: 'shield_ice', kill: 'shatter' } },
+  { id: 'obsidian', name: 'Obsydian', nameEn: 'Obsidian', parts: { cape: 'obsidian', wings: 'obsidianwings', elytra: 'obsidianelytra', shield: 'shield_obsidian' } },
+  { id: 'sapphire', name: 'Szafir', nameEn: 'Sapphire', parts: { cape: 'sapphirecape', wings: 'sapphire', elytra: 'sapphireelytra' } },
+  { id: 'wolf', name: 'Wilk', nameEn: 'Wolf', parts: { ears: 'wolfears', tail: 'wolftail' } },
+  { id: 'panda', name: 'Panda', nameEn: 'Panda', parts: { suit: 'pandasuit', ears: 'pandaears' } },
+  { id: 'bunny', name: 'Królik', nameEn: 'Bunny', parts: { ears: 'bunnyears', tail: 'bunnytail', shoes: 'bunnyslippers' } },
+  { id: 'cat', name: 'Kot', nameEn: 'Cat', parts: { ears: 'catears', tail: 'cattail', hands: 'catpaws', pet: 'cat' } },
+];
+
+/**
+ * The sets as a client sees them: only the parts `shown` (items it gets: existing, switched on, known
+ * to it), and only sets with at least one such part.
+ */
+export function setsFor(shown: (slot: Slot, id: string) => boolean): CosmeticSet[] {
+  return SETS.map((s) => ({ ...s, parts: Object.fromEntries(Object.entries(s.parts).filter(([slot, id]) => !!id && shown(slot as Slot, id))) as Loadout }))
+    .filter((s) => Object.keys(s.parts).length > 0);
+}

@@ -1193,6 +1193,23 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .cape-choice.square canvas { width: 56px; height: 47px; }
 .cape-choice.square canvas.game-icon { width: 40px; height: 40px; }
 .cape-choice.square canvas.shield-icon { width: 30px; height: 55px; }
+/* sets: a card each, its parts as small tiles (the missing ones dimmed, with a price or a lock) and how to get the rest */
+.cape-grid.set-list { flex-direction: column; flex-wrap: nowrap; gap: 10px; }
+.set-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(0, 0, 0, .2); border: 1px solid var(--glass-border); }
+.set-card.worn { border-color: var(--accent); background: rgba(var(--accent-rgb), .1); }
+.set-head { display: flex; align-items: center; gap: 8px; }
+.set-head b { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-count { font: 600 12px var(--font-mono); padding: 1px 8px; border-radius: 10px; background: rgba(255, 255, 255, .06); color: var(--text-secondary); }
+.set-count.full { background: rgba(74, 222, 128, .15); color: #4ade80; }
+.skin-info .set-head button.set-wear { height: 28px; padding: 0 12px; font-size: 12px; }
+.set-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.slash-capes .cape-choice.square.set-part { width: 56px; height: 56px; padding: 3px; }
+.cape-choice.set-part .clothing-icon, .cape-choice.set-part .ring-icon { width: 36px; height: 36px; }
+.cape-choice.set-part canvas { width: 24px; height: 38px; }
+.cape-choice.square.set-part canvas { width: 40px; height: 34px; }
+.cape-choice.set-part.locked > :first-child { opacity: .4; }
+.slash-capes .cape-choice.set-part.locked:disabled { opacity: 1; }
+.set-missing { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-muted); display: grid; gap: 2px; }
 .cosmetic-icon { font-size: 22px; color: var(--accent-light); width: 30px; text-align: center; }
 .clothing-icon { width: 48px; height: 48px; image-rendering: pixelated; }
 .ring-icon { width: 48px; height: 48px; background-repeat: no-repeat; image-rendering: pixelated; }

@@ -27,6 +27,7 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.slashMenu());
 		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
 		context.waitTicks(5);
+		sets(context);
 		drag(context);
 		clothing(context);
 		for (int[] s : SIZES) {
@@ -93,6 +94,38 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 			if (w >= 600 && p[6] < 9) throw new AssertionError("Too few tiles in a row on a big screen, " + at);
 			if (f[3] < 240) throw new AssertionError("The figure shrank on a big screen, " + at);
 		}
+	}
+
+	/**
+	 * The sets' tab: a card per set with the parts this version knows, how many are ours, "Wear the set"
+	 * putting on only those in one request (the cape apart from the rest), the missing ones with their price.
+	 */
+	private static void sets(ClientGameTestContext context) {
+		context.runOnClient(mc -> TestHooks.setsMenu(800));
+		context.runOnClient(mc -> { TestHooks.cosmeticsWorn("wings", "frost"); TestHooks.cosmeticsWorn("trail", "snow"); TestHooks.cosmeticsWorn("kill", "shatter"); });
+		context.waitTicks(15);
+		context.takeScreenshot("cosscreen-sets");
+		java.util.List<String> list = context.computeOnClient(mc -> TestHooks.cosmeticsSets());
+		if (list.isEmpty() || !list.stream().anyMatch(s -> s.startsWith("frost "))) throw new AssertionError("No frost set on the sets' tab: " + list);
+		String frost = list.stream().filter(s -> s.startsWith("frost ")).findFirst().orElseThrow();
+		// the ice cape (an achievement's, not ours) and the glacier elytra (for sale) are missing; the parts this version has not got are not shown
+		String[] n = frost.substring(6).split("/");
+		if (Integer.parseInt(n[1]) - Integer.parseInt(n[0]) != 2) throw new AssertionError("The frost set should miss two parts: " + frost);
+		String body = context.computeOnClient(mc -> TestHooks.cosmeticsSetBody("frost"));
+		if (body.contains("ice\"") && body.contains("\"cape\"") || body.contains("glacier") || !body.contains("\"wings\":\"frost\"") || !body.contains("\"character\":\"test\""))
+			throw new AssertionError("Wearing the frost set would send " + body);
+		// the obsidian set: nothing of it is ours, so there is nothing to put on
+		if (!context.computeOnClient(mc -> TestHooks.cosmeticsSetBody("obsidian")).isEmpty()) throw new AssertionError("The obsidian set is not ours, yet it would be worn");
+		// under the mouse: a set's card tries on its parts, a missing part says how to get it
+		double[] at = context.computeOnClient(mc -> TestHooks.shopTile("frost:glacier"));
+		if (at == null) throw new AssertionError("The frost set's glacier tile is not drawn");
+		context.getInput().setCursorPos(at[0], at[1]);
+		context.waitTicks(10);
+		context.takeScreenshot("cosscreen-sets-hover");
+		context.getInput().setCursorPos(10, 10);
+		context.runOnClient(mc -> TestHooks.scrollCosmetics());
+		context.waitTicks(5);
+		context.takeScreenshot("cosscreen-sets-end");
 	}
 
 	/** The figure turned by a real drag: the left button held on it, the mouse moved, let go. */

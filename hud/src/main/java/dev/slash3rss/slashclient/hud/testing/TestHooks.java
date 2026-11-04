@@ -1764,6 +1764,24 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(CosmeticsScreen.sampleShop(slot, balance, SHOP_PRICES, java.util.Set.of("coral", "sapphire")));
 	}
 
+	/** The cosmetics menu on the sets' tab: the shop's prices (and the dragon's bow and the glacier elytra for sale), the sapphire wings bought, this many Sparks. */
+	public static void setsMenu(int balance) {
+		java.util.Map<String, Integer> prices = new java.util.HashMap<>(SHOP_PRICES);
+		prices.put("glacier", 700);
+		prices.put("bow_dragon", 600);
+		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(CosmeticsScreen.sampleSets(balance, prices, java.util.Set.of("sapphire")));
+	}
+
+	/** The open menu's sets, "id owned/all" each. */
+	public static java.util.List<String> cosmeticsSets() {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c ? c.setsForTest() : java.util.List.of();
+	}
+
+	/** What the open menu's "Wear the set" would send for a set ("" when nothing of it is ours). */
+	public static String cosmeticsSetBody(String id) {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c ? c.setBodyForTest(id) : "";
+	}
+
 	/** The open menu's "buy it?" box for a shop item, as a click on its tile; false when it is not for sale. */
 	public static boolean shopOffer(String id) {
 		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c && c.offerForTest(id);

@@ -178,6 +178,20 @@ html.reduce-motion .cape-name.long { text-overflow: ellipsis; }
 .cape-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .12); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
 .cape-choice .lock { position: absolute; top: 6px; right: 6px; color: var(--gold); font-size: 12px; }
 .cape-choice.none .cape { display: grid; place-items: center; background: rgba(255, 255, 255, .04); box-shadow: none; color: var(--muted); font-size: 20px; }
+/* sets: a card each, its parts small, the missing ones dimmed with their price or a lock */
+.set-list { display: grid; gap: 10px; }
+.set-card { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, .03); }
+.set-card.worn { border-color: var(--accent); background: rgba(59, 130, 246, .08); }
+.set-head { display: flex; align-items: center; gap: 8px; }
+.set-head button { height: 30px; padding: 0 12px; font-size: 13px; }
+.set-parts { display: flex; flex-wrap: wrap; gap: 8px; }
+.set-part { position: relative; height: auto; min-width: 0; padding: 6px; display: grid; place-items: center; width: 48px; min-height: 60px; }
+.set-part:disabled { opacity: 1; cursor: default; }
+.set-part.locked > .cape { opacity: .4; }
+.set-part.for-sale > .cape { opacity: .7; }
+.set-part .lock { position: absolute; top: 4px; right: 4px; color: var(--gold); font-size: 10px; }
+.set-part .spark-price { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+.set-missing { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
 
 /* ---------- the admin panel ---------- */
 .admin { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }

@@ -33,6 +33,7 @@ import { FRIENDS_POPULAR_EN } from './i18nFriendsPopular';
 import { JAVA_EN } from './i18nJava';
 import { ERRORS_EN } from './i18nErrors';
 import { PI_EN } from './i18nPi';
+import { SETS_EN } from './i18nSets';
 
 export type Lang = 'pl' | 'en';
 
@@ -48,6 +49,8 @@ const EN: Record<string, string> = {
   ...PI_EN,
   // sparks, the shop and the achievements in categories (own file)
   ...SPARKS_EN,
+  // the cosmetic sets (own file)
+  ...SETS_EN,
   // inviting friends (own file)
   ...REFERRALS_EN,
   // the Installed list's dependencies, leftover libraries and multi-select (own file)

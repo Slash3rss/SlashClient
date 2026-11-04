@@ -7,7 +7,7 @@ import { Db, type Message, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
-import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, supporterLevel, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
@@ -1128,6 +1128,8 @@ export function createApp(cfg: Config) {
         // the launcher before 0.8 knows capes only
         capes: items.filter((i) => i.slot === 'cape').map(({ id, name, exclusive, available }) => ({ id, name, exclusive: exclusive || !!ITEMS.find((x) => x.id === id)?.rank, available })),
         items,
+        // sets of items that go together (0.9.70): only their parts this client gets among `items`; older ones ignore them
+        sets: setsFor((slot, id) => items.some((i) => i.id === id && i.slot === slot)),
         emotes: EMOTES,
         ...(me ? { wallet: { balance: wallet.balance(me) } } : {}),
       };
@@ -1294,12 +1296,10 @@ export function createApp(cfg: Config) {
         cosmeticsChanged(me);
         return meWithProviders(me);
       }
-      if (cape !== undefined) {
-        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge, level)) throw new HttpError(400, 'bad_cape');
-        db.setCape(me, cape as string);
-        cosmeticsChanged(me);
-      }
-      // the other slots: { wings: 'angel', trail: '' … }, '' takes the item off
+      if (cape !== undefined && cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge, level)) throw new HttpError(400, 'bad_cape');
+      // the other slots: { wings: 'angel', trail: '' … }, '' takes the item off; checked before anything is saved,
+      // so a set (the cape and the other slots in one request) goes on whole or not at all
+      let nextLoadout: Record<string, string> | undefined;
       if (loadout !== undefined) {
         if (!loadout || typeof loadout !== 'object' || Array.isArray(loadout)) throw new HttpError(400, 'bad_request');
         const next = { ...db.user(me)!.loadout };
@@ -1311,7 +1311,14 @@ export function createApp(cfg: Config) {
           else if (mayWear(settings, granted, id, slot as Slot, badge, level)) next[slot] = id;
           else throw new HttpError(400, 'bad_item');
         }
-        db.setLoadout(me, next);
+        nextLoadout = next;
+      }
+      if (cape !== undefined) {
+        db.setCape(me, cape as string);
+        cosmeticsChanged(me);
+      }
+      if (nextLoadout) {
+        db.setLoadout(me, nextLoadout);
         cosmeticsChanged(me);
       }
       return meWithProviders(me);
