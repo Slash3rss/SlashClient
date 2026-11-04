@@ -182,9 +182,12 @@ public final class Cosmetics {
 		return user == null || !id.equals(user.getProfileId());
 	}
 
-	public static void reset() {
-		worn.clear();
-		liveAt.clear();
+	/** Another server or world; `keepWorn`: back on the same server at once (Badges.joined), what the players there wear stays. */
+	public static void reset(boolean keepWorn) {
+		if (!keepWorn) {
+			worn.clear();
+			liveAt.clear();
+		}
 		CosmeticsScreen.forgetOwn();
 		emotes.clear();
 	}

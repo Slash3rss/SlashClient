@@ -264,11 +264,13 @@ public class SlashHud implements ClientModInitializer {
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> SkyTasks.flush());
 		//#endif
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
-			Badges.reset();
+			// back on the same server within a minute (a network's lobby to a game): the logos and capes stay
+			boolean kept = Badges.joined(dev.slash3rss.slashclient.hud.social.Social.currentServer());
 			dev.slash3rss.slashclient.hud.map.MapEntities.forget();
 			// the chat filter is not saved: set again, or after a restart "All" shows pulled-out tabs' lines
 			ChatTabs.reapply();
-			Cosmetics.reset();
+			Cosmetics.reset(kept);
+			dev.slash3rss.slashclient.hud.social.FriendPositions.joined();
 			CosmeticEffects.reset();
 			KillEffects.reset();
 			MoveEffects.reset();
