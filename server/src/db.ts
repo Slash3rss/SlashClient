@@ -273,6 +273,29 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     return added;
   }
 
+  /**
+   * Rewards given later to achievements players may have unlocked already (the streak capes of 0.9.70):
+   * every player who has the achievement gets its item, as an unlock now would give it. Written down
+   * like keepFormerlyFree, so it runs once (an admin's later revoke stays). `rewards` is
+   * [achievement, item] pairs; returns how many grants it added (0 when done before).
+   */
+  grantLateRewards(rewards: readonly (readonly [string, string])[], id: string, now = Date.now()): number {
+    if (this.db.prepare('SELECT 1 FROM data_migrations WHERE id = ?').get(id)) return 0;
+    let added = 0;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const [achievement, item] of rewards) {
+        added += Number(this.db.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) SELECT uuid, ? FROM achievements WHERE id = ?').run(item, achievement).changes);
+      }
+      this.db.prepare('INSERT INTO data_migrations (id, at, detail) VALUES (?, ?, ?)').run(id, now, `${added} przyznań`);
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+    return added;
+  }
+
   close() {
     this.db.close();
   }

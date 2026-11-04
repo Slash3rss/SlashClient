@@ -124,13 +124,31 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.takeScreenshot("cosmetics-new-cape-vortex");
 			// the capes earned with achievements, and the toast of an unlock
 			context.runOnClient(mc -> TestHooks.wear("aura", null));
-			for (String cape : new String[] {"veteran", "streak30"}) {
+			// the play streak's whole family (the 100- and 365-day ones move)
+			for (String cape : new String[] {"veteran", "streak7", "streak14", "streak30", "streak60", "streak100", "streak365"}) {
 				context.runOnClient(mc -> TestHooks.cosmeticsSelf(cape, false));
 				context.waitTicks(5);
 				String worn = context.computeOnClient(mc -> TestHooks.capeTexture());
-				if (!worn.equals("slashclient-hud:textures/cape/" + cape + ".png")) throw new AssertionError("Not the achievement cape: " + worn);
+				String expected = cape.equals("streak100") || cape.equals("streak365") ? cape + "_[0-7]" : cape;
+				if (!worn.matches("slashclient-hud:textures/cape/" + expected + "[.]png")) throw new AssertionError("Not the achievement cape: " + worn);
 				context.takeScreenshot("cosmetics-achievement-" + cape);
 			}
+			// the sets' capes from the shop, and their elytras on a real elytra
+			for (String cape : new String[] {"dragonscale", "hellfire", "heavens", "jollyroger", "autumnleaves", "sapphirecape"}) {
+				context.runOnClient(mc -> TestHooks.cosmeticsSelf(cape, false));
+				context.waitTicks(5);
+				String worn = context.computeOnClient(mc -> TestHooks.capeTexture());
+				if (!worn.equals("slashclient-hud:textures/cape/" + cape + ".png")) throw new AssertionError("Not the set's cape: " + worn);
+				context.takeScreenshot("cosmetics-cape-" + cape);
+			}
+			world.getServer().runCommand("item replace entity @a armor.chest with elytra");
+			for (String elytra : new String[] {"dragonelytra", "obsidianelytra", "sapphireelytra"}) {
+				context.runOnClient(mc -> TestHooks.wear("elytra", elytra));
+				context.waitTicks(10);
+				context.takeScreenshot("cosmetics-elytra-" + elytra);
+			}
+			world.getServer().runCommand("item replace entity @a armor.chest with air");
+			context.runOnClient(mc -> TestHooks.wear("elytra", null));
 			context.runOnClient(mc -> TestHooks.achievementToast());
 			context.waitTicks(20);
 			context.takeScreenshot("achievement-toast");

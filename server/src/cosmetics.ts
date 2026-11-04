@@ -79,6 +79,12 @@ export const ITEMS: Item[] = [
   // earned with achievements only
   { id: 'veteran', slot: 'cape', name: 'Weteran', since: '0.9.14', achievement: 'hours_100' },
   { id: 'streak30', slot: 'cape', name: 'Seria 30 dni', since: '0.9.14', achievement: 'streak_30' },
+  // the rest of the streak family: the flame grows richer with the streak (100 and 365 move)
+  { id: 'streak7', slot: 'cape', name: 'Seria 7 dni', since: '0.9.70', achievement: 'streak_7' },
+  { id: 'streak14', slot: 'cape', name: 'Seria 14 dni', since: '0.9.70', achievement: 'streak_14' },
+  { id: 'streak60', slot: 'cape', name: 'Seria 60 dni', since: '0.9.70', achievement: 'streak_60' },
+  { id: 'streak100', slot: 'cape', name: 'Seria 100 dni', frames: 8, since: '0.9.70', achievement: 'streak_100' },
+  { id: 'streak365', slot: 'cape', name: 'Cały rok z rzędu', frames: 8, since: '0.9.70', achievement: 'streak_365' },
   // bought in the shop with sparks earned from achievements
   { id: 'emberstar', slot: 'cape', name: 'Iskra', since: '0.9.22', price: 600 },
   { id: 'obsidian', slot: 'cape', name: 'Obsydian', since: '0.9.22', price: 500 },
@@ -86,6 +92,13 @@ export const ITEMS: Item[] = [
   { id: 'thunder', slot: 'cape', name: 'Grom', since: '0.9.22', price: 700 },
   { id: 'regal', slot: 'cape', name: 'Purpura', since: '0.9.22', price: 800 },
   { id: 'cosmos', slot: 'cape', name: 'Kosmos', since: '0.9.22', price: 1000 },
+  // the sets' capes (with the matching wings and elytras)
+  { id: 'dragonscale', slot: 'cape', name: 'Smocza łuska', since: '0.9.70', price: 600 },
+  { id: 'hellfire', slot: 'cape', name: 'Piekło', since: '0.9.70', price: 600 },
+  { id: 'heavens', slot: 'cape', name: 'Niebiosa', since: '0.9.70', price: 600 },
+  { id: 'jollyroger', slot: 'cape', name: 'Bandera', since: '0.9.70', price: 500 },
+  { id: 'autumnleaves', slot: 'cape', name: 'Jesień', since: '0.9.70', price: 400 },
+  { id: 'sapphirecape', slot: 'cape', name: 'Szafir', since: '0.9.70', price: 700 },
   // for supporters of the project (a tier of at least this level, payments/support.ts)
   { id: 'supporter_heart', slot: 'cape', name: 'Serce SlashClient', since: '0.9.23', supporter: 1 },
   { id: 'supporter_patron', slot: 'cape', name: 'Mecenas', since: '0.9.23', supporter: 3 },
@@ -137,6 +150,9 @@ export const ITEMS: Item[] = [
   { id: 'glacier', slot: 'elytra', name: 'Lodowiec', since: '0.9.22', price: 700 },
   { id: 'acid', slot: 'elytra', name: 'Kwas', since: '0.9.22', price: 700 },
   { id: 'supporter_wings', slot: 'elytra', name: 'Skrzydła mecenasa', since: '0.9.23', supporter: 2 },
+  { id: 'dragonelytra', slot: 'elytra', name: 'Smocza', since: '0.9.70', price: 800 },
+  { id: 'obsidianelytra', slot: 'elytra', name: 'Obsydian', since: '0.9.70', price: 700 },
+  { id: 'sapphireelytra', slot: 'elytra', name: 'Szafir', since: '0.9.70', price: 700 },
   // trails (while moving) and auras (around a player standing still): the game's particles
   { id: 'hearts', slot: 'trail', name: 'Serca' },
   { id: 'sparks', slot: 'trail', name: 'Iskry' },

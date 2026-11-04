@@ -423,13 +423,258 @@ def design(cape):
         for x in range(3, W, 6):
             d.point((x, H - 3), fill=(120, 53, 15, 255))
         return border(img, '#fbbf24')
+    # ---- the streak capes earned with achievements: streak30's family, richer the longer the streak ----
+    if cape in ('streak7', 'streak14', 'streak60'):
+        return streak_cape(cape)
+    # ---- bought in the shop with Iskry, each part of a set (wings and elytras that match) ----
+    if cape == 'dragonscale':
+        # "Smocza łuska": rows of green dragon scales with a golden spine, like the dragon wings
+        img = gradient('#15803d', '#052e16')
+        d = ImageDraw.Draw(img)
+        # round scales in rows from the bottom up, each row over the top of the one below: what shows is a "U"
+        for r, y in reversed(list(enumerate(range(-6, H + 2, 4)))):
+            for cx in range(int(W / 2) - 24 + (4 if r % 2 else 0), W + 8, 8):
+                shade = 1 - max(y, 0) / H * 0.5
+                if abs(cx - W / 2) < 5:
+                    fill, rim = (202, 138, 4), (254, 240, 138)
+                elif rnd.random() < 0.06:
+                    fill, rim = (161, 98, 7), (250, 204, 21)
+                else:
+                    fill, rim = (22, 163, 74), (134, 239, 172)
+                fill = tuple(round(c * shade) for c in fill) + (255,)
+                d.ellipse([cx - 4, y, cx + 4, y + 8], fill=fill, outline=tuple(round(c * 0.55) for c in fill[:3]) + (255,))
+                d.arc([cx - 3, y + 1, cx + 3, y + 7], 30, 150, fill=rim + (255,))
+        return border(img, '#ca8a04')
+    if cape == 'hellfire':
+        # "Piekło": black and red, cracks of lava, flames along the bottom, a demon's horns at the top
+        img = gradient('#0c0a09', '#7f1d1d')
+        d = ImageDraw.Draw(img)
+        for _ in range(5):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(H * 0.45, H * 0.85)
+            for _ in range(4):
+                nx, ny = x + rnd.uniform(-6, 6), y + rnd.uniform(-7, 4)
+                d.line([(x, y), (nx, ny)], fill=(234, 88, 12, 255), width=1)
+                d.point((x, y), fill=(253, 224, 71, 255))
+                x, y = nx, ny
+        for i in range(9):
+            fx = 2 + i * (W - 4) / 8
+            fh = rnd.uniform(H * 0.12, H * 0.26)
+            d.polygon([(fx - 4, H), (fx + 4, H), (fx + rnd.uniform(-2, 2), H - fh)], fill=(220, 38, 38, 255))
+            d.polygon([(fx - 2, H), (fx + 2, H), (fx, H - fh * 0.55)], fill=(251, 146, 60, 255))
+        cx, base = W / 2, H * 0.34
+        horn_rim = (220, 38, 38, 255)
+        for side in (-1, 1):
+            outer = bezier((cx + side * 10, base), (cx + side * 18, base - 8), (cx + side * 15, H * 0.05))
+            inner = bezier((cx + side * 15, H * 0.05), (cx + side * 11, base - 9), (cx + side * 4, base))
+            d.polygon(outer + inner, fill=(127, 29, 29, 255), outline=horn_rim)
+            # a lighter ridge along the horn
+            d.line(bezier((cx + side * 12, base - 3), (cx + side * 15, base - 9), (cx + side * 15, H * 0.08)), fill=(185, 28, 28, 255))
+        d.pieslice([cx - 11, base - 6, cx + 11, base + 10], 180, 360, fill=(12, 10, 9, 255), outline=horn_rim)
+        for side in (-1, 1):
+            d.rectangle([cx + side * 4 - 1, base - 1, cx + side * 4 + 1, base], fill=(253, 224, 71, 255))
+        return opaque(border(img, '#dc2626'))
+    if cape == 'heavens':
+        # "Niebiosa": white and gold, rays of light from a halo over clouds
+        img = gradient('#fde68a', '#93c5fd')
+        cx, cy = W / 2, H * 0.24
+
+        def rays(g):
+            for k in range(14):
+                a = k * math.pi * 2 / 14 + 0.12
+                g.polygon([(cx, cy), (cx + math.cos(a - 0.09) * 90, cy + math.sin(a - 0.09) * 90), (cx + math.cos(a + 0.09) * 90, cy + math.sin(a + 0.09) * 90)], fill=(255, 251, 235, 120))
+            soft_light(g, cx, cy, 14, (255, 255, 255), 220)
+        img = glow(img, rays)
+        d = ImageDraw.Draw(img)
+        d.ellipse([cx - 10, cy - 4, cx + 10, cy + 4], outline=(202, 138, 4, 255), width=2)
+        d.arc([cx - 10, cy - 4, cx + 10, cy + 4], 180, 360, fill=(253, 224, 71, 255), width=1)
+        for _ in range(8):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(H * 0.38, H * 0.7)
+            d.line([(x - 2, y), (x + 2, y)], fill=(234, 179, 8, 255))
+            d.line([(x, y - 2), (x, y + 2)], fill=(234, 179, 8, 255))
+        for x, y, r in ((2, H * 0.86, 7), (13, H * 0.82, 8), (27, H * 0.85, 7), (39, H * 0.8, 7), (7, H * 0.97, 9), (24, H * 0.95, 9), (38, H * 0.98, 8)):
+            d.ellipse([x - r, y - r * 0.7 + 2, x + r, y + r * 0.7 + 2], fill=(186, 200, 220, 255))
+            d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=(255, 255, 255, 255))
+        return opaque(border(img, '#eab308'))
+    if cape == 'jollyroger':
+        # "Bandera": the black pirate flag, a skull over crossed sabres
+        img = gradient('#27272a', '#09090b')
+        d = ImageDraw.Draw(img)
+        cx, y0 = W / 2, H * 0.2
+        bone = (244, 244, 245, 255)
+        for side in (-1, 1):
+            # a sabre from the lower corner up across: a curved silver blade, a golden guard
+            blade = bezier((cx - side * 13, y0 + 38), (cx - side * 2, y0 + 26), (cx + side * 13, y0 + 22))
+            d.line(blade, fill=(212, 212, 216, 255), width=2)
+            d.line(blade, fill=(255, 255, 255, 255), width=1)
+            gx, gy = blade[3]
+            d.line([(gx - 2, gy - 2), (gx + 2, gy + 2)], fill=(250, 204, 21, 255), width=2)
+            d.line([blade[0], blade[2]], fill=(120, 53, 15, 255), width=2)
+        skull = ['..XXXXX..', '.XXXXXXX.', 'XXXXXXXXX', 'X..XXX..X', 'X..XXX..X', 'XXXX.XXXX', '.XXX.XXX.', '..XXXXX..', '..X.X.X..']
+        x0 = round(cx - 9)
+        for r, row in enumerate(skull):
+            for c, ch in enumerate(row):
+                if ch == 'X':
+                    d.rectangle([x0 + c * 2, y0 + r * 2, x0 + c * 2 + 1, y0 + r * 2 + 1], fill=bone)
+        return border(img, '#a1a1aa')
+    if cape == 'autumnleaves':
+        # "Jesień": maple leaves of orange, red and gold falling on dusk brown
+        img = gradient('#78350f', '#1c0a05')
+        d = ImageDraw.Draw(img)
+        leaf = ['..X.X..', 'X.XXX.X', 'XXXXXXX', '.XXXXX.', 'XXXXXXX', '..XXX..', '...X...']
+        spots = []
+        while len(spots) < 13:
+            x, y = rnd.uniform(1, W - 8), rnd.uniform(1, H - 8)
+            if all(abs(x - a) > 7 or abs(y - b) > 7 for a, b in spots):
+                spots.append((x, y))
+        for x, y in spots:
+            col = rnd.choice([(234, 88, 12), (220, 38, 38), (234, 179, 8), (249, 115, 22), (185, 28, 28)])
+            vein = tuple(round(c * 0.6) for c in col) + (255,)
+            for r, row in enumerate(leaf):
+                for c, ch in enumerate(row):
+                    if ch == 'X':
+                        d.point((round(x) + c, round(y) + r), fill=(vein if c == 3 and r > 1 else col + (255,)))
+            d.point((round(x) + 3, round(y) + 7), fill=(120, 53, 15, 255))
+        return border(img, '#f59e0b')
+    if cape == 'sapphirecape':
+        # "Szafir": a cut sapphire on navy, small crystals around it, like the sapphire wings
+        img = gradient('#1e3a8a', '#0b1437')
+        d = ImageDraw.Draw(img)
+        for _ in range(9):
+            x, y = rnd.uniform(3, W - 3), rnd.uniform(3, H - 3)
+            if abs(x - W / 2) < 16 and H * 0.25 < y < H * 0.8:
+                continue
+            d.polygon([(x, y - 4), (x + 3, y), (x, y + 4), (x - 3, y)], fill=(37, 99, 235, 255), outline=(147, 197, 253, 255))
+        cx, cy = W / 2, H * 0.45
+        img = glow(img, lambda g: soft_light(g, cx, cy, 20, (96, 165, 250), 120))
+        d = ImageDraw.Draw(img)
+        y0, y1, y2 = cy - 10, cy - 3, cy + 17
+        facets = [([(cx - 14, y1), (cx - 6, y0), (cx - 4, y1)], (96, 165, 250)),
+                  ([(cx - 6, y0), (cx + 6, y0), (cx + 4, y1), (cx - 4, y1)], (191, 219, 254)),
+                  ([(cx + 6, y0), (cx + 14, y1), (cx + 4, y1)], (59, 130, 246)),
+                  ([(cx - 14, y1), (cx - 4, y1), (cx, y2)], (37, 99, 235)),
+                  ([(cx - 4, y1), (cx + 4, y1), (cx, y2)], (59, 130, 246)),
+                  ([(cx + 4, y1), (cx + 14, y1), (cx, y2)], (30, 64, 175))]
+        for pts, col in facets:
+            d.polygon(pts, fill=col + (255,), outline=(219, 234, 254, 255))
+        d.line([(cx - 4, y0 + 2), (cx - 1, y0 + 2)], fill=(255, 255, 255, 255))
+        d.point((cx - 9, y1 + 3), fill=(255, 255, 255, 255))
+        return opaque(border(img, '#93c5fd'))
+    raise ValueError(cape)
+
+
+def bezier(a, b, c, steps=8):
+    """Points along a curve from a to c pulled towards b."""
+    return [((1 - s) ** 2 * a[0] + 2 * (1 - s) * s * b[0] + s * s * c[0], (1 - s) ** 2 * a[1] + 2 * (1 - s) * s * b[1] + s * s * c[1])
+            for s in (i / steps for i in range(steps + 1))]
+
+
+# the streak capes' flame (x offset, 0..1 from its tip down) as on the 30-day one
+FLAME = [(0, 0), (9, 0.29), (15, 0.58), (13, 0.82), (0, 1), (-13, 0.82), (-15, 0.58), (-9, 0.29)]
+DIGITS = {'0': ['###', '#.#', '#.#', '#.#', '###'], '1': ['.#.', '##.', '.#.', '.#.', '###'], '3': ['###', '..#', '.##', '..#', '###'],
+          '4': ['#.#', '#.#', '###', '..#', '..#'], '5': ['###', '#..', '###', '..#', '###'], '6': ['###', '#..', '###', '#.#', '###'],
+          '7': ['###', '..#', '..#', '.#.', '.#.']}
+
+
+def flame(d, cx, top, bottom, scale, colors, t=None):
+    """A flame of nested layers (outermost first), each starting lower and narrower, like the 30-day
+    streak cape's; with `t` (0..1 of the loop) its tip sways and its sides breathe."""
+    span = bottom - top
+    for k, col in enumerate(colors):
+        # the third, white-hot layer is a small glow at the bottom, under the days
+        s = scale * (1 - k * 0.38) if k < 2 else scale * 0.38
+        lt, lb = top + span * (0.3 if k == 1 else 0.8 * (k > 1)), bottom - span * k * 0.06
+        pts = []
+        for dx, fy in FLAME:
+            sway = 0 if t is None else math.sin(t * math.pi * 2 + fy * 3 + k) * 2.2 * (1 - fy)
+            breathe = 1 if t is None else 1 + 0.07 * math.sin(t * math.pi * 4 + k * 1.3)
+            pts.append((cx + dx * s * breathe + sway, lt + (lb - lt) * fy))
+        d.polygon(pts, fill=col + (255,))
+
+
+def number(d, text, cx, y, color, gap=2):
+    """Digits in a 3x5 pixel font, 2 px per dot, centred on cx."""
+    x0 = round(cx - (len(text) * 6 + (len(text) - 1) * gap) / 2)
+    for n, ch in enumerate(text):
+        for r, row in enumerate(DIGITS[ch]):
+            for c, dot in enumerate(row):
+                if dot == '#':
+                    x = x0 + n * (6 + gap) + c * 2
+                    d.rectangle([x, y + r * 2, x + 1, y + r * 2 + 1], fill=color + (255,))
+
+
+def streak_cape(cape, t=None):
+    """The streak capes, streak30's family: a flame with the days in it, bigger and richer for longer
+    streaks (sparks at 14, a hotter blue at 60, violet with a golden frame at 100, gold with a crown at 365);
+    the last two are animated (`t`, 0..1 of the loop)."""
+    rnd = random.Random(cape)
+    cx = W / 2
+    if cape == 'streak7':
+        img = gradient('#431407', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        flame(d, cx, H * 0.22, H * 0.84, 0.78, [(251, 146, 60), (253, 224, 71)])
+        number(d, '7', cx, round(H * 0.56), (124, 45, 18))
+        return border(img, '#fb923c')
+    if cape == 'streak14':
+        img = gradient('#450a0a', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        for _ in range(14):
+            x, y = rnd.uniform(3, W - 3), rnd.uniform(3, H * 0.6)
+            d.point((x, y), fill=rnd.choice([(253, 224, 71, 255), (251, 146, 60, 255)]))
+        flame(d, cx, H * 0.13, H * 0.84, 0.92, [(234, 88, 12), (251, 191, 36)])
+        number(d, '14', cx, round(H * 0.55), (124, 45, 18))
+        return border(img, '#f97316')
+    if cape == 'streak60':
+        img = gradient('#0c1e4a', '#020617')
+        img = glow(img, lambda g: soft_light(g, cx, H * 0.55, 22, (56, 189, 248), 90))
+        d = ImageDraw.Draw(img)
+        for _ in range(16):
+            x, y = rnd.uniform(3, W - 3), rnd.uniform(3, H * 0.6)
+            d.point((x, y), fill=rnd.choice([(125, 211, 252, 255), (224, 242, 254, 255)]))
+        flame(d, cx, H * 0.08, H * 0.86, 1.0, [(37, 99, 235), (56, 189, 248), (224, 242, 254)])
+        number(d, '60', cx, round(H * 0.55), (23, 37, 84))
+        return opaque(border(img, '#38bdf8'))
+    if cape == 'streak100':
+        img = gradient('#3b0764', '#0c0a09')
+        glowing = 0.5 + 0.5 * math.sin(t * math.pi * 2)
+        img = glow(img, lambda g: soft_light(g, cx, H * 0.55, 22 + glowing * 3, (192, 132, 252), 110))
+        d = ImageDraw.Draw(img)
+        for _ in range(16):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(4, H * 0.6)
+            d.point((x, (y - t * 12) % (H * 0.6) + 3), fill=rnd.choice([(233, 213, 255, 255), (250, 204, 21, 255)]))
+        flame(d, cx, H * 0.08, H * 0.86, 1.1, [(126, 34, 206), (192, 132, 252), (243, 232, 255)], t)
+        number(d, '100', cx, round(H * 0.56), (59, 7, 100), gap=1)
+        # a golden frame: the border and a thin line inside it, with corners
+        d.rectangle([3, 3, W - 4, H - 4], outline=(161, 98, 7, 255))
+        for x, y in ((3, 3), (W - 6, 3), (3, H - 6), (W - 6, H - 6)):
+            d.rectangle([x, y, x + 2, y + 2], fill=(253, 224, 71, 255))
+        return opaque(border(img, '#fbbf24'))
+    if cape == 'streak365':
+        img = gradient('#713f12', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        # sparks rising, each its own speed, a whole number of trips per loop
+        for i in range(18):
+            x = rnd.uniform(4, W - 4) + math.sin(t * math.pi * 2 + i) * 1.2
+            y = (rnd.uniform(0, H) - t * H * (1 + i % 2)) % H
+            d.point((x, y), fill=rnd.choice([(254, 240, 138, 255), (251, 191, 36, 255), (255, 255, 255, 255)]))
+        flame(d, cx, H * 0.2, H * 0.88, 1.15, [(245, 158, 11), (253, 224, 71), (255, 251, 235)], t)
+        number(d, '365', cx, round(H * 0.6), (120, 53, 15), gap=1)
+        # the crown over the flame
+        gold, light, top = (250, 204, 21, 255), (254, 249, 195, 255), H * 0.05
+        d.polygon([(cx - 9, top + 8), (cx - 9, top + 1), (cx - 5, top + 5), (cx, top), (cx + 5, top + 5), (cx + 9, top + 1), (cx + 9, top + 8)], fill=gold)
+        d.line([(cx - 9, top + 8), (cx + 9, top + 8)], fill=(161, 98, 7, 255), width=1)
+        for x in (cx - 9, cx, cx + 9):
+            d.point((x, top - 1 if x == cx else top), fill=light)
+        d.point((cx, top + 5), fill=(220, 38, 38, 255))
+        d.rectangle([3, 3, W - 4, H - 4], outline=(180, 83, 9, 255))
+        return opaque(border(img, '#fde047', 3))
     raise ValueError(cape)
 
 
 CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker',
-         'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30',
+         'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30', 'streak7', 'streak14', 'streak60',
          # sold in the shop for Iskry
          'emberstar', 'obsidian', 'coral', 'thunder', 'regal', 'cosmos',
+         'dragonscale', 'hellfire', 'heavens', 'jollyroger', 'autumnleaves', 'sapphirecape',
          # for supporters
          'supporter_heart', 'supporter_patron',
          # in the look of the partner server SkyUp.pl
@@ -763,6 +1008,8 @@ FRAMES = 8
 def animated(cape, f):
     t = f / FRAMES
     rnd = random.Random(cape)
+    if cape in ('streak100', 'streak365'):
+        return streak_cape(cape, t)
     if cape == 'skyup_chmury':
         # "SkyUp – Chmury": clouds drifting past a floating island that slowly bobs
         img = gradient('#7dd3fc', '#0369a1')
@@ -1148,6 +1395,31 @@ def wing_design(kind):
             x, y, r = rnd.uniform(0, W), rnd.uniform(0, H), rnd.uniform(1.5, 3.5)
             d.ellipse([x - r, y - r, x + r, y + r], fill=(190, 242, 100, 255))
         return border(img, '#a3e635')
+    # ---- the elytras of the sets: each matches its set's cape ----
+    if kind == 'dragonelytra':
+        return design('dragonscale')
+    if kind == 'obsidianelytra':
+        # the obsidian cape's facets of volcanic glass, laid with dark feathers
+        img = gradient('#1e1b2e', '#0a0612')
+        d = ImageDraw.Draw(img)
+        for _ in range(12):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.polygon([(x, y - 7), (x + 5, y), (x, y + 7), (x - 5, y)], fill=rnd.choice([(46, 16, 101, 255), (30, 27, 75, 255), (59, 7, 100, 255)]))
+            d.line([(x, y - 7), (x + 5, y)], fill=(192, 132, 252, 255))
+        return border(feathers_over(img, '#2e1065'), '#7e22ce')
+    if kind == 'sapphireelytra':
+        # the sapphire cape's crystal: shards of blue cut with light edges, a few small gems
+        img = gradient('#1e40af', '#0b1437')
+        d = ImageDraw.Draw(img)
+        for _ in range(11):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            w, h = rnd.uniform(4, 7), rnd.uniform(7, 12)
+            d.polygon([(x, y - h), (x + w, y), (x, y + h * 0.6), (x - w, y)], fill=(30, 64, 175, 255), outline=(147, 197, 253, 255))
+            d.polygon([(x, y - h), (x + w, y), (x, y)], fill=(96, 165, 250, 255))
+        for _ in range(5):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(4, H - 4)
+            d.polygon([(x, y - 4), (x + 3, y), (x, y + 4), (x - 3, y)], fill=(191, 219, 254, 255), outline=(255, 255, 255, 255))
+        return border(img, '#93c5fd')
     if kind == 'supporter_wings':
         # "Skrzydła mecenasa": violet feathers edged in light lilac, for supporters
         return border(feathers_over(gradient('#a78bfa', '#4c1d95'), '#ede9fe'), '#c4b5fd')
@@ -1156,8 +1428,9 @@ def wing_design(kind):
 
 WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow', 'fairy', 'bone', 'gilded',
          'emberwings', 'sapphire', 'obsidianwings']
-ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid', 'supporter_wings']
-ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury']
+ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid', 'supporter_wings',
+           'dragonelytra', 'obsidianelytra', 'sapphireelytra']
+ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury', 'streak100', 'streak365']
 
 os.makedirs(OUT, exist_ok=True)
 count = 0

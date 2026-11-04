@@ -135,6 +135,8 @@ const LOGIN_TTL_MS = 10 * 60_000;
 const MC_CHALLENGE_MS = 2 * 60_000;
 /** The first launcher with the shop (prices in /v1/cosmetics). */
 const SHOP_SINCE = '0.9.22';
+/** The streak achievements whose cape reward came in 0.9.70, after players had unlocked them (db.ts grantLateRewards). */
+const LATE_STREAK_REWARDS = ['streak_7', 'streak_14', 'streak_60', 'streak_100', 'streak_365'];
 const MAX_MESSAGE = 2000;
 /** An encrypted message: the text plus a wrapped key for each launcher of both friends. */
 const MAX_ENCRYPTED = 14_000;
@@ -2468,6 +2470,12 @@ export function createApp(cfg: Config) {
   } catch (err) {
     console.error('zaproszenia:', (err as Error).message);
   }
+  // the streak capes came in 0.9.70 as rewards of achievements some had already: those players get theirs, once
+  const late = db.grantLateRewards(LATE_STREAK_REWARDS.flatMap((id) => {
+    const reward = achievements.registry.get(id)?.reward;
+    return reward ? [[id, reward] as const] : [];
+  }), 'streak-capes-0.9.70');
+  if (late) console.log(`osiągnięcia: peleryny serii dla wcześniej odblokowanych (${late} przyznań)`);
   // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
   const backfilled = achievements.backfill();
   if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);

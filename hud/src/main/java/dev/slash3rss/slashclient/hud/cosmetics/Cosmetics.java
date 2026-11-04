@@ -38,9 +38,10 @@ public final class Cosmetics {
 		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm",
 		"lava", "desert", "cyber", "honey", "mint", "vortex", "starfall",
 		// earned with SlashClient achievements only
-		"veteran", "streak30",
+		"veteran", "streak30", "streak7", "streak14", "streak60", "streak100", "streak365",
 		// bought with Sparks (Iskry) in the shop
 		"emberstar", "obsidian", "coral", "thunder", "regal", "cosmos",
+		"dragonscale", "hellfire", "heavens", "jollyroger", "autumnleaves", "sapphirecape",
 		// for supporters of the project
 		"supporter_heart", "supporter_patron",
 		// in the look of the partner server SkyUp.pl
@@ -49,13 +50,14 @@ public final class Cosmetics {
 	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
 	static final Map<String, Integer> ANIMATED = Map.ofEntries(Map.entry("aurora", 8), Map.entry("inferno", 8), Map.entry("waves", 8),
 		Map.entry("pulse", 8), Map.entry("matrix", 8), Map.entry("storm", 8), Map.entry("vortex", 8), Map.entry("starfall", 8), Map.entry("skyup_chmury", 8),
+		Map.entry("streak100", 8), Map.entry("streak365", 8),
 		// the ranks' capes: a light sweeping across the logo, then a rest
 		Map.entry("staff_admin", 16), Map.entry("staff_support", 16), Map.entry("staff_partner", 16), Map.entry("staff_friend", 16), Map.entry("staff_friend_pink", 16));
 	private static final long FRAME_MS = 120;
 	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow", "fairy", "bone", "gilded",
 		"emberwings", "sapphire", "obsidianwings");
 	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn",
-		"aurum", "glacier", "acid", "supporter_wings");
+		"aurum", "glacier", "acid", "supporter_wings", "dragonelytra", "obsidianelytra", "sapphireelytra");
 	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
 		"crits", "witch", "ink", "ash");
 	// fireflies came with 1.21.5
