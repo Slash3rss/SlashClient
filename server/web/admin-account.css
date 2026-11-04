@@ -1,0 +1,27 @@
+/* The admin panel's account drawer (adminAccount.js): sections that open, forms and rows. */
+.acc { display: flex; flex-direction: column; gap: 10px; }
+.acc-sec { border: 1px solid var(--border); border-radius: 12px; background: rgba(0, 0, 0, .12); }
+.acc-sec > summary { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; font-weight: 600; list-style: none; }
+.acc-sec > summary::-webkit-details-marker { display: none; }
+.acc-sec > summary::after { content: "\f078"; font: var(--fa-font-solid); margin-left: auto; font-size: 11px; color: var(--muted); transition: transform .15s; }
+.acc-sec[open] > summary::after { transform: rotate(180deg); }
+.acc-sec > summary i { width: 16px; text-align: center; color: var(--accent-light); }
+.acc-sec > :not(summary) { margin: 0 14px 12px; }
+.acc-sec h5 { margin: 12px 0 6px; font-size: 13px; color: var(--text-2); }
+.acc-form { display: flex; flex-direction: column; gap: 8px; }
+.acc-form > label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+.acc-form > label.opt { display: flex; justify-content: space-between; }
+.acc-form > button { align-self: flex-start; }
+.acc-set > label { grid-template-columns: 130px 1fr; }
+.acc-char { margin-top: 6px; align-items: center; }
+.acc-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 14px; min-width: 0; }
+.acc-row:first-child { border-top: 0; }
+.acc-row > i { width: 18px; text-align: center; color: var(--muted); }
+.acc-row .grow { min-width: 0; overflow-wrap: anywhere; }
+.acc-ban { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: rgba(239, 68, 68, .1); border: 1px solid rgba(239, 68, 68, .3); color: #fca5a5; }
+.acc-ban .grow { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.acc-ban small { color: var(--text-2); }
+.page-head button.active { border-color: var(--border-focus); }
+@media (max-width: 480px) {
+  .acc-form > label, .acc-set > label { grid-template-columns: 1fr; gap: 4px; }
+}

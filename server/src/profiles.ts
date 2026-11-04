@@ -461,6 +461,13 @@ export function profileRoutes(deps: ProfileDeps) {
       // a broken address: not found below
     }
     const user = HANDLE.test(handle) ? db.userByHandle(handle) : undefined;
+    // a nick an admin changed: the old address leads to the profile under the new one, while nobody else took it
+    const moved = !user && HANDLE.test(handle) ? db.formerHandle(handle) : undefined;
+    if (moved) {
+      res.writeHead(301, { Location: page ? `/u/${encodeURIComponent(moved.handle)}` : `/v1/profiles/${encodeURIComponent(moved.handle)}/${picture![2]}`, 'Cache-Control': 'no-cache' });
+      res.end();
+      return true;
+    }
 
     if (picture) {
       // only what everyone may see: a public profile that is not hidden

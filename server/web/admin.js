@@ -28,13 +28,14 @@ const mods = {
   statusRules: lazy(() => import('./adminStatusRules.js')),
   dashboard: lazy(() => import('./adminDashboard.js')),
   userExtras: lazy(() => import('./adminUserExtras.js')),
+  account: lazy(() => import('./adminAccount.js')),
 };
 /** Loaded modules by name, for their helpers used while drawing (only after `need(name)` was awaited). */
 const M = {};
 const need = (...names) => Promise.all(names.map((n) => mods[n]().then((m) => (M[n] = m))));
 /** What each tab needs before it draws: its own module, or the helpers of others it shows. */
 const NEEDS = {
-  dashboard: ['dashboard'], users: ['ranks', 'sparks', 'userExtras'], ranks: ['ranks'], cosmetics: ['achievements', 'settings', 'sparks'], achievements: ['achievements'],
+  dashboard: ['dashboard'], users: ['ranks', 'sparks', 'account', 'userExtras'], ranks: ['ranks'], cosmetics: ['achievements', 'settings', 'sparks'], achievements: ['achievements'],
   challenges: ['challenges'], referrals: ['referrals'], partners: ['statusRules'], clans: ['clans'], communities: ['communities'],
   storage: ['storage'], support: ['support'], streams: ['streams'], fishAtlas: ['fishAtlas'], home: ['home'], legal: ['legal'], wiki: ['wiki'], settings: ['settings'],
 };
@@ -114,6 +115,9 @@ const ACTIONS = {
   streams_unlink: 'odłączył(a) kanał streamu gracza',
   partner_status_add: 'dodał(a) regułę statusów z listy graczy dla', partner_status_edit: 'zmienił(a) regułę statusów z listy graczy dla', partner_status_remove: 'usunął(ęła) regułę statusów z listy graczy dla', partner_status_defaults: 'zmienił(a) domyślny wygląd',
   setting: 'zmienił(a) ustawienie', setting_reset: 'przywrócił(a) domyślne ustawienie', cosmetic_supporter: 'zmienił(a) poziom wsparcia dla',
+  account_edit: 'zmienił(a) dane konta', set_loadout: 'zmienił(a) wygląd', unlink: 'odłączył(a) logowanie', session_revoke: 'zakończył(a) sesję',
+  push_revoke: 'wyłączył(a) powiadomienia telefonu', export: 'pobrał(a) dane konta', ban_edit: 'zmienił(a) blokadę', unban_auto: 'blokada minęła:',
+  restore: 'przywrócił(a) usunięte konto', deleted_purge: 'usunął(ęła) na zawsze kopię konta',
 };
 Object.assign(ACTIONS, USER_EXTRAS_ACTIONS);
 
@@ -259,7 +263,15 @@ async function usersPage() {
     clearTimeout(timer);
     timer = setTimeout(() => { users.q = search.value.trim(); users.offset = 0; loadUsers(); }, 250);
   });
-  $('#main').replaceChildren(head('Konta', el('div', { class: 'grow' }), search), el('div', { class: 'glass card', id: 'users-box' }, el('p', { class: 'muted', textContent: 'Ładowanie…' })));
+  // the accounts deleted in the panel, restorable for a while (adminAccount.js), instead of the list
+  const deleted = el('button', { class: users.deleted ? 'active' : '', onclick: () => { users.deleted = !users.deleted; usersPage(); } },
+    icon(users.deleted ? 'fa-solid fa-users' : 'fa-solid fa-trash-arrow-up'), users.deleted ? 'Wszystkie konta' : 'Usunięte konta');
+  if (users.deleted) {
+    $('#main').replaceChildren(head('Usunięte konta', el('div', { class: 'grow' }), deleted),
+      M.account.deletedAccounts((id) => { users.deleted = false; usersPage(); openUser(id); }));
+    return;
+  }
+  $('#main').replaceChildren(head('Konta', el('div', { class: 'grow' }), search, deleted), el('div', { class: 'glass card', id: 'users-box' }, el('p', { class: 'muted', textContent: 'Ładowanie…' })));
   search.focus();
   loadUsers();
 }
@@ -304,6 +316,11 @@ const badges = (u) => el('div', { class: 'row' },
 function closeDrawer() {
   document.querySelector('.drawer')?.remove();
   document.querySelector('.shade')?.remove();
+  removeEventListener('keydown', escCloses);
+}
+/** Escape closes a player's window, unless a question (a modal of its own) is open over it. */
+function escCloses(e) {
+  if (e.key === 'Escape' && !document.querySelector('.modal-back')) closeDrawer();
 }
 
 async function openUser(id) {
@@ -320,7 +337,7 @@ async function openUser(id) {
   const capeSel = el('select', {}, el('option', { value: '', textContent: 'Bez peleryny' }), ...Object.entries(capeNames).map(([cid, name]) => el('option', { value: cid, textContent: name, selected: u.cape === cid })));
   capeSel.addEventListener('change', () => update({ cape: capeSel.value }, 'Peleryna zmieniona.'));
   const self = u.id === me.id;
-  const drawer = el('aside', { class: 'glass drawer' },
+  const drawer = el('aside', { class: 'glass drawer user-modal', role: 'dialog' },
     el('div', { class: 'row' }, avatarEl(u, true), el('div', { class: 'grow' }, el('h2', { textContent: u.name }), el('span', { class: 'muted', textContent: `@${u.handle}` })),
       el('button', { class: 'icon-btn', title: 'Zamknij', onclick: closeDrawer }, icon('fa-solid fa-xmark'))),
     badges(u),
@@ -338,10 +355,13 @@ async function openUser(id) {
     M.sparks.walletSection(id),
     // several ranks, each until a day or for good (adminRanks.js)
     M.ranks.userRanksSection(id, loadUsers),
+    // the account's details, looks, sign-ins, devices and own log (adminAccount.js)
+    M.account.accountSections(u, { me, actions: ACTIONS, changed: () => { loadUsers(); openUser(id); }, relist: loadUsers }),
     // achievements, friends, memberships, invites, support and stored files (adminUserExtras.js)
     M.userExtras.userExtrasSections(u, { go: (t) => void go(t), open: openUser }),
     el('div', { class: 'actions' },
-      el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
+      // a ban with a reason the player sees and an optional end
+      el('button', { disabled: self || (!u.banned && u.configAdmin), onclick: () => M.account.banFlow(u, () => { loadUsers(); openUser(id); }), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),
       el('a', { class: 'btn', href: `/u/${encodeURIComponent(u.handle)}`, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-id-card'), 'Profil publiczny'),
       profileHideButton(u),
@@ -349,11 +369,11 @@ async function openUser(id) {
         icon('fa-solid fa-right-from-bracket'), 'Wyloguj wszędzie'),
       el('button', { disabled: self || u.configAdmin, title: u.configAdmin ? 'Admin z konfiguracji serwera (ADMIN_HANDLES)' : '', onclick: () => update({ role: u.role === 'admin' ? '' : 'admin' }, u.role === 'admin' ? 'Odebrano uprawnienia admina.' : 'Nadano uprawnienia admina.') },
         icon('fa-solid fa-shield-halved'), u.role === 'admin' || u.configAdmin ? 'Odbierz admina' : 'Nadaj admina'),
-      el('button', { class: 'danger', disabled: self || u.configAdmin, onclick: async () => {
-        if (!await confirmModal({ title: `Usunąć konto ${u.name} (@${u.handle})?`, text: 'Razem ze znajomymi i wiadomościami.', warning: 'Tego nie da się cofnąć.', ok: 'Usuń konto', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
-        if (await guard(() => api('DELETE', `/v1/admin/users/${id}`))) { toast('Konto usunięte.'); closeDrawer(); loadUsers(); }
-      } }, icon('fa-solid fa-trash-can'), 'Usuń konto')));
-  document.body.append(el('div', { class: 'shade', onclick: closeDrawer }), drawer);
+      // with a copy kept for a while, restorable in "Usunięte konta" (adminAccount.js)
+      el('button', { class: 'danger', disabled: self || u.configAdmin, onclick: () => M.account.deleteAccount(u, () => { closeDrawer(); loadUsers(); }) },
+        icon('fa-solid fa-trash-can'), 'Usuń konto')));
+  document.body.append(el('div', { class: 'shade user-modal-shade', onclick: closeDrawer }), drawer);
+  addEventListener('keydown', escCloses);
 }
 
 /** Hiding a public profile (moderation): it is then "not found" for everyone but its owner and admins. */
@@ -732,7 +752,8 @@ async function logPage() {
   if (!res) return;
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
-    el('td', { textContent: `@${e.adminHandle || await nameOf(e.admin)}` }),
+    // (a ban that ended lifts itself: nobody did it)
+    el('td', { textContent: e.admin ? `@${e.adminHandle || await nameOf(e.admin)}` : 'automat' }),
     el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' || e.action === 'cosmetic_supporter' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|community\.|ach_(create|edit|reset|delete)|home_|support_(provider|test|settings|tier)|setting)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),

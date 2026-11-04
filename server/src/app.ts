@@ -10,6 +10,7 @@ import { SprayLimit, cleanSpray } from './sprays.ts';
 import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, compareVersions, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { adminUserExtrasRoutes } from './adminUserExtras.ts';
+import { createAccountAdmin } from './adminAccount.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -259,6 +260,8 @@ export function createApp(cfg: Config) {
   const mcChallenges = new Map<string, number>();
   type Login = {
     provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string;
+    /** More about the error for the page (a ban's reason and end). */
+    errorDetail?: Record<string, string | number>;
     /** Shown by the launcher that started the sign-in and on the confirmation page, to compare. */
     confirm?: string;
     /** Where the sign-in was started ("launcher", "strona"), for the confirmation page. */
@@ -293,6 +296,7 @@ export function createApp(cfg: Config) {
       return true;
     } catch (err) {
       login.error = err instanceof HttpError && err.code === 'banned' ? 'banned' : 'provider_failed';
+      if (err instanceof HttpError && err.code === 'banned') login.errorDetail = err.detail;
       return false;
     }
   }
@@ -392,8 +396,14 @@ export function createApp(cfg: Config) {
     if (!settings.bool(featureKey('registration'))) throw new HttpError(503, 'feature_disabled');
   }
 
+  /** A banned account's answer: why and until when, next to the code older clients know (`banned`). */
+  function bannedError(userId: string) {
+    const ban = db.banInfo(userId);
+    return new HttpError(403, 'banned', undefined, ban ? { ...(ban.reason ? { reason: ban.reason } : {}), ...(ban.until ? { until: ban.until } : {}) } : undefined);
+  }
+
   function newSession(user: User) {
-    if (user.banned) throw new HttpError(403, 'banned');
+    if (user.banned) throw bannedError(user.id);
     const token = randomBytes(32).toString('base64url');
     db.addSession(hashToken(token), user.id);
     return { token, user };
@@ -590,7 +600,7 @@ export function createApp(cfg: Config) {
     const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
     const userId = token && db.sessionUser(hashToken(token), sessionIdleMs());
     if (!userId) throw new HttpError(401, 'unauthorized');
-    if (db.user(userId)?.banned) throw new HttpError(403, 'banned');
+    if (db.user(userId)?.banned) throw bannedError(userId);
     (req as SeenRequest).slashUser = userId;
     activity.seen(userId);
     const client = clientOf(req);
@@ -1177,6 +1187,31 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // the admin panel's account management: details, sign-ins, sessions, export, deleting and restoring (adminAccount.ts)
+  const accounts = createAccountAdmin({
+    db, admin, body, configAdmins, kick, closeSession, cosmeticsChanged, badge: wearOf, supporterLevel: (id) => support.cosmeticsLevel(id),
+    profileChanged: (id) => {
+      // friends' lists show the new name and nick, the player's own launcher asks for its account again
+      for (const f of db.friends(id)) push(f.id, { type: 'friends' });
+      push(id, { type: 'friends' });
+      broadcastPresence(id);
+      cosmeticsChanged(id);
+    },
+    phones: phones && { of: (uuid) => phones!.store.of(uuid), remove: (pid) => phones!.store.remove(pid) },
+    removeFiles: async (id) => {
+      await images.removeOf(id);
+      await shares.removeOwner(id);
+      await tracker.removeOwner(id);
+      // screenshots, clips and cloud profiles lost their rows with the account: their files go with the sweep
+      await media.cleanup();
+      await cloud.cleanup();
+    },
+    keepDays: () => settings.num('moderation.deletedAccountDays'),
+    fail: (status, code, detail) => {
+      throw new HttpError(status, code, undefined, detail);
+    },
+  });
+
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)
     ['GET', /^\/v1\/admin\/requests$/, (req, _p, url) => {
@@ -1293,7 +1328,7 @@ export function createApp(cfg: Config) {
       if (!login || Date.now() - login.at > LOGIN_TTL_MS) throw new HttpError(404, 'login_expired');
       if (login.error) {
         logins.delete(state);
-        throw new HttpError(400, login.error);
+        throw new HttpError(400, login.error, undefined, login.errorDetail);
       }
       // a launcher-ended sign-in is handed out only by /v1/auth/finish, to the one with the secret
       if (!login.result || login.loopback) return { pending: true };
@@ -1311,7 +1346,7 @@ export function createApp(cfg: Config) {
       const proof = typeof verifier === 'string' ? createHash('sha256').update(verifier).digest('base64url') : '';
       if (typeof key !== 'string' || !same(key, waiting.key) || !same(proof, login.loopback.challenge)) throw new HttpError(403, 'forbidden');
       logins.delete(state as string);
-      if (!finishLogin(login, login.provider, waiting.id)) throw new HttpError(400, login.error ?? 'provider_failed');
+      if (!finishLogin(login, login.provider, waiting.id)) throw new HttpError(400, login.error ?? 'provider_failed', undefined, login.errorDetail);
       return login.result;
     }],
     ['POST', /^\/v1\/auth\/logout$/, (req) => {
@@ -1812,8 +1847,10 @@ export function createApp(cfg: Config) {
       },
     }),
     ...adminUserExtrasRoutes({ db, admin, body, push, configAdmins, cosmeticsChanged, wallet, achievements, challenges, referrals, communities, groups, mutes, support, shares, cloud, media, images, fail: (status, code) => { throw new HttpError(status, code); } }),
+    ...accounts.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged, supporterLevel: (id) => support.cosmeticsLevel(id), badge: wearOf,
+      deleteAccount: (id, by) => accounts.remove(id, by),
       setRank: (id, rank, by) => ranks.setOnly(id, rank, by),
       ranksOf: (id) => {
         const u = db.user(id);
@@ -2575,6 +2612,14 @@ export function createApp(cfg: Config) {
       console.error('wyzwania:', (err as Error).message);
     }
   }, TICK_MS);
+  // bans past their end are lifted, deleted accounts past their time go for good (adminAccount.ts)
+  const accountTick = setInterval(() => {
+    try {
+      accounts.tick();
+    } catch (err) {
+      console.error('konta:', (err as Error).message);
+    }
+  }, 60_000);
   // who plays on the same server as whom, once a minute (suggestions.ts)
   const encounterTick = setInterval(() => {
     try {
@@ -2679,12 +2724,15 @@ export function createApp(cfg: Config) {
     streams,
     /** For tests: the phones' notifications. */
     phones,
+    /** For tests: the admin panel's account management (bans ending, deleted accounts' time running out). */
+    accounts,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
       clearInterval(referralTick);
       clearInterval(encounterTick);
       clearInterval(logCleanup);
+      clearInterval(accountTick);
       // the last moment of the request log is kept too
       requests.flush();
       streams.close();

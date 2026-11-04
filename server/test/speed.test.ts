@@ -117,6 +117,8 @@ describe('the database in fewer queries', () => {
       return {
         ...u, createdAt: raw.created_at, lastSeen: raw.last_seen, providers: db.providers(uuid),
         friends: n('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid), sessions: n('SELECT COUNT(*) AS n FROM sessions WHERE uuid = ?', uuid),
+        // (a ban's reason and end came later, for the panel's drawer)
+        banReason: '', banUntil: 0,
         worn: db.minecraftAccounts(uuid).map((a) => ({ name: a.name, cape: a.loadout ? a.loadout.cape ?? '' : u.cape })),
       };
     };
