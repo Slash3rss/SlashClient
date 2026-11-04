@@ -246,6 +246,13 @@ const PAINT = {
     if (grain(85, px, py) > 0.8) return fur(hex('#d8894e'), 86, px, py, t);
     return fur(face === 'down' ? hex('#c96d3a') : hex('#b4582a'), 87, px, py, t);
   },
+  bunnytail({ face, x, y, px, py, t }) {
+    // fluffy white in tufts, a little cream and shaded underneath (the bunny ears' and slippers' white)
+    const tuft = grain(88, Math.floor(x / 2) + px * 7, Math.floor(y / 2) + py * 5);
+    const white = tuft > 0.85 ? hex('#e9e2d8') : hex('#f6f3ee');
+    if (face === 'up') return fur(shade(white, 0.88), 89, px, py, t);
+    return shade(white, 0.96 + tuft * 0.08 + grain(90, x + px * 9, y + py * 9) * 0.04);
+  },
 };
 
 // ---------- matrices (the game's: a part's pivot, then its turn z, y, x) ----------

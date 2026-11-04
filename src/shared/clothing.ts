@@ -214,6 +214,11 @@ export const CLOTHING: ClothingItem[] = [
     { from: [-3, 6.25, -2], size: [4, 1.25, 4], inflate: 0.3 },
     { from: [-3.65, 6.25, -1.25], size: [0.5, 1.25, 2.5] },
   ]) },
+  // soft paws over the hands like mittens, a fluffy cuff, pink pads underneath and toe beans on the front
+  { id: 'catpaws', slot: 'hands', name: 'Kocie łapki', boxes: arms([
+    { from: [-3, 6.5, -2], size: [4, 3.75, 4], inflate: 0.55 },
+    { from: [-3, 4.75, -2], size: [4, 1.5, 4], inflate: 0.75 },
+  ]) },
   // ---------- on the face (over the skin's outer layer, whose front stands at z -4.5) ----------
   // glasses lie inside a real helmet's face (its front stands at -5), so they stay on with one
   { id: 'sunglasses', slot: 'face', name: 'Okulary przeciwsłoneczne', underHelmet: true, boxes: [
@@ -316,6 +321,22 @@ export const CLOTHING: ClothingItem[] = [
         .map(([from, size]): ClothingBox => ({ bone: 'head', from, size, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo'] })),
     ]),
   ] },
+  // from the top of the head near the front: up, then sweeping back over it and thinning to a tip that dips a little
+  // (green scales, gold towards the tip); clear of the headphones' band, which goes over behind their roots
+  { id: 'dragonhorns', slot: 'ears', name: 'Smocze rogi', boxes: sides([
+    { bone: 'head', from: [1.5, -10, -3.25], size: [2, 1.75, 2] },
+    { bone: 'head', from: [1.75, -11.75, -2.75], size: [1.6, 1.75, 1.75] },
+    { bone: 'head', from: [2, -12.75, -1.5], size: [1.25, 1.25, 2] },
+    { bone: 'head', from: [2.2, -13.1, 0.25], size: [0.9, 0.9, 1.75] },
+    { bone: 'head', from: [2.4, -12.85, 1.75], size: [0.5, 0.6, 1.5] },
+  ], { hats: ['cap', 'beanie', 'headphones'] }) },
+  { id: 'wolfears', slot: 'ears', name: 'Wilcze uszy', boxes:
+    ear([[0.5, -9.5, 3.5, 1.5], [0.75, -10.75, 3, 1.25], [1.25, -12, 2, 1.25], [1.75, -13, 1, 1]], [2.25, -8, -2.25], 8, ['cap', 'beanie', 'headphones']) },
+  // round and black, a little forward of the headphones' band: a short bar across and one up and down make the round
+  { id: 'pandaears', slot: 'ears', name: 'Uszy pandy', boxes: sides([
+    { bone: 'head', from: [1.75, -10.5, -2.25], size: [3, 2, 1.25] },
+    { bone: 'head', from: [2.25, -11, -2.25], size: [2, 3, 1.25] },
+  ], { pivot: [3.25, -8.5, -1.6], twitch: { axis: 'z', amp: 5, phase: 0 }, hats: ['cap', 'beanie', 'headphones'] }) },
 ];
 
 /** The same boxes on the left (as given, +x) and mirrored on the right, with the pivot, turn and twitch mirrored too. */

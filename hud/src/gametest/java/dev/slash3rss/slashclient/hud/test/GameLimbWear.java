@@ -13,7 +13,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  */
 public class GameLimbWear implements FabricClientGameTest {
 	private static final String[] SHOES = {"sneakers_red", "sneakers_blue", "hikingboots", "slippers", "bunnyslippers", "rocketboots", "rollerskates", "flippers"};
-	private static final String[] HANDS = {"boxinggloves", "wristwatch", "bracelet", "spikedgauntlets", "mittens", "goldring", "smartband"};
+	private static final String[] HANDS = {"boxinggloves", "wristwatch", "bracelet", "spikedgauntlets", "mittens", "goldring", "smartband", "catpaws"};
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -68,7 +68,7 @@ public class GameLimbWear implements FabricClientGameTest {
 			context.runOnClient(mc -> { TestHooks.lookSouth(); TestHooks.firstPerson(); TestHooks.wear("hands", "boxinggloves"); });
 			context.waitTicks(10);
 			context.takeScreenshot("limbs-firstperson-boxinggloves");
-			for (String hands : new String[] {"goldring", "spikedgauntlets", "mittens"}) {
+			for (String hands : new String[] {"goldring", "spikedgauntlets", "mittens", "catpaws"}) {
 				context.runOnClient(mc -> TestHooks.wear("hands", hands));
 				context.waitTicks(5);
 				context.takeScreenshot("limbs-firstperson-" + hands);

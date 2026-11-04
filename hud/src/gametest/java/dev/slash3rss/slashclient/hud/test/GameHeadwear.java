@@ -12,7 +12,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  */
 public class GameHeadwear implements FabricClientGameTest {
 	private static final String[] FACE = {"sunglasses", "aviators", "glasses3d", "monocle", "mustache", "gasmask", "kitsune", "oni", "skigoggles"};
-	private static final String[] EARS = {"catears", "foxears", "bunnyears", "elfears", "devilhorns", "ramhorns", "antlers", "unicorn", "earmuffs"};
+	private static final String[] EARS = {"catears", "foxears", "bunnyears", "elfears", "devilhorns", "ramhorns", "antlers", "unicorn", "earmuffs", "dragonhorns", "wolfears", "pandaears"};
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -82,6 +82,41 @@ public class GameHeadwear implements FabricClientGameTest {
 				context.takeScreenshot(name + "-side");
 				context.runOnClient(mc -> { TestHooks.cameraTurn(0); TestHooks.cosmeticsSelf(null, true); });
 			}
+			// the dragon horns, wolf and panda ears from the front, the side and behind, alone and under a cap (they poke out) and a top hat (gone)
+			for (String ears : new String[] {"dragonhorns", "wolfears", "pandaears"}) {
+				for (String hat : new String[] {null, "cap", "tophat"}) {
+					String name = "headwear-" + ears + (hat == null ? "" : "-" + hat);
+					context.runOnClient(mc -> { TestHooks.wear("hat", hat); TestHooks.wear("ears", ears); });
+					context.waitTicks(5);
+					context.takeScreenshot(name + "-front");
+					if (hat != null) continue;
+					context.runOnClient(mc -> { TestHooks.cosmeticsSelf(null, false); TestHooks.cameraTurn(90); });
+					context.waitTicks(5);
+					context.takeScreenshot(name + "-side");
+					context.runOnClient(mc -> TestHooks.cameraTurn(0));
+					context.waitTicks(5);
+					context.takeScreenshot(name + "-back");
+					context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
+				}
+			}
+			// whole sets: the ears with the tails (and the cat's paws, the bunny's slippers) that go with them, from the side
+			context.runOnClient(mc -> TestHooks.wear("hat", null));
+			for (String[] set : new String[][] {{"dragonhorns", "dragontail", null, null}, {"wolfears", "wolftail", null, null},
+					{"catears", "cattail", "catpaws", null}, {"bunnyears", "bunnytail", null, "bunnyslippers"}}) {
+				context.runOnClient(mc -> { TestHooks.wear("ears", set[0]); TestHooks.wear("tail", set[1]); TestHooks.wear("hands", set[2]); TestHooks.wear("shoes", set[3]); });
+				context.runOnClient(mc -> { TestHooks.cosmeticsSelf(null, false); TestHooks.cameraTurn(55); });
+				context.waitTicks(5);
+				context.takeScreenshot("headwear-set-" + set[0] + "-side");
+				context.runOnClient(mc -> { TestHooks.cameraTurn(0); TestHooks.cosmeticsSelf(null, true); });
+				context.waitTicks(5);
+				context.takeScreenshot("headwear-set-" + set[0] + "-front");
+			}
+			context.runOnClient(mc -> { TestHooks.wear("tail", null); TestHooks.wear("hands", null); TestHooks.wear("shoes", null); });
+			// the panda suit with the panda ears: the suit's own ears show (a suit hides the ears' slot)
+			context.runOnClient(mc -> { TestHooks.wear("ears", "pandaears"); TestHooks.wear("suit", "pandasuit"); });
+			context.waitTicks(5);
+			context.takeScreenshot("headwear-pandaears-pandasuit");
+			context.runOnClient(mc -> TestHooks.wear("suit", null));
 			// a helmet: glasses stay on, masks and ears hide
 			context.runOnClient(mc -> { TestHooks.wear("hat", null); TestHooks.wear("face", "sunglasses"); TestHooks.wear("ears", "catears"); });
 			world.getServer().runCommand("item replace entity @a armor.head with iron_helmet");
