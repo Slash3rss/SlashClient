@@ -1,4 +1,5 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
+import { USER_EXTRAS_ACTIONS } from './adminUserExtrasActions.js';
 import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, fmtDate, guard, hasUnsaved, icon, promptModal, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
 
 // Each tab's code is fetched the first time the tab opens (or the pointer rests on its button), so the panel
@@ -26,13 +27,14 @@ const mods = {
   fishAtlas: lazy(() => import('./adminFishAtlas.js')),
   statusRules: lazy(() => import('./adminStatusRules.js')),
   dashboard: lazy(() => import('./adminDashboard.js')),
+  userExtras: lazy(() => import('./adminUserExtras.js')),
 };
 /** Loaded modules by name, for their helpers used while drawing (only after `need(name)` was awaited). */
 const M = {};
 const need = (...names) => Promise.all(names.map((n) => mods[n]().then((m) => (M[n] = m))));
 /** What each tab needs before it draws: its own module, or the helpers of others it shows. */
 const NEEDS = {
-  dashboard: ['dashboard'], users: ['ranks', 'sparks'], ranks: ['ranks'], cosmetics: ['achievements', 'settings', 'sparks'], achievements: ['achievements'],
+  dashboard: ['dashboard'], users: ['ranks', 'sparks', 'userExtras'], ranks: ['ranks'], cosmetics: ['achievements', 'settings', 'sparks'], achievements: ['achievements'],
   challenges: ['challenges'], referrals: ['referrals'], partners: ['statusRules'], clans: ['clans'], communities: ['communities'],
   storage: ['storage'], support: ['support'], streams: ['streams'], fishAtlas: ['fishAtlas'], home: ['home'], legal: ['legal'], wiki: ['wiki'], settings: ['settings'],
 };
@@ -113,6 +115,7 @@ const ACTIONS = {
   partner_status_add: 'dodał(a) regułę statusów z listy graczy dla', partner_status_edit: 'zmienił(a) regułę statusów z listy graczy dla', partner_status_remove: 'usunął(ęła) regułę statusów z listy graczy dla', partner_status_defaults: 'zmienił(a) domyślny wygląd',
   setting: 'zmienił(a) ustawienie', setting_reset: 'przywrócił(a) domyślne ustawienie', cosmetic_supporter: 'zmienił(a) poziom wsparcia dla',
 };
+Object.assign(ACTIONS, USER_EXTRAS_ACTIONS);
 
 let me;
 // "#achievements:<id>" opens that achievement in the creator
@@ -335,6 +338,8 @@ async function openUser(id) {
     M.sparks.walletSection(id),
     // several ranks, each until a day or for good (adminRanks.js)
     M.ranks.userRanksSection(id, loadUsers),
+    // achievements, friends, memberships, invites, support and stored files (adminUserExtras.js)
+    M.userExtras.userExtrasSections(u, { go: (t) => void go(t), open: openUser }),
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),

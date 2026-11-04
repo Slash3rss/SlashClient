@@ -207,5 +207,11 @@ export function profileShareRoutes(ctx: ShareContext) {
     }
   }
 
-  return { routes, serve, cleanup };
+  /** The admin panel takes a code down (adminUserExtras.ts): the row and its file, as the owner's delete does. */
+  async function remove(code: string) {
+    db.removeProfileShare(code);
+    await rm(fileOf(code), { force: true });
+  }
+
+  return { routes, serve, cleanup, remove };
 }
