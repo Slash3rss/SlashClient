@@ -239,7 +239,8 @@ export class SocialClient {
       return this.scheduleRetry();
     }
     this.ws = ws;
-    ws.addEventListener('open', () => ws.send(JSON.stringify({ type: 'auth', token: this.opts.token(), presence: this.presence() })));
+    // naming ourselves lets a newer server leave out of `ready` what only the website reads (LEAN_SINCE)
+    ws.addEventListener('open', () => ws.send(JSON.stringify({ type: 'auth', client: 'launcher', version: APP_VERSION, token: this.opts.token(), presence: this.presence() })));
     ws.addEventListener('message', (e) => {
       let event: Record<string, unknown>;
       try {
