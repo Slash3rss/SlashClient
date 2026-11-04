@@ -164,10 +164,43 @@ export function createLauncherNews(d: LauncherNewsDeps) {
     }
   }
 
+  /** Whether the tab has its first page (at the start only the newest release is asked, for the dot). */
+  let tabLoaded = false;
+  /** The tab was opened while that first look was under way. */
+  let wantTab = false;
+
+  /**
+   * At the start: whether the server has a changelog and the newest version (for the dot), from one
+   * release instead of twenty full notes; the tab loads its page when it is opened.
+   */
+  async function peek() {
+    if (loading) return;
+    loading = true;
+    let p: ChangelogPage | null;
+    try {
+      p = await page(undefined, 1);
+    } catch {
+      // asked again when the tab opens (available stays unknown)
+      return;
+    } finally {
+      loading = false;
+      if (wantTab) {
+        wantTab = false;
+        void loadTab();
+      }
+    }
+    if (!p) return setAvailable(false);
+    if (!tabLoaded) releases = p.releases;
+    refreshDot();
+    // (this may open the tab right away, when it was the one picked last: it loads its page then)
+    setAvailable(true);
+  }
+
   async function loadTab(older = false) {
     const list = document.getElementById('launcher-news');
     if (!list || loading) return;
     loading = true;
+    if (!older) tabLoaded = true;
     list.querySelector('.more')?.remove();
     list.querySelector('.news-failed')?.remove();
     if (!older) list.replaceChildren(el('p', { className: 'muted', textContent: t('Ładowanie…') }));
@@ -191,7 +224,10 @@ export function createLauncherNews(d: LauncherNewsDeps) {
       retry.addEventListener('click', () => void loadTab(older));
       const failed = el('div', { className: 'news-failed' }, el('p', { className: 'muted', textContent: t('Nie udało się pobrać nowości launchera.') }), retry);
       if (older) list.append(failed);
-      else list.replaceChildren(failed);
+      else {
+        list.replaceChildren(failed);
+        tabLoaded = false;
+      }
     } finally {
       loading = false;
     }
@@ -414,14 +450,16 @@ export function createLauncherNews(d: LauncherNewsDeps) {
       });
       update = await api.updateStatus().catch(() => update);
       syncSettings();
-      await loadTab();
+      await peek();
       if (!available) return;
       const pending: string | null = await api.whatsNewPending().catch(() => null);
       if (pending) await showWhatsNew(pending);
     },
     /** The tab was opened. */
     shown() {
-      if (available === undefined || (!releases.length && !loading)) void loadTab();
+      // opened while the start's quick look is under way: its page right after that
+      if (loading && !tabLoaded) wantTab = true;
+      if (available === undefined || ((!tabLoaded || !releases.length) && !loading)) void loadTab();
       void markSeen();
     },
     /** The language changed: the notes come again in it. */

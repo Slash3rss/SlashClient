@@ -3,6 +3,7 @@ import { currencyName, currencyOf, signedSparks, sparkAmount, sparks } from '../
 import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
 import { bonusText, completedText, renderChallenges, type Challenge, type Challenges } from './challenges';
 import type { createReferrals, Referrals } from './referrals';
+import { connectedFlip } from './connectedFlip';
 
 /**
  * The "Achievements" view: SlashClient achievements of the signed-in account in categories (play
@@ -502,6 +503,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     }
   }, 5_000);
 
+  const cameOnline = connectedFlip();
   api.on('social:event', (e: { type?: string; achievement?: Achievement; challenge?: Challenge; period?: string; quiet?: boolean; count?: number; sparks?: number; balance?: number; state?: { user?: unknown; connected?: boolean } }) => {
     if (e?.type === 'challenge' && e.challenge) {
       const { title, body } = completedText(e.challenge);
@@ -526,11 +528,14 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     } else if (e?.type === 'state') {
       // another account signed in: nothing kept from the one before is shown
       const user = (e.state?.user as { id?: string } | undefined)?.id;
-      if (user !== keptFor) kept.clear();
+      const otherAccount = user !== keptFor;
+      if (otherAccount) kept.clear();
       keptFor = user;
-      if (e.state?.user && e.state.connected) void catchUp();
+      // once per connection: a status change or a disconnect asks nothing
+      const flipped = cameOnline(e.state);
+      if (flipped) void catchUp();
       else if (!e.state?.user) setBalance(undefined);
-      if (isVisible()) void render();
+      if (isVisible() && (flipped || otherAccount)) void render();
     }
   });
   api.on('notify:open', (target: { view?: string }) => {
@@ -543,7 +548,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     if (isVisible() && !friend) redraw();
   });
   // the launcher may have connected before this view existed
-  void api.socialState().then((s: { user?: unknown; connected?: boolean } | undefined) => s?.user && s.connected && catchUp()).catch(() => undefined);
+  void api.socialState().then((s: { user?: unknown; connected?: boolean } | undefined) => cameOnline(s) && catchUp()).catch(() => undefined);
 
   return {
     /** Called when the view opens: the player's own achievements. */

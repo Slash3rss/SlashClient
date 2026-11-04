@@ -44,6 +44,12 @@ export function errorCode(data: { error?: string; retryAfter?: unknown }, status
 }
 
 
+/** How long to wait before reconnect try `n` (0 = the first): 1–5 s, then 2 s·2ⁿ up to a minute, ±30%. */
+export function retryDelay(n: number, random = Math.random): number {
+  if (n <= 0) return Math.round(1000 + random() * 4000);
+  return Math.round(Math.min(60_000, 2000 * 2 ** n) * (0.7 + random() * 0.6));
+}
+
 export class SocialError extends Error {
   constructor(readonly code: string, readonly httpStatus = 0) {
     super(code);
@@ -74,6 +80,8 @@ interface Options {
 export class SocialClient {
   private ws?: WebSocket;
   private user?: SocialUser;
+  /** When `user` was last told by the server (ready, /v1/me or an answer that carries it). */
+  private userAt = 0;
   private connected = false;
   private retry = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
@@ -145,15 +153,37 @@ export class SocialClient {
   /** Keeps the session from a sign-in and goes online. */
   async signedIn(result: { token: string; user: SocialUser }) {
     await this.opts.saveToken(result.token);
-    this.user = result.user;
+    this.setUser(result.user);
     this.start();
     return this.state();
   }
 
   /** After a provider was linked or unlinked: the page shows the new list. */
   updateUser(user: SocialUser) {
-    this.user = user;
+    this.setUser(user);
     this.opts.emit({ type: 'state', state: this.state() });
+  }
+
+  private setUser(user: SocialUser | undefined) {
+    this.user = user;
+    this.userAt = user ? Date.now() : 0;
+  }
+
+  /**
+   * The account as the server last told it (the WebSocket's ready, /v1/me, or the answer of a change), so
+   * the page does not ask /v1/me again for a field like the supporter tier; asked again when older than `maxAgeMs`.
+   */
+  async me(maxAgeMs = 60_000): Promise<SocialUser> {
+    if (this.user && Date.now() - this.userAt < maxAgeMs) return this.user;
+    const me = await this.call<SocialUser>('GET', '/v1/me');
+    this.setUser(me);
+    return me;
+  }
+
+  /** An answer of POST /v1/me (the same account, changed): kept quietly, without a 'state' event. */
+  noteUser(user: unknown) {
+    const u = user as SocialUser | undefined;
+    if (u && typeof u === 'object' && typeof u.id === 'string' && u.id === this.user?.id) this.setUser(u);
   }
 
   async logout() {
@@ -163,7 +193,7 @@ export class SocialClient {
 
   private async dropSession() {
     this.stop();
-    this.user = undefined;
+    this.setUser(undefined);
     await this.opts.saveToken(undefined);
     this.opts.emit({ type: 'state', state: this.state() });
   }
@@ -174,16 +204,27 @@ export class SocialClient {
     if (!this.opts.token()) return;
     this.stopped = false;
     this.connect();
-    // the WebSocket says who we are too, but the page wants the name right away
-    this.call<SocialUser>('GET', '/v1/me').then((me) => {
-      this.user = me;
-      this.opts.emit({ type: 'state', state: this.state() });
-    }, () => {});
+    // the WebSocket's ready says who we are (every server version sends `me` with it); only when it is slow
+    // (the server is down, a proxy holds the upgrade) is /v1/me asked, so the page still gets the name soon
+    clearTimeout(this.meTimer);
+    this.meTimer = setTimeout(() => {
+      if (this.stopped || this.connected) return;
+      this.call<SocialUser>('GET', '/v1/me').then((me) => {
+        // the WebSocket was quicker after all, or the session is gone
+        if (this.stopped || this.connected) return;
+        this.setUser(me);
+        this.opts.emit({ type: 'state', state: this.state() });
+      }, () => {});
+    }, SocialClient.ME_FALLBACK_MS);
   }
+
+  private meTimer?: ReturnType<typeof setTimeout>;
+  static ME_FALLBACK_MS = 3000;
 
   stop() {
     this.stopped = true;
     clearTimeout(this.retryTimer);
+    clearTimeout(this.meTimer);
     this.ws?.close();
     this.ws = undefined;
     this.setConnected(false);
@@ -207,7 +248,7 @@ export class SocialClient {
         return;
       }
       if (event.type === 'ready') {
-        this.user = event.me as SocialUser;
+        this.setUser(event.me as SocialUser);
         this.retry = 0;
         this.setConnected(true);
         this.opts.onReady?.();
@@ -225,11 +266,27 @@ export class SocialClient {
     });
   }
 
-  /** 2 s, 4 s, 8 s… up to a minute, so a server that is down is not hammered. */
+  /**
+   * 1–5 s, then about 4 s, 8 s… up to a minute, each ±30%: a server that is down is not hammered, and after
+   * it restarts the launchers do not all come back in the same second.
+   */
   private scheduleRetry() {
     if (this.stopped) return;
-    const delay = Math.min(60_000, 2000 * 2 ** this.retry++);
-    this.retryTimer = setTimeout(() => !this.stopped && this.connect(), delay);
+    this.retryTimer = setTimeout(() => !this.stopped && this.connect(), retryDelay(this.retry++));
+  }
+
+  /**
+   * The computer woke up or the network came back: a launcher waiting for its next try connects now; a
+   * connection that looks open sends the status, which closes it at once when it died during the sleep.
+   */
+  reconnectNow() {
+    if (this.stopped || !this.opts.token()) return;
+    if (this.connected) return this.sendPresence();
+    // a try is already under way
+    if (this.ws) return;
+    clearTimeout(this.retryTimer);
+    this.retry = 0;
+    this.connect();
   }
 
   private setConnected(value: boolean) {

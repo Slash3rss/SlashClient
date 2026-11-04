@@ -59,7 +59,7 @@ export function createSupportCard(root: HTMLElement, deps: SupportDeps) {
     if (e?.type !== 'support-refund') return;
     const note = refundNote(String(e.status ?? ''), String(e.answer ?? ''));
     if (note) deps.toast?.(note, e.status === 'rejected');
-    void refresh();
+    void refresh(true);
   });
   root.append(
     el('h3', {}, icon('fa-heart'), ' ', t('Wesprzyj projekt')),
@@ -70,11 +70,15 @@ export function createSupportCard(root: HTMLElement, deps: SupportDeps) {
     el('div', { className: 'row' }, open, history, account),
   );
 
-  /** The tier the server says the signed-in account has now (nothing when signed out). */
-  async function refresh() {
+  /**
+   * The tier the server says the signed-in account has now (nothing when signed out): the account as the
+   * launcher last heard it, asked again only when that is over a minute old (or `fresh`, after a refund answer).
+   */
+  async function refresh(fresh = false) {
     let s: Supporter | null = null;
     try {
-      s = ((await deps.api.socialApi('GET', '/v1/me')) as { supporter?: Supporter | null }).supporter ?? null;
+      const me = deps.api.socialMe ? await deps.api.socialMe(fresh ? 0 : undefined) : await deps.api.socialApi('GET', '/v1/me');
+      s = (me as { supporter?: Supporter | null }).supporter ?? null;
     } catch {
       s = null;
     }
@@ -90,6 +94,6 @@ export function createSupportCard(root: HTMLElement, deps: SupportDeps) {
     status.append(chip, ' ', s.expiresAt ? t('do {0}', new Date(s.expiresAt).toLocaleDateString(locale())) : t('bez terminu'));
   }
 
-  void refresh();
+  // asked when Settings opens (app.ts), not at the start when nobody looks at it yet
   return { refresh };
 }

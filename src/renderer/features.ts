@@ -130,16 +130,39 @@ export function initFeatures(deps: FeatureDeps) {
     if (changed) for (const fn of listeners) fn(state);
   }
 
+  /** When the server was last asked (a scheduled banner's start is not pushed, so it is asked now and then). */
+  let askedAt = 0;
   async function refresh() {
+    askedAt = Date.now();
     const res = await deps.api.socialFeatures?.().catch(() => undefined);
     // no answer (offline): keep what was known
     if (res !== undefined) apply(cleanFeatures(res));
   }
 
-  deps.api.on('social:event', (e: { type?: string; state?: { connected?: boolean } }) => {
-    if (e?.type === 'features' || (e?.type === 'state' && e.state?.connected)) void refresh();
+  // asked again once per connection, not on every status change
+  let online = false;
+  deps.api.on('social:event', (e: { type?: string; state?: { connected?: boolean }; features?: unknown; banner?: unknown }) => {
+    if (e?.type === 'features') {
+      // a newer server says what changed in the event itself; an older one only that something did
+      if (e.features && typeof e.features === 'object') {
+        const next = cleanFeatures(e);
+        // the banner as it was, unless the event says it too
+        apply('banner' in e ? next : { ...next, banner: state.banner });
+      } else void refresh();
+    } else if (e?.type === 'state') {
+      const now = !!e.state?.connected;
+      if (now && !online) void refresh();
+      online = now;
+    }
   });
   void refresh();
-  setInterval(() => void refresh(), 10 * 60_000);
+  // every 10 minutes while the window can be seen; hidden in the tray, once it is shown again
+  const POLL_MS = 10 * 60_000;
+  setInterval(() => {
+    if (!document.hidden) void refresh();
+  }, POLL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - askedAt >= POLL_MS) void refresh();
+  });
   return { refresh };
 }

@@ -1658,10 +1658,31 @@ async function recordSession(profile: Profile, startedAt: number, server: { addr
 
 // ---------- skins and news ----------
 
+/**
+ * The skin each account was last shown with, for five minutes: opening Accounts again (or switching back
+ * to an account) asks Mojang, the skin and the cape (and OptiFine) only once. A change made here (a new
+ * skin, a cape, a preset) forgets them all; the default skin (maybe only an error) is never kept.
+ */
+const skinCache = new Map<string, { at: number; data: Awaited<ReturnType<typeof skinFor>> }>();
+const SKIN_CACHE_MS = 5 * 60_000;
+/** Mojang's profile answer lags a change by about a minute: what is read in that time is not kept. */
+let skinChangedAt = 0;
+const forgetSkins = () => {
+  skinCache.clear();
+  skinChangedAt = Date.now();
+};
+async function cachedSkin(account: Parameters<typeof skinFor>[0]) {
+  const key = `${account.id}|${account.type}|${account.uuid}|${account.name}`;
+  const kept = skinCache.get(key);
+  if (kept && Date.now() - kept.at < SKIN_CACHE_MS) return kept.data;
+  const data = await skinFor(account);
+  if (!data.isDefault && Date.now() - skinChangedAt > 2 * 60_000) skinCache.set(key, { at: Date.now(), data });
+  return data;
+}
 handle('skin:get', (accountId: string) => {
   const account = store.accounts.find((a) => a.id === accountId);
   if (!account) throw new Error('Nie znaleziono konta.');
-  return skinFor(account);
+  return cachedSkin(account);
 });
 handle('skin:save', async (accountId: string) => {
   const account = store.accounts.find((a) => a.id === accountId);
@@ -1776,11 +1797,12 @@ handle('skin:setPending', (dataUrl: string) => {
 });
 handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => {
   if (!pendingSkin) throw new Error(t('Najpierw wybierz plik skina.'));
-  await uploadSkin((await freshMsa(accountId)).accessToken, pendingSkin, variant);
+  forgetSkins();
+  await uploadSkin((await freshMsa(accountId)).accessToken, pendingSkin, variant).finally(forgetSkins);
   pendingSkin = undefined;
 });
-handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken));
-handle('skin:setCape', async (accountId: string, capeId: string | null) => setCape((await freshMsa(accountId)).accessToken, capeId));
+handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken).finally(forgetSkins));
+handle('skin:setCape', async (accountId: string, capeId: string | null) => setCape((await freshMsa(accountId)).accessToken, capeId).finally(forgetSkins));
 
 // ---------- skin library ----------
 
@@ -1819,9 +1841,13 @@ handle('skinlib:remove', (id: string) => removePreset(id));
 handle('skinlib:apply', async (accountId: string, id: string) => {
   const { preset, png } = await readPreset(id);
   const { accessToken } = await freshMsa(accountId);
-  await uploadSkin(accessToken, png, preset.variant);
-  if (preset.capeId === null) await setCape(accessToken, null);
-  else if (preset.capeId && (await ownedCapes(accessToken)).some((c) => c.id === preset.capeId)) await setCape(accessToken, preset.capeId);
+  try {
+    await uploadSkin(accessToken, png, preset.variant);
+    if (preset.capeId === null) await setCape(accessToken, null);
+    else if (preset.capeId && (await ownedCapes(accessToken)).some((c) => c.id === preset.capeId)) await setCape(accessToken, preset.capeId);
+  } finally {
+    forgetSkins();
+  }
 });
 
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
@@ -2425,6 +2451,10 @@ handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|challenges|referrals|groups|clans|communities|wallet|shop|gifs)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
+/** The account as last told by the server (asked again when older than `maxAgeMs`, at most a minute by default). */
+handle('social:me', (maxAgeMs?: number) => socialCall(() => social.me(typeof maxAgeMs === 'number' && maxAgeMs >= 0 ? maxAgeMs : undefined)));
+/** The page saw the network come back: no waiting for the next reconnect try. */
+handle('social:reconnect', () => social.reconnectNow());
 
 /** A player's public profile on the site (/u/<handle>): its address, opened in the browser when asked. */
 handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
@@ -2812,6 +2842,8 @@ async function chatCall(method: string, apiPath: string, body?: unknown) {
     return res;
   }
   const res = await social.call<Record<string, unknown>>(method, apiPath, body);
+  // /v1/me and its changes (from the page or the game) answer with the whole account: kept, so the next look needs no request
+  if (/^\/v1\/me(\/(providers|minecraft)\/[\w-]+)?$/.test(apiPath)) social.noteUser(res);
   if (res && Array.isArray(res.messages)) return { ...res, messages: (res.messages as ChatMessage[]).map(openMessage) };
   if (res && res.message && typeof res.message === 'object') return { ...res, message: openMessage(res.message as ChatMessage) };
   return res;
@@ -2984,6 +3016,9 @@ app.whenReady().then(async () => {
   void signInWithMinecraft();
   // ten idle minutes in the launcher show as "away" to friends
   setInterval(() => social.setAway(powerMonitor.getSystemIdleTime() >= 600), 60_000);
+  // after a sleep friends see the player again right away, not after the next reconnect try (up to a minute)
+  powerMonitor.on('resume', () => social.reconnectNow());
+  powerMonitor.on('unlock-screen', () => social.reconnectNow());
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

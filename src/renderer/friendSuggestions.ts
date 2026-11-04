@@ -81,12 +81,14 @@ export function createSuggestions(deps: Deps) {
     // no storage: open
   }
   let loading: Promise<void> | undefined;
-  let timer: ReturnType<typeof setInterval> | undefined;
+  /** When the list was last asked for (0: not yet, or another account). */
+  let fetchedAt = 0;
   /** Rows with a request or dismissal on the way (their buttons wait). */
   const busy = new Set<string>();
 
   async function refresh() {
     if (loading) return loading;
+    fetchedAt = Date.now();
     loading = (async () => {
       try {
         view = await api.socialApi('GET', '/v1/friends/suggestions?limit=24');
@@ -97,16 +99,22 @@ export function createSuggestions(deps: Deps) {
       }
       deps.changed();
     })();
-    timer ??= setInterval(() => void refresh(), REFRESH_MS);
     return loading;
+  }
+
+  /**
+   * Friends opened: asked again only when the list is older than ten minutes (instead of asking every ten
+   * minutes all day, also while nobody looks at it).
+   */
+  function refreshIfOld() {
+    if (Date.now() - fetchedAt >= REFRESH_MS) void refresh();
   }
 
   /** Signed out, or another account: nothing of the old one stays. */
   function clear() {
     view = undefined;
     shown = STEP;
-    if (timer) clearInterval(timer);
-    timer = undefined;
+    fetchedAt = 0;
   }
 
   async function add(s: Suggestion) {
@@ -193,7 +201,7 @@ export function createSuggestions(deps: Deps) {
     return out;
   }
 
-  return { refresh, clear, sections, get view() { return view; } };
+  return { refresh, refreshIfOld, clear, sections, get view() { return view; } };
 }
 
 // ---------- the switch in "Prywatność profilu" ----------

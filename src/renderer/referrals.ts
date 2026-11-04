@@ -1,5 +1,6 @@
 import { getLang, locale, t } from '../shared/i18n';
 import { currencyName, polishForm, sparks } from '../shared/sparks';
+import { connectedFlip } from './connectedFlip';
 import { control, el, icon, modalWindow } from './dialog';
 
 /**
@@ -238,6 +239,8 @@ export function createReferrals(deps: ReferralsDeps) {
     (s ? submit : input).focus();
   }
 
+  // asked once per connection, not on every status change or /v1/me answer
+  const cameOnline = connectedFlip();
   api.on('social:event', (e: { type?: string; state?: { user?: { id?: string }; connected?: boolean } }) => {
     if (e?.type !== 'state') return;
     const user = e.state?.user?.id;
@@ -246,7 +249,7 @@ export function createReferrals(deps: ReferralsDeps) {
       available = undefined;
       if (!user) tell();
     }
-    if (user && e.state?.connected) {
+    if (cameOnline(e.state)) {
       // a moment after connecting, so it does not open in the middle of the start
       setTimeout(() => {
         void load().catch(() => undefined);
@@ -258,7 +261,7 @@ export function createReferrals(deps: ReferralsDeps) {
   void api.socialState().then((s: { user?: { id?: string }; connected?: boolean } | undefined) => {
     if (!s?.user?.id || account) return;
     account = s.user.id;
-    if (s.connected) setTimeout(() => {
+    if (cameOnline(s)) setTimeout(() => {
       void load().catch(() => undefined);
       void maybeAsk();
     }, 4000);

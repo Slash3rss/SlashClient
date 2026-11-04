@@ -8,6 +8,7 @@ import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
 import { ask, confirmDialog, modalWindow } from './dialog';
 import { createSuggestions } from './friendSuggestions';
+import { connectedFlip } from './connectedFlip';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
@@ -401,12 +402,18 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   // ---------- loading ----------
 
+  /** True once per connection (connectedFlip.ts). */
+  const cameOnline = connectedFlip();
+
   async function refreshState() {
     notifyPlaying = (await api.getStore().catch(() => undefined))?.settings?.notifyFriendsPlaying !== false;
     state = await api.socialState();
+    cameOnline(state);
+    // the server's health and the friends list at once: the view opens a round trip sooner
+    const asked = state?.user ? refreshList() : undefined;
     health = await api.socialHealth().catch(() => undefined);
     healthError = !health;
-    if (state?.user) await refreshList();
+    await asked;
     render();
     if (state?.user) void party.refresh();
     if (state?.user) void groups.refresh();
@@ -892,7 +899,21 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     return box;
   }
 
+  /**
+   * Friends' statuses change all the time: with the window hidden (in the tray, minimised) the list is not
+   * built again for each one, only once when the window can be seen again.
+   */
+  let listStale = false;
+  function renderListWhenSeen() {
+    if (document.hidden) listStale = true;
+    else renderList();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && listStale) renderList();
+  });
+
   function renderList() {
+    listStale = false;
     if (!listBox) return;
     const sections: Node[] = [];
     if (list.incoming.length) {
@@ -1538,7 +1559,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         }
         if (state?.user && state.user.id !== was) await refreshList();
         if (state?.user && state.user.id !== was) void suggestions.refresh();
-        if (state?.user) void party.refresh();
+        // the party once per connection (it may have changed while away), not on every status change
+        if (cameOnline(state)) void party.refresh();
         if (state?.user && state.user.id !== was) void groups.refresh();
         if (state?.user && state.user.id !== was) void communities.refresh();
         if (!state?.user) {
@@ -1555,7 +1577,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         f.presence = e.presence;
         const news = watch.update(f.id, f.presence);
         if (news && notifyPlaying && !f.muted) playingNotice(f, news);
-        renderList();
+        renderListWhenSeen();
         if (e.id === selected) renderChat();
         return;
       }
@@ -1705,6 +1727,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       if (!state) return refreshState();
       if (!state.user) return refreshState();
       render();
+      suggestions.refreshIfOld();
       if (communities.active()) communities.markRead();
       else if (groups.active()) groups.markRead();
       else if (selected) markRead(selected);

@@ -892,6 +892,8 @@ document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () =
 const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '', toast });
 // the admin's feature switches and announcement banner (features.ts)
 initFeatures({ api, socialUrl: () => store?.settings.socialUrl ?? '', openUrl: (url) => window.open(url, '_blank') });
+// the network is back: friends see the player again now, not after the next reconnect try (up to a minute)
+window.addEventListener('online', () => void api.socialReconnect?.().catch(() => undefined));
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
 // "O programie / Informacje prawne": the terms and the privacy policy on the website
 createLegalCard($('#legal-card'), { socialUrl: () => store?.settings.socialUrl ?? '' });
@@ -2026,7 +2028,9 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   errorText,
   // the cape choice in Accounts unlocks (or locks) with the SlashClient account
   accountChanged: () => {
-    void renderSlashCapes();
+    // drawn now only when Accounts is open; opening it reads the new account's cosmetics anyway
+    cosmeticsKept = undefined;
+    if (document.querySelector('#view-accounts.active')) void renderSlashCapes();
     // "Zaktualizowaliśmy regulamin": important changes not seen yet, once
     void checkLegalNotices(api, toast);
   },
@@ -2087,10 +2091,11 @@ async function shopSets(redraw: () => void): Promise<Node[]> {
     picture: (item) => cosmeticPicture(item.slot, item.id),
     sparks, rankName: (rank) => RANK_NAMES[rank] ?? rank,
     wear: async (set, body, owned, all) => {
-      if (!(await guard(() => api.socialApi('POST', '/v1/me', body)))) return;
+      const res = await guard(() => api.socialApi('POST', '/v1/me', body));
+      if (!res) return;
       toast(t('Zestaw {0}: założone {1} z {2}.', getLang() === 'en' ? set.nameEn : set.name, owned, all));
       redraw();
-      renderSlashCapes();
+      void renderWorn(res);
     },
     buy: async (item) => {
       if ((await buyWithConfirm(item, walletBalance ?? achievements.balance(), { api, toast, errorText }, cosmeticPicture(item.slot, item.id))) === undefined) return;
@@ -4322,7 +4327,8 @@ async function renderSkin() {
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
   // a SlashClient cape is what other players see, so the preview wears it over the Mojang one
-  void renderSlashCapes();
+  // (from what loadSkinEditor is reading just now: no second request)
+  void renderSlashCapes(false);
   $('#skin-back').classList.toggle('hidden', !skin.cape);
   $('#skin-back').replaceChildren(el('i', { className: 'fa-solid fa-feather' }), t(' Elytra'));
   const capeNote = skin.cape ? t(' Peleryna: {0}.', skin.capeSource ?? '') : '';
@@ -4598,11 +4604,34 @@ type CosmeticsMe = { cape?: string; loadout?: Partial<Record<Slot, string>>; min
 type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
 /** What the cosmetics were last drawn from: picking another slot's tab draws from it at once, without asking the server. */
 let cosmeticsKept: { me?: CosmeticsMe; catalog: CatalogItem[]; walletBalance?: number; sets?: CosmeticSet[] } | undefined;
+/** The read under way, so a redraw that needs no new data waits for it instead of asking again. */
+let cosmeticsReading: Promise<NonNullable<typeof cosmeticsKept>> | undefined;
+function readCosmeticsKept() {
+  const reading = readCosmetics().then((data) => (cosmeticsKept = data));
+  cosmeticsReading = reading;
+  void reading.catch(() => undefined).finally(() => {
+    if (cosmeticsReading === reading) cosmeticsReading = undefined;
+  });
+  return reading;
+}
+/**
+ * Something was put on: the server's answer is the whole account with what is worn now, so the menu is
+ * drawn from it without asking /v1/me and /v1/cosmetics again (what is offered did not change).
+ */
+function renderWorn(res: unknown) {
+  const me = res as (CosmeticsMe & { id?: unknown }) | undefined;
+  if (cosmeticsKept && !cosmeticsReading && me && typeof me === 'object' && typeof me.id === 'string') {
+    cosmeticsKept = { ...cosmeticsKept, me };
+    return renderSlashCapes(false);
+  }
+  return renderSlashCapes();
+}
 
 /** The cosmetics menu; `fresh` asks the server for what is worn and offered (a slot's tab picked uses what was just read). */
 async function renderSlashCapes(fresh = true) {
   const pictures = await loadGamePictures();
-  const data = (!fresh && cosmeticsKept) || (cosmeticsKept = await readCosmetics());
+  // not fresh: what is being read right now, or what was read last
+  const data = fresh ? await readCosmeticsKept() : (cosmeticsReading ? await cosmeticsReading : cosmeticsKept) ?? await readCosmeticsKept();
   const { me, catalog, walletBalance } = data;
   // the sets with a part this launcher knows (older servers send none: no tab)
   const sets = (data.sets ?? []).filter((s) => Object.entries(s.parts).some(([slot, id]) => catalog.some((c) => c.id === id && c.slot === slot)));
@@ -4707,7 +4736,7 @@ async function renderSlashCapes(fresh = true) {
         $('#skin-back').classList.remove('hidden');
       }
       toast(id ? t('{0} założone.', title) : t('Zdjęte.'));
-      renderSlashCapes();
+      void renderWorn(me);
     });
     return b;
   };
@@ -4723,7 +4752,7 @@ async function renderSlashCapes(fresh = true) {
         if (!res) return;
         if (body.cape) await wearCape(body.cape);
         toast(t('Zestaw {0}: założone {1} z {2}.', getLang() === 'en' ? set.nameEn : set.name, owned, all));
-        renderSlashCapes();
+        void renderWorn(res);
       },
       buy: async (item) => {
         if ((await buyWithConfirm(item, walletBalance ?? achievements.balance(), { api, toast, errorText }, cosmeticPicture(item.slot, item.id))) !== undefined) renderSlashCapes();
@@ -4774,23 +4803,26 @@ async function renderSlashCapes(fresh = true) {
 async function readCosmetics(): Promise<NonNullable<typeof cosmeticsKept>> {
   // what is worn is read fresh: the launcher's copy of the account may predate the last change
   const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
-  const me: CosmeticsMe | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
+  // both at once: the menu opens a round trip sooner
+  const asked: Promise<CosmeticsMe | undefined> = state?.user ? api.socialApi('GET', '/v1/me').catch(() => undefined) : Promise.resolve(undefined);
   let walletBalance: number | undefined;
   let sets: CosmeticSet[] | undefined;
-  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number }; sets?: CosmeticSet[] }) => {
+  const catalogAsked = api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number }; sets?: CosmeticSet[] }) => {
     walletBalance = r.wallet?.balance;
     sets = Array.isArray(r.sets) ? r.sets : undefined;
     return r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }));
-  }).catch(() => undefined))
-    ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
+  }).catch(() => undefined);
+  const [me, offered] = await Promise.all([asked, catalogAsked]);
+  const catalog: CatalogItem[] = offered ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
   return { me, catalog, walletBalance, sets };
 }
 
 $('#cosmetic-shop').addEventListener('click', () => openShop());
 $('#cosmetic-shared').addEventListener('click', async () => {
-  if (!cosmeticCharacter || !(await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })))) return;
+  const res = cosmeticCharacter ? await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })) : undefined;
+  if (!res) return;
   toast(t('Ta postać nosi teraz zestaw całego konta.'));
-  renderSlashCapes();
+  void renderWorn(res);
 });
 
 /** Which capes are shown: SlashClient's, or the Minecraft account's own (Microsoft accounts only). */
