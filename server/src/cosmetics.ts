@@ -483,7 +483,7 @@ export const SETS: CosmeticSet[] = [
   { id: 'demon', name: 'Demon', nameEn: 'Demon', parts: { cape: 'hellfire', wings: 'demon', ears: 'devilhorns', tail: 'deviltail', face: 'oni', shield: 'shield_demon', aura: 'infernal' } },
   { id: 'angel', name: 'Anioł', nameEn: 'Angel', parts: { cape: 'heavens', wings: 'angel', hat: 'halo', back: 'angelpack', ring: 'ring_halo', trail: 'feathers' } },
   { id: 'pirate', name: 'Pirat', nameEn: 'Pirate', parts: { suit: 'pirate', hat: 'tricorn', face: 'eyepatch', weapon: 'sword_saber', cape: 'jollyroger', pet: 'parrot' } },
-  { id: 'knight', name: 'Rycerz', nameEn: 'Knight', parts: { suit: 'knight', hat: 'crown', back: 'backshield', cape: 'regal', aura: 'royal', weapon: 'sword_knight', shield: 'shield_crest' } },
+  { id: 'knight', name: 'Rycerz', nameEn: 'Knight', parts: { suit: 'knight', hat: 'crown', back: 'backshield', cape: 'regal', weapon: 'sword_knight', shield: 'shield_crest' } },
   { id: 'autumn', name: 'Jesień', nameEn: 'Autumn', parts: { cape: 'autumnleaves', elytra: 'autumn', top: 'autumnscarf', aura: 'leaves_autumn', ring: 'ring_leaves_autumn', trail: 'leaves_fall', pet: 'pet_wheelbarrow_autumn' } },
   { id: 'frost', name: 'Lód', nameEn: 'Frost', parts: { cape: 'ice', wings: 'frost', elytra: 'glacier', aura: 'frostaura', trail: 'snow', ring: 'ring_frost', weapon: 'sword_ice', shield: 'shield_ice', kill: 'shatter' } },
   { id: 'obsidian', name: 'Obsydian', nameEn: 'Obsidian', parts: { cape: 'obsidian', wings: 'obsidianwings', elytra: 'obsidianelytra', shield: 'shield_obsidian' } },

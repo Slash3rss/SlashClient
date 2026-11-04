@@ -32,6 +32,15 @@ after(async () => {
 });
 
 describe('cosmetic sets', () => {
+  it('can be completed by any player: no part only for a rank or for supporters', () => {
+    for (const s of SETS) {
+      for (const id of Object.values(s.parts)) {
+        const item = ITEMS.find((i) => i.id === id);
+        assert.ok(item && !item.rank && !item.supporter, `${s.id}: ${id}`);
+      }
+    }
+  });
+
   it('are defined with a name in both languages and parts in real slots', () => {
     assert.equal(SETS.length, 13);
     assert.equal(new Set(SETS.map((s) => s.id)).size, SETS.length);
