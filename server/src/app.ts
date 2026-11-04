@@ -41,6 +41,7 @@ import { OverrideStore, globalLimits } from './chatMediaLimits.ts';
 import { DEFAULT_ELEMENTS, profileRoutes, type Visibility } from './profiles.ts';
 import { legalRoutes } from './legal/routes.ts';
 import { homeRoutes } from './home/routes.ts';
+import { wikiRoutes } from './wiki/routes.ts';
 import { BurstLimiter, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
@@ -1066,6 +1067,18 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // the SlashClient wiki on the site and in the launcher, edited in the admin panel (wiki/routes.ts)
+  const wiki = wikiRoutes({
+    sql: db.sql, publicUrl: cfg.publicUrl, imageDir: path.join(path.dirname(cfg.dbFile), 'wiki-images'), admin,
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
+    maxImage: () => settings.num('wiki.maxImageBytes'),
+    hidden: (p) => home.isHidden(p),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   // notifications on the phone app (push.ts): the live events above, for the player's phones
   phones = createPush({
     sql: db.sql, settings, box: storage.box, publicUrl: cfg.publicUrl, authed, body, limitSubscribe: limiter('push.subscribesPerMinute'), fetchImpl: cfg.fetchImpl,
@@ -1675,6 +1688,7 @@ export function createApp(cfg: Config) {
     ...support.routes,
     ...legal.routes,
     ...home.routes,
+    ...wiki.routes,
     // the releases' notes (downloads.ts; made further down, asked only later)
     ...changelogRoutes(() => downloads, (status, code) => {
       throw new HttpError(status, code);
@@ -2018,6 +2032,14 @@ export function createApp(cfg: Config) {
     }
     // the legal documents' pages, from the database
     if (legal.serve(req, res, url)) return;
+    // the wiki's pages and pictures (wiki/routes.ts)
+    try {
+      if (await wiki.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('wiki:', (err as Error).message);
+      if (!res.headersSent) serverError(req, res, url);
+      return;
+    }
     // the changelog page (/zmiany, /changelog) from the releases' notes
     if (await serveChangelog(req, res, url, { downloads, publicUrl: cfg.publicUrl, versioned: (html) => versioned(html, 'text/html'), hidden: (p) => home.isHidden(p) })) return;
     // a player's invite page (/z/<code>), with what a friend gets and the code to type in (referrals.ts)

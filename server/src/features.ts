@@ -27,6 +27,7 @@ export const FEATURES = [
   { id: 'benchmarks', label: 'Linki do wyników benchmarka', labelEn: 'Benchmark result links', description: 'Nowe linki do wyników benchmarka ze specyfikacją komputera. Istniejące linki działają, a launcher kopiuje wtedy wynik jako tekst.' },
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
   { id: 'betaUpdates', label: 'Kanał beta aktualizacji', labelEn: 'Beta update channel', description: 'Launchery z wybranym kanałem beta dostają bety (wydania z tagiem v…-beta.N). Wyłączony: wszyscy dostają tylko zwykłe wydania, a wybór kanału znika z ustawień launchera.' },
+  { id: 'wiki', label: 'Wiki SlashClient', labelEn: 'SlashClient wiki', description: 'Strony /wiki i /en/wiki, ich obrazki i zakładka „SlashClient” w widoku Wiki launchera. Edytor w panelu admina działa zawsze.' },
   { id: 'seasonal', label: 'Wygląd sezonowy', labelEn: 'Seasonal look', description: 'Halloweenowy wygląd launchera i moda od 25 października do 2 listopada, biało-czerwony na Święto Niepodległości od 8 do 12 listopada (gracze mogą go też wyłączyć sami w Ustawieniach).' },
 ] as const;
 export type FeatureId = (typeof FEATURES)[number]['id'];
@@ -92,6 +93,8 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
   if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) out.push('cloud');
   if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) out.push('profiles');
   if (method === 'POST' && path === '/v1/mc/spray') out.push('sprays');
+  // the wiki's pages, pictures, sitemap and the launcher's API (its editor is in the admin panel, never switched off)
+  if (/^\/(en\/)?wiki(\/|$)/.test(path) || /^\/v1\/wiki(\/|$)/.test(path) || path === '/sitemap-wiki.xml') out.push('wiki');
   // linking a Twitch or Kick channel (the platforms' webhooks and the admin panel are never switched off)
   if (/^\/v1\/me\/streams(\/|$)/.test(path) || /^\/v1\/streams\/(twitch|kick)\/callback$/.test(path)) out.push('streams');
   // a picture to a friend or to a group

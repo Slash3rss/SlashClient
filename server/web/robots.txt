@@ -14,3 +14,4 @@ Disallow: /pobierz/
 
 Sitemap: https://slashclient.pl/sitemap.xml
 Sitemap: https://slashclient.pl/sitemap-profiles.xml
+Sitemap: https://slashclient.pl/sitemap-wiki.xml

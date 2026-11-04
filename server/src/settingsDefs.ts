@@ -60,6 +60,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'friendsPopular', label: 'Popularne wśród znajomych', labelEn: 'Popular among friends' },
   { id: 'fishAtlas', label: 'Atlas ryb', labelEn: 'Fish atlas' },
   { id: 'push', label: 'Powiadomienia na telefon', labelEn: 'Phone notifications' },
+  { id: 'wiki', label: 'Wiki', labelEn: 'Wiki' },
 ];
 
 const MB = 1024 * 1024;
@@ -251,6 +252,12 @@ export const SETTING_DEFS: SettingDef[] = [
   ...POPULAR_SETTING_DEFS,
   // the SkyUp fish atlases from the game, for the admin panel (fishAtlas.ts)
   ...FISH_ATLAS_SETTING_DEFS,
+
+  // the wiki's pictures uploaded in the panel (wiki/routes.ts); the wiki itself is switched in "Funkcje"
+  ...group('wiki', [
+    { ...bytes('wiki.maxImageBytes', 'Największy obrazek', 'Largest picture', 2 * MB, 'Największy obrazek (PNG, JPEG, WebP), który można wgrać do wiki w panelu admina. Zrzuty najlepiej zapisywać jako WebP, do ok. 120 kB.', 100 * 1024, 20 * MB, 'KB'),
+      descriptionEn: 'The largest picture (PNG, JPEG, WebP) an admin may upload to the wiki. Screenshots are best saved as WebP, up to about 120 kB.' },
+  ]),
   // notifications on the phone app (push.ts)
   ...PUSH_SETTING_DEFS,
 

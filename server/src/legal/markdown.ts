@@ -13,11 +13,21 @@
  *   **bold**, *italics*, `code`, [text](https://…)
  *   {{admin.email}}     a value from "Dane administratora" (an empty one shows as a placeholder)
  *   [UZUPEŁNIJ: …]      a placeholder, highlighted until replaced
+ *   ![alt](name.webp)   a picture on its own line, the alt text as its caption (only where the caller
+ *                       says where pictures live: the wiki, not the legal documents)
  * A line ending with two spaces or a backslash breaks the line; an empty line ends a paragraph.
  */
 
 export interface TocEntry { id: string; text: string }
 export interface Rendered { html: string; toc: TocEntry[] }
+
+/** What a caller other than the legal documents adds (the wiki). */
+export interface RenderOptions {
+  /** A picture's address from its name, or undefined when there is no such picture; without this, picture lines stay text. */
+  image?: (name: string) => string | undefined;
+  /** A link's address as written ("/wiki/hud-mapa") turned into the one to use ("/en/wiki/hud-mapa"), before it is checked. */
+  href?: (href: string) => string;
+}
 
 /** The administrator's details the documents refer to as {{key}}, with their labels. */
 export const VARS: Record<string, string> = {
@@ -39,7 +49,7 @@ export function slug(text: string): string {
 
 const SAFE_URL = /^(https?:\/\/[^\s]+|mailto:[^\s]+|\/(?!\/)[^\s]*|#[\w-]*)$/i;
 
-function inline(raw: string, vars: Record<string, string>): string {
+function inline(raw: string, vars: Record<string, string>, o: RenderOptions = {}): string {
   let s = escapeHtml(raw);
   // code first, kept aside so nothing inside it turns into markup
   const kept: string[] = [];
@@ -50,8 +60,9 @@ function inline(raw: string, vars: Record<string, string>): string {
     const out = value ? escapeHtml(value) : `<span class="fill">[UZUPEŁNIJ: ${escapeHtml(VARS[key] ?? key)}]</span>`;
     return `\u0000${kept.push(out) - 1}\u0000`;
   });
-  s = s.replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_m, text: string, href: string) => {
+  s = s.replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_m, text: string, written: string) => {
     // the address was escaped with the rest: &amp; in it is right in an attribute
+    const href = o.href ? escapeHtml(o.href(written.replace(/&amp;/g, '&'))) : written;
     if (!SAFE_URL.test(href.replace(/&amp;/g, '&'))) return text;
     const external = /^https?:/i.test(href) ? ' rel="noopener noreferrer"' : '';
     return `<a href="${href}"${external}>${text}</a>`;
@@ -62,17 +73,17 @@ function inline(raw: string, vars: Record<string, string>): string {
 }
 
 /** The lines of a paragraph: joined with spaces, or a line break after "  " or "\". */
-function joinLines(lines: string[], vars: Record<string, string>): string {
+function joinLines(lines: string[], vars: Record<string, string>, o: RenderOptions = {}): string {
   return lines.map((l, i) => {
     const brk = i < lines.length - 1 && /( {2,}|\\)$/.test(l);
-    return inline(l.replace(/( {2,}|\\)$/, '').trim(), vars) + (i < lines.length - 1 ? (brk ? '<br>' : ' ') : '');
+    return inline(l.replace(/( {2,}|\\)$/, '').trim(), vars, o) + (i < lines.length - 1 ? (brk ? '<br>' : ' ') : '');
   }).join('');
 }
 
 interface Item { indent: number; ordered: boolean; text: string[] }
 const ITEM = /^(\s*)([-*]|\d{1,3}[.)])\s+(.*)$/;
 
-function list(items: Item[], vars: Record<string, string>): string {
+function list(items: Item[], vars: Record<string, string>, o: RenderOptions): string {
   let out = '';
   let i = 0;
   const base = items[0].indent;
@@ -82,7 +93,7 @@ function list(items: Item[], vars: Record<string, string>): string {
     const children: Item[] = [];
     let j = i + 1;
     while (j < items.length && items[j].indent >= base + 2) children.push(items[j++]);
-    out += `<li>${joinLines(it.text, vars)}${children.length ? list(children, vars) : ''}</li>`;
+    out += `<li>${joinLines(it.text, vars, o)}${children.length ? list(children, vars, o) : ''}</li>`;
     i = j;
   }
   return ordered ? `<ol>${out}</ol>` : `<ul>${out}</ul>`;
@@ -92,7 +103,10 @@ function cells(line: string): string[] {
   return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
 }
 
-export function renderMarkdown(source: string, vars: Record<string, string> = {}): Rendered {
+/** `![alt](name)` alone on its line. */
+const IMAGE_LINE = /^\s*!\[([^\]]*)\]\(([^()\s]+)\)\s*$/;
+
+export function renderMarkdown(source: string, vars: Record<string, string> = {}, o: RenderOptions = {}): Rendered {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const toc: TocEntry[] = [];
   const used = new Set<string>();
@@ -100,7 +114,7 @@ export function renderMarkdown(source: string, vars: Record<string, string> = {}
   let paragraph: string[] = [];
   let open = false;
   const flush = () => {
-    if (paragraph.length) parts.push(`<p>${joinLines(paragraph, vars)}</p>`);
+    if (paragraph.length) parts.push(`<p>${joinLines(paragraph, vars, o)}</p>`);
     paragraph = [];
   };
   for (let i = 0; i < lines.length; i++) {
@@ -109,20 +123,32 @@ export function renderMarkdown(source: string, vars: Record<string, string> = {}
       flush();
       continue;
     }
+    const picture = o.image ? IMAGE_LINE.exec(line) : null;
+    if (picture) {
+      flush();
+      const alt = picture[1].trim();
+      const src = o.image!(picture[2]);
+      const caption = alt ? inline(alt, vars, o) : '';
+      // a name with no picture behind it shows as text, so a typo is seen in the preview
+      parts.push(src
+        ? `<figure class="wiki-figure"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>`
+        : `<figure class="wiki-figure missing"><figcaption>${escapeHtml(picture[2])}${caption ? ` – ${caption}` : ''}</figcaption></figure>`);
+      continue;
+    }
     const heading = /^(#{1,3})\s+(.+?)\s*(?:\{#([\w-]{1,60})\})?\s*$/.exec(line);
     if (heading) {
       flush();
       const text = heading[2];
       if (heading[1].length === 3) {
-        parts.push(`<h3>${inline(text, vars)}</h3>`);
+        parts.push(`<h3>${inline(text, vars, o)}</h3>`);
         continue;
       }
       let id = heading[3] ?? slug(text);
       for (let n = 2; used.has(id); n++) id = `${heading[3] ?? slug(text)}-${n}`;
       used.add(id);
-      toc.push({ id, text: inline(text, vars).replace(/<[^>]+>/g, '') });
+      toc.push({ id, text: inline(text, vars, o).replace(/<[^>]+>/g, '') });
       // each section in its own element, for the anchor and the spacing
-      parts.push(`${open ? '</section>' : ''}<section id="${id}"><h2>${inline(text, vars)}</h2>`);
+      parts.push(`${open ? '</section>' : ''}<section id="${id}"><h2>${inline(text, vars, o)}</h2>`);
       open = true;
       continue;
     }
@@ -131,7 +157,7 @@ export function renderMarkdown(source: string, vars: Record<string, string> = {}
       const note: string[] = [];
       while (i < lines.length && /^\s*>/.test(lines[i])) note.push(lines[i++].replace(/^\s*>\s?/, ''));
       i--;
-      parts.push(`<p class="note">${joinLines(note, vars)}</p>`);
+      parts.push(`<p class="note">${joinLines(note, vars, o)}</p>`);
       continue;
     }
     if (/^\s*\|/.test(line) && /^\s*\|?\s*:?-{3,}/.test(lines[i + 1] ?? '')) {
@@ -141,8 +167,8 @@ export function renderMarkdown(source: string, vars: Record<string, string> = {}
       const rows: string[][] = [];
       while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(cells(lines[i++]));
       i--;
-      parts.push(`<div class="legal-table"><table><thead><tr>${head.map((c) => `<th>${inline(c, vars)}</th>`).join('')}</tr></thead><tbody>${
-        rows.map((r) => `<tr>${head.map((_c, k) => `<td>${inline(r[k] ?? '', vars)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+      parts.push(`<div class="legal-table"><table><thead><tr>${head.map((c) => `<th>${inline(c, vars, o)}</th>`).join('')}</tr></thead><tbody>${
+        rows.map((r) => `<tr>${head.map((_c, k) => `<td>${inline(r[k] ?? '', vars, o)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
       continue;
     }
     if (ITEM.test(line)) {
@@ -155,7 +181,7 @@ export function renderMarkdown(source: string, vars: Record<string, string> = {}
         i++;
       }
       i--;
-      parts.push(list(items, vars));
+      parts.push(list(items, vars, o));
       continue;
     }
     paragraph.push(line);

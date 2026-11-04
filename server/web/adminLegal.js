@@ -87,7 +87,7 @@ export function lineDiff(a, b) {
   return out;
 }
 
-function diffView(diff) {
+export function diffView(diff) {
   if (!diff.some(([k]) => k !== ' ')) return el('p', { class: 'muted', textContent: 'Bez różnic.' });
   // unchanged stretches folded to 2 lines of context around each change
   const keep = diff.map(([k], i) => k !== ' ' || diff.slice(Math.max(0, i - 2), i + 3).some(([c]) => c !== ' '));

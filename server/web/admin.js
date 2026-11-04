@@ -10,6 +10,7 @@ import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
 import { legalPage } from './adminLegal.js';
 import { homePage } from './adminHome.js';
+import { wikiPage } from './adminWiki.js';
 import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
 import { settingsPage, supporterEditor } from './adminSettings.js';
 import { streamsPage } from './adminStreams.js';
@@ -43,6 +44,7 @@ const GROUPS = [
   ['Treści', [
     ['home', 'Strona główna', 'fa-solid fa-house'],
     ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
+    ['wiki', 'Wiki', 'fa-solid fa-book-open'],
     ['fishAtlas', 'Atlas ryb', 'fa-solid fa-fish'],
   ]],
   ['System', [
@@ -76,6 +78,9 @@ const ACTIONS = {
   support_tier: 'zapisał(a) poziom wsparcia', support_tier_delete: 'usunął(ęła) poziom wsparcia',
   legal_draft: 'zapisał(a) szkic dokumentu', legal_publish: 'opublikował(a) dokument', legal_restore: 'przywrócił(a) wersję dokumentu',
   home_draft: 'zapisał(a) szkic:', home_publish: 'opublikował(a) nową wersję:', home_restore: 'przywrócił(a) starszą wersję jako szkic:', home_image: 'wgrał(a) obrazek:',
+  wiki_create: 'utworzył(a) stronę', wiki_draft: 'zapisał(a) szkic:', wiki_publish: 'opublikował(a)', wiki_restore: 'przywrócił(a) starszą wersję jako szkic:',
+  wiki_seed: 'przywrócił(a) wersję z kodu:', wiki_rename: 'zmienił(a) adres strony', wiki_delete: 'usunął(ęła) stronę', wiki_undelete: 'przywrócił(a) usuniętą stronę',
+  wiki_image: 'wgrał(a) obrazek do wiki:',
   legal_banner: 'zmienił(a) baner wersji roboczej', legal_vars: 'zmienił(a) dane administratora w dokumentach',
   rank_create: 'dodał(a) rangę', rank_update: 'zmienił(a) rangę', rank_delete: 'usunął(ęła) rangę', rank_icon: 'zmienił(a) ikonę rangi',
   rank_grant: 'nadał(a) rangę', rank_revoke: 'odebrał(a) rangę',
@@ -181,7 +186,7 @@ function layout() {
 const PAGES = { dashboard: () => dashboard(), users: () => usersPage(), ranks: () => ranksPage(), cosmetics: () => cosmeticsPage(), achievements: () => achievementsPage(),
   challenges: () => challengesPage(), referrals: () => referralsPage(), partners: () => partnersPage(), clans: () => clansPage(), communities: () => communitiesPage(), requests: () => requestsPage(),
   logs: () => logsPage(), storage: () => storagePage(), support: () => supportPage(), streams: () => streamsPage(), fishAtlas: () => fishAtlasPage(),
-  home: () => homePage(), legal: () => legalPage(), settings: () => settingsPage(), log: () => logPage() };
+  home: () => homePage(), legal: () => legalPage(), wiki: () => wikiPage(), settings: () => settingsPage(), log: () => logPage() };
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
 const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el('small', {}, icon(cls), label), el('b', { textContent: String(value) }), note ? el('em', { textContent: note }) : '');
