@@ -1,10 +1,10 @@
 <!-- dzial: launcher | kolejnosc: 30 | ikona: fa-puzzle-piece | opis: Finding and installing mods, resource packs, shaders, modpacks and datapacks from Modrinth and CurseForge -->
-# Mods, packs and Discover
+# Mods and packs
 
 The launcher downloads mods, resource packs, shaders, modpacks and datapacks from **Modrinth** and **CurseForge** and installs them into the profile you choose. The same browser is in two places:
 
 - **Profiles → a profile → Mods and resources** – installs into that profile;
-- the **Discover** tab in the menu – you pick the target profile at the top.
+- the **Mods** tab in the menu – you pick the target profile at the top.
 
 ![Mods and resources in a profile](launcher-mody.webp)
 
@@ -28,11 +28,11 @@ Each result has buttons:
 
 > Shaders need the Iris mod. The launcher reminds you on the Shaders tab.
 
-## Discover
+## The Mods tab
 
-The **Discover** tab is the same browser without opening a profile. The profile tile at the top shows where downloads go; click it to choose another profile.
+The **Mods** tab is the same browser without opening a profile. The profile tile at the top shows where downloads go; click it to choose another profile.
 
-![The Discover tab with shaders](launcher-odkrywaj.webp)
+![The Mods tab with shaders](launcher-odkrywaj.webp)
 
 ## Installed
 

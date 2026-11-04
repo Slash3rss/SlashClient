@@ -8,7 +8,7 @@ Profil to osobna instalacja Minecrafta: wersja gry, mod loader, mody, ustawienia
 Po lewej jest lista profili (ikona, wersja, loader, czas gry) i przycisk **Statystyki**. Po prawej cztery zakładki wybranego profilu:
 
 - **Ustawienia** – wszystko z tej strony;
-- **Mody i zasoby** – zobacz [Mody, paczki i Odkrywaj](/wiki/launcher-mody);
+- **Mody i zasoby** – zobacz [Mody i paczki](/wiki/launcher-mody);
 - **Światy i zrzuty** i **Configi** – zobacz [Światy, zrzuty, klipy i configi](/wiki/launcher-swiaty);
 - **Statystyki** – zobacz [Statystyki i podsumowanie sesji](/wiki/launcher-statystyki).
 

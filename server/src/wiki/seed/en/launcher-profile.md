@@ -8,7 +8,7 @@ A profile is a separate Minecraft install: game version, mod loader, mods, setti
 On the left is the list of profiles (icon, version, loader, play time) and the **Statistics** button. On the right are the chosen profile's tabs:
 
 - **Settings** – everything on this page;
-- **Mods and resources** – see [Mods, packs and Discover](/wiki/launcher-mody);
+- **Mods and resources** – see [Mods and packs](/wiki/launcher-mody);
 - **Worlds and screenshots** and **Configs** – see [Worlds, screenshots, clips and configs](/wiki/launcher-swiaty);
 - **Statistics** – see [Statistics and session summary](/wiki/launcher-statystyki).
 

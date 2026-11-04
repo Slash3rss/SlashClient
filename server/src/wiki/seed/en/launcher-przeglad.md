@@ -8,12 +8,12 @@ The SlashClient launcher installs and starts Minecraft with mods, helps you find
 | Tab | What's there |
 |---|---|
 | **Play** | profile and account picker, the PLAY button, back to your last server, news and the console – [Play](/wiki/launcher-graj) |
-| **Servers** | server list with live ping, voting and joining – [Servers](/wiki/launcher-serwery) |
-| **Discover** | mods, resource packs, shaders, modpacks and datapacks – [Mods, packs and Discover](/wiki/launcher-mody) |
-| **Friends** | your SlashClient account, chat, parties, groups, clans and communities – [Friends and chat](/wiki/launcher-znajomi), [Groups, clans and communities](/wiki/launcher-spolecznosci) |
-| **Achievements** | achievements, challenges, Sparks and recommending – [Achievements, challenges and Sparks](/wiki/launcher-osiagniecia) |
 | **Profiles** | game installs with their settings, mods, worlds, configs and statistics – [Profiles](/wiki/launcher-profile), [Worlds, screenshots, clips and configs](/wiki/launcher-swiaty), [Statistics](/wiki/launcher-statystyki) |
+| **Mods** | mods, resource packs, shaders, modpacks and datapacks – [Mods and packs](/wiki/launcher-mody) |
+| **Servers** | server list with live ping, voting and joining – [Servers](/wiki/launcher-serwery) |
+| **Friends** | your SlashClient account, chat, parties, groups, clans and communities – [Friends and chat](/wiki/launcher-znajomi), [Groups, clans and communities](/wiki/launcher-spolecznosci) |
 | **Accounts** | Minecraft accounts, skin, skin editor and cosmetics – [Accounts, skins and cosmetics](/wiki/launcher-konta) |
+| **Achievements** | achievements, challenges, Sparks and recommending – [Achievements, challenges and Sparks](/wiki/launcher-osiagniecia) |
 | **Wiki** | minecraft.wiki, the SkyUp.pl server wiki and this wiki – [The Wiki tab](/wiki/launcher-wiki) |
 | **Settings** | language, Java, memory, updates, disk cleanup – [Settings and updates](/wiki/launcher-ustawienia) |
 

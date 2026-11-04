@@ -8,12 +8,12 @@ Launcher SlashClient instaluje i uruchamia Minecrafta z modami, pomaga znaleźć
 | Zakładka | Co tam jest |
 |---|---|
 | **Graj** | wybór profilu i konta, przycisk GRAJ, powrót do ostatniego serwera, nowości i konsola – [Graj](/wiki/launcher-graj) |
-| **Serwery** | lista serwerów z pingiem, głosowanie i dołączanie – [Serwery](/wiki/launcher-serwery) |
-| **Odkrywaj** | mody, paczki zasobów, shadery, modpacki i datapacki – [Mody, paczki i Odkrywaj](/wiki/launcher-mody) |
-| **Znajomi** | konto SlashClient, czat, drużyny, grupy, klany i społeczności – [Znajomi i czat](/wiki/launcher-znajomi), [Grupy, klany i społeczności](/wiki/launcher-spolecznosci) |
-| **Osiągnięcia** | osiągnięcia, wyzwania, Iskry i polecanie – [Osiągnięcia, wyzwania i Iskry](/wiki/launcher-osiagniecia) |
 | **Profile** | instalacje gry z ustawieniami, mody, światy, configi i statystyki – [Profile](/wiki/launcher-profile), [Światy, zrzuty, klipy i configi](/wiki/launcher-swiaty), [Statystyki](/wiki/launcher-statystyki) |
+| **Mody** | mody, paczki zasobów, shadery, modpacki i datapacki – [Mody i paczki](/wiki/launcher-mody) |
+| **Serwery** | lista serwerów z pingiem, głosowanie i dołączanie – [Serwery](/wiki/launcher-serwery) |
+| **Znajomi** | konto SlashClient, czat, drużyny, grupy, klany i społeczności – [Znajomi i czat](/wiki/launcher-znajomi), [Grupy, klany i społeczności](/wiki/launcher-spolecznosci) |
 | **Konta** | konta Minecraft, skin, edytor skina i kosmetyki – [Konta, skiny i kosmetyki](/wiki/launcher-konta) |
+| **Osiągnięcia** | osiągnięcia, wyzwania, Iskry i polecanie – [Osiągnięcia, wyzwania i Iskry](/wiki/launcher-osiagniecia) |
 | **Wiki** | minecraft.wiki, wiki serwera SkyUp.pl i ta wiki – [Zakładka Wiki](/wiki/launcher-wiki) |
 | **Ustawienia** | język, Java, pamięć, aktualizacje, sprzątanie miejsca – [Ustawienia i aktualizacje](/wiki/launcher-ustawienia) |
 

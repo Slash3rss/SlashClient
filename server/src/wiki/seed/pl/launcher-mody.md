@@ -1,10 +1,10 @@
 <!-- dzial: launcher | kolejnosc: 30 | ikona: fa-puzzle-piece | opis: Szukanie i instalowanie modów, paczek zasobów, shaderów, modpacków i datapacków z Modrinth i CurseForge -->
-# Mody, paczki i Odkrywaj
+# Mody i paczki
 
 Launcher sam pobiera mody, paczki zasobów, shadery, modpacki i datapacki z **Modrinth** i **CurseForge** i instaluje je do wybranego profilu. Ta sama przeglądarka jest w dwóch miejscach:
 
 - **Profile → wybrany profil → Mody i zasoby** – instaluje do tego profilu;
-- zakładka **Odkrywaj** w menu – na górze wybierasz profil, do którego trafią pobrane rzeczy.
+- zakładka **Mody** w menu – na górze wybierasz profil, do którego trafią pobrane rzeczy.
 
 ![Mody i zasoby w profilu](launcher-mody.webp)
 
@@ -28,11 +28,11 @@ Przy każdej pozycji są przyciski:
 
 > Shadery wymagają moda Iris. Launcher przypomina o tym na zakładce Shadery.
 
-## Odkrywaj
+## Zakładka Mody
 
-Zakładka **Odkrywaj** to ta sama przeglądarka, otwarta bez wchodzenia w profil. Kafelek profilu na górze pokazuje, dokąd trafią pobrane rzeczy; kliknij go, żeby wybrać inny profil.
+Zakładka **Mody** to ta sama przeglądarka, otwarta bez wchodzenia w profil. Kafelek profilu na górze pokazuje, dokąd trafią pobrane rzeczy; kliknij go, żeby wybrać inny profil.
 
-![Zakładka Odkrywaj z shaderami](launcher-odkrywaj.webp)
+![Zakładka Mody z shaderami](launcher-odkrywaj.webp)
 
 ## Zainstalowane
 
