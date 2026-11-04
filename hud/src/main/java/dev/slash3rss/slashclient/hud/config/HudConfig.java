@@ -365,6 +365,13 @@ public final class HudConfig {
 	public String hitMarkerSoundKind = "ding";
 	public int hitMarkerVolume = 50;
 	public boolean hitMarkerKill = true;
+	/**
+	 * A potion drunk running out (PotionEnd): where it is told, how many seconds before its end (0: at the end), the
+	 * sound and how loud (%).
+	 */
+	public boolean potionEnd = true;
+	public String potionEndPlace = "toast", potionEndSound = "pling";
+	public int potionEndWarn = 0, potionEndVolume = 70;
 	public int hitMarkerKillColor = 0xFFF87171;
 	public boolean hitMarkerProjectiles = true;
 	/** Our own armour not drawn on our player (F5, the inventory), piece by piece, so the skin and cosmetics show (OwnArmor); others always see it. */
@@ -829,6 +836,8 @@ public final class HudConfig {
 		read.screenshotCaptionCorner = oneOf(read.screenshotCaptionCorner, ShotCaption.CORNERS);
 		read.hitMarkerStyle = oneOf(read.hitMarkerStyle, HitMarker.STYLES);
 		read.hitMarkerSoundKind = oneOf(read.hitMarkerSoundKind, HitMarker.SOUNDS);
+		read.potionEndPlace = oneOf(read.potionEndPlace, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES);
+		read.potionEndSound = oneOf(read.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
 		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		read.spotify = read.spotify == null ? defaults.spotify : read.spotify.checked();
@@ -995,6 +1004,11 @@ public final class HudConfig {
 		hitMarkerSound = other.hitMarkerSound;
 		hitMarkerSoundKind = oneOf(other.hitMarkerSoundKind, HitMarker.SOUNDS);
 		hitMarkerVolume = Math.max(0, Math.min(100, other.hitMarkerVolume));
+		potionEnd = other.potionEnd;
+		potionEndPlace = oneOf(other.potionEndPlace, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES);
+		potionEndSound = oneOf(other.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
+		potionEndWarn = Math.max(0, Math.min(60, other.potionEndWarn));
+		potionEndVolume = Math.max(0, Math.min(100, other.potionEndVolume));
 		hitMarkerKill = other.hitMarkerKill;
 		hitMarkerKillColor = other.hitMarkerKillColor;
 		hitMarkerProjectiles = other.hitMarkerProjectiles;

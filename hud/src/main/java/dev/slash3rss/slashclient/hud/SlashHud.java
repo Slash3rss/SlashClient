@@ -354,6 +354,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
 			dev.slash3rss.slashclient.hud.gamehud.Exhaustion.tick(mc);
+			dev.slash3rss.slashclient.hud.gamehud.PotionEnd.tick(mc);
 			// a fresh Microsoft token from the launcher before the game's runs out (in the menus)
 			SessionRenew.tick(mc);
 			PartnerIcons.tick(mc);
@@ -479,6 +480,7 @@ public class SlashHud implements ClientModInitializer {
 			ChatWindows.draw(g, mc);
 			Shots.draw(g);
 			SlotLock.drawHotbar(g, mc);
+			dev.slash3rss.slashclient.hud.gamehud.PotionEnd.draw(g, mc);
 			//#if MC >= 26.3
 			dev.slash3rss.slashclient.hud.skyup.SkyReminder.draw(g, mc);
 			//#endif

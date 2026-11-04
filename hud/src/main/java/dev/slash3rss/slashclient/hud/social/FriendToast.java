@@ -28,7 +28,9 @@ public final class FriendToast implements Toast {
 		ACHIEVEMENT(0xFFFFC94D, 0xFFB7791F),
 		ERROR(0xFFF87171, 0xFFB91C1C),
 		// a clip saved, a resource pack kept, a LAN world opened…: the blue of messages, switched apart
-		OTHER(Ui.ACCENT_LIGHT, Ui.ACCENT_DARK);
+		OTHER(Ui.ACCENT_LIGHT, Ui.ACCENT_DARK),
+		// a potion drunk running out: purple, with its own switch (PotionEnd)
+		POTION(0xFFC084FC, 0xFF7E22CE);
 
 		final int light, dark;
 
@@ -47,6 +49,7 @@ public final class FriendToast implements Toast {
 				case "info" -> ERROR;
 				case "m-advancements" -> ACHIEVEMENT;
 				case "m-players" -> COMMUNITY;
+				case "m-effects" -> POTION;
 				case "m-armor" -> INVITE;
 				case "m-friends", "m-screenshot" -> MESSAGE;
 				default -> OTHER;
@@ -65,6 +68,8 @@ public final class FriendToast implements Toast {
 		boolean wanted() {
 			var c = dev.slash3rss.slashclient.hud.SlashHud.config;
 			if (c == null) return true;
+			// asked for in the potion's own setting, so not the toasts' switches
+			if (this == POTION) return true;
 			if (!c.toasts) return false;
 			if (social() && c.toastDnd && Social.doNotDisturb()) return false;
 			return switch (this) {
@@ -77,6 +82,7 @@ public final class FriendToast implements Toast {
 				case ACHIEVEMENT -> c.toastAchievements;
 				case ERROR -> c.toastErrors;
 				case OTHER -> c.toastOther;
+				case POTION -> true;
 			};
 		}
 	}

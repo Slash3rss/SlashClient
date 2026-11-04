@@ -700,6 +700,12 @@ public final class Catalog {
 			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
 		out.add(new Entry("liveNametags", "slashclient-hud.extra.liveNametags", "extras", "m-badges", () -> cfg.liveNametags, v -> cfg.liveNametags = v, List.of(), null));
 		out.add(new Entry("nametagPing", "slashclient-hud.extra.nametagPing", "extras", "m-tablist", () -> cfg.nametagPing, v -> cfg.nametagPing = v, List.of(), null));
+		// a potion the player drank running out: where, how early and with what sound
+		out.add(new Entry("potionEnd", "slashclient-hud.potionEnd", "combat", "m-effects", () -> cfg.potionEnd, v -> cfg.potionEnd = v, List.of(
+			new Choice("slashclient-hud.potionEnd.place", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES, "slashclient-hud.potionEnd.place.", () -> cfg.potionEndPlace, v -> cfg.potionEndPlace = v),
+			new Slider("slashclient-hud.potionEnd.warn", 0f, 30f, 5f, "%.0f s", () -> (float) cfg.potionEndWarn, v -> cfg.potionEndWarn = Math.round(v)),
+			new Choice("slashclient-hud.potionEnd.sound", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS, "slashclient-hud.potionEnd.sound.", () -> cfg.potionEndSound, v -> cfg.potionEndSound = v),
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.potionEndVolume, v -> cfg.potionEndVolume = Math.round(v))), null));
 		// SlashClient's notifications: which kinds come, and quiet while the launcher says "Nie przeszkadzać"
 		out.add(new Entry("notifications", "slashclient-hud.notifications", "extras", "m-toasts", () -> cfg.toasts, v -> cfg.toasts = v, List.of(
 			new Toggle("slashclient-hud.notifications.messages", () -> cfg.toastMessages, v -> cfg.toastMessages = v),

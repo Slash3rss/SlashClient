@@ -3291,6 +3291,28 @@ public final class TestHooks {
 	}
 	//#endif
 
+	/** The potion's notification on, shown in `place`, `warn` seconds before the end (0: at it), without a sound. */
+	public static void potionEnd(String place, int warn) {
+		HudConfig c = SlashHud.config;
+		c.potionEnd = true;
+		c.potionEndPlace = place;
+		c.potionEndWarn = warn;
+		c.potionEndSound = "none";
+	}
+
+	/** As if the player just finished drinking a potion (its effects come from the server in the moments after). */
+	public static void drankPotion() {
+		dev.slash3rss.slashclient.hud.gamehud.PotionEnd.drankForTest();
+	}
+
+	public static int potionNotifications() {
+		return dev.slash3rss.slashclient.hud.gamehud.PotionEnd.shownForTest();
+	}
+
+	public static boolean potionBanner() {
+		return dev.slash3rss.slashclient.hud.gamehud.PotionEnd.bannerForTest();
+	}
+
 	/** The hit marker on or off in a look, a second long (long enough for a screenshot), with a kill colour and the sound; what showed is forgotten. */
 	public static void hitMarker(boolean on, String style) {
 		HudConfig c = SlashHud.config;
