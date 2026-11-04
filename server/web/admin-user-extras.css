@@ -1,0 +1,19 @@
+/* The account drawer's further sections (adminUserExtras.js): folded, one under another. */
+.ux { display: flex; flex-direction: column; gap: 8px; }
+.ux-section { border: 1px solid var(--border, rgba(255, 255, 255, .08)); border-radius: 12px; padding: 0 12px; }
+.ux-section > summary { cursor: pointer; padding: 10px 0; font-weight: 600; list-style-position: inside; }
+.ux-section[open] > summary { border-bottom: 1px solid var(--border, rgba(255, 255, 255, .08)); margin-bottom: 8px; }
+.ux-body { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.ux-sub { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.ux-sub select { text-transform: none; letter-spacing: 0; font-size: 12px; padding: 2px 6px; margin-left: auto; }
+.ux-list { display: flex; flex-direction: column; gap: 2px; }
+.ux-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.ux-row .grow { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.ux-row .grow > span { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ux-row .icon-btn { width: 30px; height: 30px; flex: none; }
+.ux-num { width: 90px; }
+.ux-note { color: var(--gold); }
+.ux-days { display: flex; gap: 3px; }
+.ux-day { width: 16px; height: 16px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
+.ux-day.some { background: rgba(250, 204, 21, .3); }
+.ux-day.on { background: var(--green); }
