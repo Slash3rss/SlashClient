@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { LiveInfo, Platform } from './providers.ts';
+import { statements } from '../statements.ts';
 
 /**
  * "Streamy"'s tables, each its own (added next to the rest, nothing else changes):
@@ -110,7 +111,7 @@ export class StreamStore {
   }
 
   prefs(uuid: string): Prefs {
-    const r = this.sql.prepare('SELECT hide, notify FROM stream_prefs WHERE uuid = ?').get(uuid) as { hide: number; notify: number } | undefined;
+    const r = statements(this.sql)('SELECT hide, notify FROM stream_prefs WHERE uuid = ?').get(uuid) as { hide: number; notify: number } | undefined;
     return { hide: !!r?.hide, notify: r ? !!r.notify : true };
   }
 

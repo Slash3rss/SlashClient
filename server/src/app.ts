@@ -3,11 +3,11 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { Db, type Message, type User } from './db.ts';
+import { Db, type CosmeticSetting, type Message, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
-import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, compareVersions, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
@@ -51,7 +51,7 @@ import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
 import { serverVoteRoutes } from './serverVotes.ts';
-import { featureKey, featuresFor } from './features.ts';
+import { bannerOf, featureKey, featuresFor, featuresOf } from './features.ts';
 import { disabledPage, downloadDownPage, errorPage, homeRedirect, noInstallerPage, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
@@ -138,6 +138,18 @@ const MC_CHALLENGE_MS = 2 * 60_000;
 const SHOP_SINCE = '0.9.22';
 /** The streak achievements whose cape reward came in 0.9.70, after players had unlocked them (db.ts grantLateRewards). */
 const LATE_STREAK_REWARDS = ['streak_7', 'streak_14', 'streak_60', 'streak_100', 'streak_365'];
+/** The first launchers reading `items` of /v1/cosmetics (with their games through them): `capes` is left out for them. */
+const ITEMS_SINCE = '0.8.0';
+/**
+ * From this launcher on (and the games it starts, which ask through it), /v1/me and the live
+ * connection's `ready` leave out what only the website reads: `grants`, `avatars`, `avatarSource`.
+ */
+export const LEAN_SINCE = '0.9.70';
+/** Whether the asking launcher or mod names its version (X-SlashClient) and it is at least `version`; the website and unnamed clients never are. */
+function namedClientAtLeast(header: string | string[] | undefined, version: string): boolean {
+  const named = /^(?:launcher|mod)\/([\w.+-]{1,32})$/.exec(String(header ?? ''));
+  return !!named && compareVersions(named[1], version) >= 0;
+}
 const MAX_MESSAGE = 2000;
 /** An encrypted message: the text plus a wrapped key for each launcher of both friends. */
 const MAX_ENCRYPTED = 14_000;
@@ -417,15 +429,17 @@ export function createApp(cfg: Config) {
   }
 
   // a feature switched or the banner changed: every launcher connected asks /v1/features again
+  // (the event carries what /v1/features says, so a launcher that reads it need not ask; older ones ignore it)
   settings.onChange((changes) => {
     if (!changes.some((c) => c.key.startsWith('feature.') || c.key.startsWith('banner.'))) return;
-    const data = JSON.stringify({ type: 'features' });
+    const data = JSON.stringify({ type: 'features', features: featuresOf(settings), banner: bannerOf(settings) });
     for (const set of sockets.values()) for (const ws of set) ws.send(data);
   });
 
-  function presenceOf(userId: string) {
-    const user = db.user(userId);
-    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId), statusRules.nameFor);
+  /** `known`: the account's setting and last visit when the caller read them already (the friends list). */
+  function presenceOf(userId: string, known?: { showServer: boolean; lastSeen: number }) {
+    const showServer = known ? known.showServer : db.user(userId)?.showServer ?? false;
+    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, showServer, known ? known.lastSeen : db.lastSeen(userId), statusRules.nameFor);
     // a world opened to LAN: friends can join it through the relay below
     return lanHosts.has(userId) && presence.status !== 'offline' ? { ...presence, lan: true } : presence;
   }
@@ -436,8 +450,7 @@ export function createApp(cfg: Config) {
   }
 
   /** What a player in a game shows: the character's own set or the account's, only what they may still wear. */
-  function wornBy(owner: User, character: string | undefined): Record<string, string> {
-    const settings = db.cosmeticSettings();
+  function wornBy(owner: User, character: string | undefined, settings = db.cosmeticSettings()): Record<string, string> {
     const granted = db.grants(owner.id);
     const badge = wearOf(owner);
     const own = character ? db.characterLoadout(owner.id, character) : null;
@@ -448,6 +461,56 @@ export function createApp(cfg: Config) {
     return worn;
   }
 
+  // ---- the game's lookup: what each player in sight shows, kept a little while ----
+  // (every HUD on a full server asks about the same players; each answer took many queries per player)
+
+  /** How long one player's badge and set are kept; a change of theirs (cosmeticsChanged) drops them at once. */
+  const LOOKUP_KEEP_MS = 30_000;
+  type LookupEntry = { owner: string; badge: ReturnType<typeof gameBadge>; worn: Record<string, string> };
+  /** Account → (Minecraft uuid, character and what the HUD knows) → its entry; null: an account gone or banned. */
+  const lookupKept = new Map<string, Map<string, { at: number; value: LookupEntry | null }>>();
+  /** What the kept entries were counted with: the admin's cosmetics settings and the admin log (any admin action). */
+  let lookupMark = -1;
+  // a setting changed in the panel (a feature, a limit): counted again too
+  settings.onChange(() => lookupKept.clear());
+  /** The cosmetics settings, read once per request and only when needed. */
+  const lazyCosmeticSettings = () => {
+    let kept: Map<string, CosmeticSetting> | undefined;
+    return () => (kept ??= db.cosmeticSettings());
+  };
+
+  function lookupEntry(uuid: string, link: { user: string; character?: string }, known: string[], settings: () => Map<string, CosmeticSetting>): LookupEntry | undefined {
+    const mark = db.changeMark();
+    if (mark !== lookupMark) {
+      lookupKept.clear();
+      lookupMark = mark;
+    }
+    const now = Date.now();
+    const key = `${uuid.toLowerCase()}|${link.character ?? ''}|${known.join(',')}`;
+    let mine = lookupKept.get(link.user);
+    const hit = mine?.get(key);
+    if (hit && now - hit.at < LOOKUP_KEEP_MS && now >= hit.at) return hit.value ?? undefined;
+    const owner = db.user(link.user);
+    let value: LookupEntry | null = null;
+    if (owner && !owner.banned) {
+      const held = ranks.held(owner);
+      // the Minecraft account played as may show a badge of its own
+      const badge = gameBadge(ranks.shown(owner, held, link.character), held, known);
+      // only what the player may still wear: the admin may have switched it off, or the rank may be gone
+      value = { owner: owner.id, badge, worn: wornBy(owner, link.character, settings()) };
+    }
+    if (!mine) lookupKept.set(link.user, (mine = new Map()));
+    mine.set(key, { at: now, value });
+    // players who left are not kept for good
+    if (lookupKept.size > 20_000) {
+      for (const [user, entries] of lookupKept) {
+        for (const [k, e] of entries) if (now - e.at >= LOOKUP_KEEP_MS) entries.delete(k);
+        if (!entries.size) lookupKept.delete(user);
+      }
+    }
+    return value ?? undefined;
+  }
+
   // ---- cosmetics changed: everyone who may see that player in a game hears it at once ----
   // (HUDs ask /v1/mc/lookup only every few minutes, so without this a new cape showed late)
 
@@ -456,6 +519,8 @@ export function createApp(cfg: Config) {
   const cosmeticsTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   function cosmeticsChanged(userId: string) {
+    // the game's next lookup counts this player again (a rank, a supporter's tier, a ban: all come through here)
+    lookupKept.delete(userId);
     if (cosmeticsTimers.has(userId)) return;
     const timer = setTimeout(() => {
       cosmeticsTimers.delete(userId);
@@ -589,31 +654,38 @@ export function createApp(cfg: Config) {
     const unread = db.unreadCounts(me);
     const last = db.lastMessageTimes(me);
     const muted = mutes.store.muted(me);
-    const friends = db.friends(me);
-    // the clans of all of them in one query, not two per friend
-    const tags = clans.tagsOf(friends.map((f) => f.id));
+    // each friend with their account and last visit in one query, and the clans of all of them in another
+    const rows = db.friendsWithUsers(me);
+    const tags = clans.tagsOf(rows.map((r) => r.friend.id));
     return {
-      friends: friends.map((f) => {
+      friends: rows.map(({ friend: f, user: u, lastSeen }) => {
         const tagged = tags.get(f.id);
         const clan = tagged?.tag;
         // the clan's logo (its id and version) next to the tag, when it has one
         const clanLogo = tagged && tagged.logo !== null ? { id: tagged.clan, v: tagged.logo } : undefined;
         // the rank badge they show next to their nick (ranks.ts); launchers before 0.9.23 ignore it
-        const u = db.user(f.id);
-        const shown = u ? ranks.shown(u) : undefined;
+        const shown = ranks.shown(u);
         const badgeRank = shown ? { id: shown.id, name: shown.name, nameEn: shown.nameEn, color: shown.color, ...(shown.icon ? { icon: shown.icon } : {}) } : undefined;
         // live on Twitch or Kick (streams.ts), unless they hide it; launchers before 0.9.24 ignore it
         const stream = streams.friendView(f.id);
-        return { ...f, ...(stream ? { stream } : {}), presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
+        return { ...f, ...(stream ? { stream } : {}), presence: presenceOf(f.id, { showServer: u.showServer, lastSeen }), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
     };
   }
 
-  function meWithProviders(me: string) {
+  /**
+   * The player's own account. `lean`: for launchers (and their games) from LEAN_SINCE, without what only
+   * the website reads (the grants, and the avatars to pick from with the one picked).
+   */
+  const leanFor = (req: http.IncomingMessage) => namedClientAtLeast(req.headers['x-slashclient'], LEAN_SINCE);
+  function meWithProviders(me: string, lean = false) {
     const { banned: _banned, ...user } = db.user(me)!;
     const minecraft = db.minecraftAccounts(me);
+    if (lean) {
+      return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), supporter: support.summary(me), ...ranks.forMe(user) };
+    }
     const choice = db.avatarChoice(me);
     return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me), supporter: support.summary(me),
       // every rank held, the pick of the badge and the rank shown (ranks.ts)
@@ -1111,6 +1183,8 @@ export function createApp(cfg: Config) {
       const res = requests.query({
         q: url.searchParams.get('q') ?? '', errors: url.searchParams.get('errors') === '1',
         client: url.searchParams.get('client') ?? '', user: url.searchParams.get('user') ?? '', limit: Number(url.searchParams.get('limit')) || 200,
+        // `since=<at>`: only what came after it (a panel polling for news); without it, everything as before
+        ...(Number.isFinite(Number(url.searchParams.get('since'))) && url.searchParams.get('since') ? { since: Number(url.searchParams.get('since')) } : {}),
       });
       const handles = new Map<string, string>();
       for (const e of res.entries) if (e.user && !handles.has(e.user)) handles.set(e.user, db.user(e.user)?.handle ?? '');
@@ -1137,13 +1211,14 @@ export function createApp(cfg: Config) {
         // sold in the shop for sparks (items only the shop has come only to launchers that know it: `since`)
         ...(knowsShop && priceOf(settings, i.id) ? { price: priceOf(settings, i.id), owned: granted.includes(i.id) } : {}),
       }));
+      // (`emotes`, the emote names, went: no launcher, game or page ever read them here)
       return {
-        // the launcher before 0.8 knows capes only
-        capes: items.filter((i) => i.slot === 'cape').map(({ id, name, exclusive, available }) => ({ id, name, exclusive: exclusive || !!ITEMS.find((x) => x.id === id)?.rank, available })),
+        // the launcher before 0.8 knows capes only (the website still reads them too); launchers from 0.8 read `items`
+        ...(namedClientAtLeast(req.headers['x-slashclient'], ITEMS_SINCE) ? {}
+          : { capes: items.filter((i) => i.slot === 'cape').map(({ id, name, exclusive, available }) => ({ id, name, exclusive: exclusive || !!ITEMS.find((x) => x.id === id)?.rank, available })) }),
         items,
         // sets of items that go together (0.9.70): only their parts this client gets among `items`; older ones ignore them
         sets: setsFor((slot, id) => items.some((i) => i.id === id && i.slot === slot)),
-        emotes: EMOTES,
         ...(me ? { wallet: { balance: wallet.balance(me) } } : {}),
       };
     }],
@@ -1248,7 +1323,8 @@ export function createApp(cfg: Config) {
     }],
 
     // -- my account --
-    ['GET', /^\/v1\/me$/, (req) => meWithProviders(authed(req))],
+    // launchers from LEAN_SINCE get it without what only the website reads (meWithProviders)
+    ['GET', /^\/v1\/me$/, (req) => meWithProviders(authed(req), leanFor(req))],
     // a provider can go as long as another one is left to sign in with
     ['DELETE', /^\/v1\/me\/providers\/(discord|microsoft|google|github)$/, (req, [provider]) => {
       const me = authed(req);
@@ -1256,14 +1332,14 @@ export function createApp(cfg: Config) {
       if (!linked.includes(provider)) throw new HttpError(404, 'not_found');
       if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlink(me, provider);
-      return meWithProviders(me);
+      return meWithProviders(me, leanFor(req));
     }],
     ['DELETE', /^\/v1\/me\/minecraft\/([0-9a-f]{32})$/, (req, [mcUuid]) => {
       const me = authed(req);
       if (db.owner('minecraft', mcUuid) !== me) throw new HttpError(404, 'not_found');
       if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlinkIdentity(me, 'minecraft', mcUuid);
-      return meWithProviders(me);
+      return meWithProviders(me, leanFor(req));
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
@@ -1291,7 +1367,7 @@ export function createApp(cfg: Config) {
         if (own === false) {
           db.setCharacterLoadout(me, subject, null);
           cosmeticsChanged(me);
-          return meWithProviders(me);
+          return meWithProviders(me, leanFor(req));
         }
         const user = db.user(me)!;
         const next = db.characterLoadout(me, subject) ?? { ...user.loadout, ...(user.cape ? { cape: user.cape } : {}) };
@@ -1307,7 +1383,7 @@ export function createApp(cfg: Config) {
         }
         db.setCharacterLoadout(me, subject, next);
         cosmeticsChanged(me);
-        return meWithProviders(me);
+        return meWithProviders(me, leanFor(req));
       }
       if (cape !== undefined && cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge, level)) throw new HttpError(400, 'bad_cape');
       // the other slots: { wings: 'angel', trail: '' … }, '' takes the item off; checked before anything is saved,
@@ -1334,7 +1410,7 @@ export function createApp(cfg: Config) {
         db.setLoadout(me, nextLoadout);
         cosmeticsChanged(me);
       }
-      return meWithProviders(me);
+      return meWithProviders(me, leanFor(req));
     }],
 
     // -- friends --
@@ -1420,10 +1496,8 @@ export function createApp(cfg: Config) {
       const rankOf: Record<string, string> = {};
       // everything the player wears; HUDs before 0.8 read only `capes`
       const cosmetics: Record<string, Record<string, string>> = {};
-      // the clan tag next to the name ([ABC]); HUDs before clans ignore it
+      // the clan tag next to the name ([ABC]); HUDs before clans ignore it (no HUD ever drew the clan's logo: none is sent)
       const clanTags: Record<string, string> = {};
-      // and its logo, when it has one (clan id and version, for /v1/clans/<id>/logo.png?v=)
-      const clanLogos: Record<string, { id: string; v: number }> = {};
       // a supporter's logo in their tier's colour; HUDs before 0.9.23 show the white one
       const supporterColors: Record<string, string> = {};
       // the shown rank's colour, for HUDs from 0.9.23 (any rank, also ones made in the admin panel)
@@ -1431,28 +1505,31 @@ export function createApp(cfg: Config) {
       // live on Twitch or Kick with an allowed game, not hidden (streams.ts): "● NA ŻYWO" above the head, for HUDs that know it ('live', 0.9.24+)
       const live: Record<string, { platform: string }> = {};
       const wantsLive = known.includes('live');
+      // the players' accounts first (each one's badge and set kept a while, lookupEntry), then their clans in one query
+      const found: [string, string][] = [];
+      const settingsNow = lazyCosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
-        const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
-        if (!owner || owner.banned) continue;
-        const held = ranks.held(owner);
-        // the Minecraft account played as may show a badge of its own
-        const badge = gameBadge(ranks.shown(owner, held, link?.character), held, known);
+        const entry = link && now - link.at < IN_GAME_TTL_MS ? lookupEntry(u, link, known, settingsNow) : undefined;
+        if (!entry) continue;
+        const { badge, worn } = entry;
         if (badge) rankOf[u] = badge.rank;
         if (badge?.color) badgeColors[u] = badge.color;
         if (badge?.supporterColor) supporterColors[u] = badge.supporterColor;
-        // only what the player may still wear: the admin may have switched it off, or the rank may be gone
-        const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
         if (Object.keys(worn).length) cosmetics[u] = worn;
-        const tag = clanTag(owner.id);
-        if (tag) clanTags[u] = tag;
-        const logo = tag ? clans.logoOf(owner.id) : undefined;
-        if (logo) clanLogos[u] = logo;
-        const stream = wantsLive ? streams.friendView(owner.id) : undefined;
+        found.push([u, entry.owner]);
+      }
+      // a clan's tag and a live stream change on their own: read fresh every time
+      const tags = clans.tagsOf([...new Set(found.map(([, owner]) => owner))]);
+      for (const [u, owner] of found) {
+        const tagged = tags.get(owner);
+        if (tagged) clanTags[u] = tagged.tag;
+        const stream = wantsLive ? streams.friendView(owner) : undefined;
         if (stream) live[u] = { platform: stream.platform };
       }
-      return { active, capes, ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
+      // HUDs that know ranks' colours (0.9.23+) read the cape from `cosmetics`: `capes` is only for older ones
+      return { active, ...(known.includes('colors') ? {} : { capes }), ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
         ...(Object.keys(badgeColors).length ? { badgeColors } : {}), ...(Object.keys(live).length ? { live } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
@@ -1466,8 +1543,13 @@ export function createApp(cfg: Config) {
       if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
       const now = Date.now();
       const character = key.replace(/-/g, '');
+      // a game that just started (not a launcher repeating itself every few minutes): players around see its set at once,
+      // not at their HUD's next lookup (the same `cosmetics` event as for a change)
+      const before = linked.get(key);
+      const started = !before || before.user !== me || before.character !== character || now - before.at >= IN_GAME_TTL_MS;
       linked.set(key, { user: me, at: now, character });
       inGame.set(key, now);
+      if (started) cosmeticsChanged(me);
       // servers in offline mode (many Polish networks, e.g. behind a proxy) give players a uuid made
       // from their name: the same player's cape and rank go with that one too, while this game runs
       const name = db.minecraftAccounts(me).find((m) => m.uuid === key.replace(/-/g, ''))?.name;
@@ -2080,8 +2162,19 @@ export function createApp(cfg: Config) {
       if (!m || method !== req.method) continue;
       try {
         const result = await fn(req, m.slice(1), url);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result ?? null));
+        const text = JSON.stringify(result ?? null);
+        // the same for everyone who asks without signing in (the catalog, the switches, the ranks): a browser or a
+        // launcher that has it already gets a short "not changed"; everything else, personal or not, is never kept
+        const tag = method === 'GET' && !req.headers.authorization && PUBLIC_GETS.test(url.pathname) ? weakTag(text) : undefined;
+        if (tag) {
+          // the catalog differs by the asking launcher's version (X-SlashClient) and by browser or not (User-Agent)
+          const headers = { 'Cache-Control': 'no-cache', ETag: tag, Vary: 'X-SlashClient, User-Agent' };
+          if (tagMatches(req.headers['if-none-match'], tag)) res.writeHead(304, headers).end();
+          else res.writeHead(200, { 'Content-Type': 'application/json', ...headers }).end(text);
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(text);
+        }
         // what it did may unlock an achievement (a screenshot shared, a party, a group…)
         try {
           achievements.after(method, url.pathname, (req as SeenRequest).slashUser);
@@ -2155,7 +2248,7 @@ export function createApp(cfg: Config) {
       return;
     }
     // everything that is not the API is the website
-    if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
+    if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'], url.searchParams.get('v') ?? undefined)) return;
     // a browser asking for a page that is not there gets the site's own page, the API its JSON
     if (wantsPage(req, url.pathname)) {
       res.writeHead(404, ERROR_PAGE_HEADERS);
@@ -2289,7 +2382,9 @@ export function createApp(cfg: Config) {
         }
         activity.seen(me);
         if (first) activity.sample(sockets.size, live().inGame);
-        ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me) }));
+        // a launcher that names itself ({ client: 'launcher', version }) from LEAN_SINCE gets the account as /v1/me gives it to it
+        const lean = msg.client === 'launcher' && typeof msg.version === 'string' && namedClientAtLeast(`launcher/${msg.version}`, LEAN_SINCE);
+        ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me, lean) }));
         if (first || presence) broadcastPresence(me);
         // achievements reached before they existed (friends, messages) come with the first connection
         achievements.check(me);
@@ -2606,6 +2701,20 @@ export function createApp(cfg: Config) {
       });
     }),
   };
+}
+
+/** API answers that are the same for everyone (asked without signing in): they get an ETag. */
+const PUBLIC_GETS = /^\/v1\/(cosmetics|features|ranks)$/;
+/** A weak ETag of an answer's text. */
+const weakTag = (text: string) => `W/"${createHash('sha1').update(text).digest('base64url')}"`;
+/** Whether If-None-Match names this tag (weakly: W/ or not), or is "*". */
+function tagMatches(header: string | undefined, tag: string): boolean {
+  if (!header) return false;
+  const bare = tag.replace(/^W\//, '');
+  return header.split(',').some((t) => {
+    const v = t.trim();
+    return v === '*' || v.replace(/^W\//, '') === bare;
+  });
 }
 
 /** The site's own error pages (not found, switched off, failed): no scripts, nothing from elsewhere, not in a frame. */
