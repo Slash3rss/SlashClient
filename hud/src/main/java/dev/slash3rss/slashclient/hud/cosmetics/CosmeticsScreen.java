@@ -299,7 +299,44 @@ public class CosmeticsScreen extends Screen {
 		return minecraft.getGameProfile().id();
 	}
 
-	/** The catalog and what is worn, from the server; the network is never on the game's thread. */
+	/**
+	 * The catalog as the server last gave it, for whom and when: the menu opened again within CATALOG_MS
+	 * uses it instead of asking (what is worn is still asked each time). Anything that may change it
+	 * (buying, wearing, Sparks, an achievement, a rank, the launcher reconnecting) drops it.
+	 */
+	private static volatile JsonObject cachedCatalog;
+	private static volatile String cachedFor = "";
+	private static volatile long cachedAt;
+	static final long CATALOG_MS = 60_000;
+
+	/** The catalog may have changed: the next menu asks the server again. */
+	public static void catalogChanged() {
+		cachedCatalog = null;
+	}
+
+	private static void remember(JsonObject catalog) {
+		cachedFor = String.valueOf(Social.myId());
+		cachedAt = System.currentTimeMillis();
+		cachedCatalog = catalog;
+	}
+
+	/** The remembered catalog when it is still fresh and ours, else null. */
+	static JsonObject cachedCatalog() {
+		JsonObject c = cachedCatalog;
+		return c != null && System.currentTimeMillis() - cachedAt < CATALOG_MS && cachedFor.equals(String.valueOf(Social.myId())) ? c : null;
+	}
+
+	/** For the in-game test: whether the menu would use a remembered catalog now. */
+	public static boolean catalogCachedForTest() {
+		return cachedCatalog() != null;
+	}
+
+	/** For the in-game test: as if the server had just given this catalog. */
+	public static void rememberForTest(JsonObject catalog) {
+		remember(catalog);
+	}
+
+	/** The catalog and what is worn, from the server (both at once); the network is never on the game's thread. */
 	private void load() {
 		if (!Social.available()) {
 			status = "slashclient-hud.cosmetics.noLauncher";
@@ -308,8 +345,19 @@ public class CosmeticsScreen extends Screen {
 		status = null;
 		Thread.ofVirtual().start(() -> {
 			try {
-				JsonObject catalog = Social.api("GET", "/v1/cosmetics", null);
+				JsonObject known = cachedCatalog();
+				var asked = new java.util.concurrent.FutureTask<>(() -> Social.api("GET", "/v1/cosmetics", null));
+				if (known == null) Thread.ofVirtual().start(asked);
 				JsonObject me = Social.api("GET", "/v1/me", null);
+				JsonObject catalog = known;
+				if (catalog == null) {
+					try {
+						catalog = asked.get();
+					} catch (java.util.concurrent.ExecutionException e) {
+						throw e.getCause() instanceof Exception x ? x : e;
+					}
+					remember(catalog);
+				}
 				applyCatalog(catalog);
 				applyMe(me);
 				status = "";
@@ -344,7 +392,9 @@ public class CosmeticsScreen extends Screen {
 		if (!Social.bridged() || !"".equals(status)) return;
 		Thread.ofVirtual().start(() -> {
 			try {
-				applyCatalog(Social.api("GET", "/v1/cosmetics", null));
+				JsonObject catalog = Social.api("GET", "/v1/cosmetics", null);
+				remember(catalog);
+				applyCatalog(catalog);
 			} catch (Exception e) {
 				// what shows stays as it was
 			}
@@ -353,6 +403,7 @@ public class CosmeticsScreen extends Screen {
 
 	/** The Sparks balance changed (the server's 'wallet' event): the open menu shows it, and asks the catalog again. */
 	public static void walletChanged(int balance) {
+		catalogChanged();
 		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
 		mc.execute(() -> {
 			if (Compat.screen(mc) instanceof CosmeticsScreen c && c.balance != balance) {
@@ -383,6 +434,7 @@ public class CosmeticsScreen extends Screen {
 		Thread.ofVirtual().start(() -> {
 			try {
 				var test = shopForTest;
+				catalogChanged();
 				JsonObject res = test != null ? test.apply(e.id()) : Social.api("POST", "/v1/shop/" + e.id() + "/buy", new JsonObject());
 				if (res.has("balance")) balance = res.get("balance").getAsInt();
 				// ours now, at once; the catalog anew says so too
@@ -391,7 +443,9 @@ public class CosmeticsScreen extends Screen {
 				items = List.copyOf(list);
 				if (test == null) {
 					try {
-						applyCatalog(Social.api("GET", "/v1/cosmetics", null));
+						JsonObject catalog = Social.api("GET", "/v1/cosmetics", null);
+						remember(catalog);
+						applyCatalog(catalog);
 					} catch (Exception ignored) {
 						// the item is shown as ours already
 					}
@@ -498,6 +552,7 @@ public class CosmeticsScreen extends Screen {
 
 	private void send(JsonObject body) {
 		busy = true;
+		catalogChanged();
 		Thread.ofVirtual().start(() -> {
 			try {
 				applyMe(Social.api("POST", "/v1/me", body));
