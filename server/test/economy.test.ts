@@ -88,8 +88,9 @@ describe('sparks and achievements', () => {
     assert.ok(shop.length >= 12);
     const total = shop.reduce((n, i) => n + i.price!, 0);
     assert.ok(TOTAL_SPARKS < total && TOTAL_SPARKS > total * 0.5, `${TOTAL_SPARKS} of ${total}`);
-    // nothing free became paid (but the capes free until 0.9.69, which every account from before keeps), nothing earned is sold
-    for (const i of shop) assert.ok(i.since === '0.9.22' || (FORMERLY_FREE_CAPES as readonly string[]).includes(i.id), i.id);
+    // nothing free became paid (but the capes free until 0.9.69, which every account from before keeps), nothing earned is sold;
+    // the sets' items of 0.9.70 came as shop items
+    for (const i of shop) assert.ok(i.since === '0.9.22' || i.since === '0.9.70' || (FORMERLY_FREE_CAPES as readonly string[]).includes(i.id), i.id);
     assert.ok(!shop.some((i) => i.achievement || i.rank));
   });
 

@@ -46,11 +46,11 @@ describe('rings and movement effects', () => {
   });
 
   it('have the autumn leaves: two auras and two still rings, with every leaf picture in the mod', () => {
-    const auras = ITEMS.filter((i) => i.id.startsWith('leaves_'));
+    const auras = ITEMS.filter((i) => i.id.startsWith('leaves_') && i.slot === 'aura');
     assert.deepEqual(auras.map((i) => [i.id, i.slot, i.since]), [['leaves_gold', 'aura', '0.9.29'], ['leaves_autumn', 'aura', '0.9.29']]);
     const cosmetics = readFileSync(`${MOD}/Cosmetics.java`, 'utf8');
     // in the auras' list for every game version (fireflies only from 1.21.5)
-    assert.equal(cosmetics.match(/"tears", (?:"fireflies", )?"leaves_gold", "leaves_autumn"\);/g)?.length, 2);
+    assert.equal(cosmetics.match(/"tears", (?:"fireflies", )?"leaves_gold", "leaves_autumn"[,)]/g)?.length, 2);
     const effects = readFileSync(`${MOD}/CosmeticEffects.java`, 'utf8');
     assert.ok(effects.includes('case "leaves_gold", "leaves_autumn"'));
     // the rings with leaves lie still, in the mod and the previews alike

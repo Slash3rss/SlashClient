@@ -8,7 +8,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /**
  * Autumn leaves on our own player: both leaf auras (golden, and red, brown and golden) falling around
  * the player standing still, both leaf rings lying under the feet and kicking leaves up when walking,
- * and the aura and ring tabs of the cosmetics menu with the figure wearing them.
+ * and the aura and ring tabs of the cosmetics menu with the figure wearing them. Also the sets' particles of 0.9.70:
+ * the infernal and frost auras, and the feathers and falling leaves trails left behind a walking player.
  */
 public class GameAutumnLeaves implements FabricClientGameTest {
 	@Override
@@ -28,6 +29,30 @@ public class GameAutumnLeaves implements FabricClientGameTest {
 				context.takeScreenshot("leaves-aura-" + variant);
 			}
 			context.runOnClient(mc -> TestHooks.wear("aura", null));
+			// the sets' auras: the game's particles (embers, lava and smoke; snowflakes and frost), once the leaves are down
+			context.waitTicks(100);
+			for (String aura : new String[] {"infernal", "frostaura"}) {
+				context.runOnClient(mc -> TestHooks.wear("aura", aura));
+				context.waitTicks(50);
+				context.takeScreenshot("set-aura-" + aura);
+			}
+			context.runOnClient(mc -> TestHooks.wear("aura", null));
+			// the sets' trails: feathers and leaves left floating down behind the player walking (seen from behind)
+			for (String trail : new String[] {"feathers", "leaves_fall"}) {
+				context.runOnClient(mc -> { TestHooks.wear("trail", trail); TestHooks.cosmeticsSelf(null, false); TestHooks.lookSouth(); mc.player.setXRot(20); });
+				int before = context.computeOnClient(mc -> TestHooks.leavesMade());
+				context.runOnClient(mc -> TestHooks.walk(true, false));
+				context.waitTicks(30);
+				int made = context.computeOnClient(mc -> TestHooks.leavesMade()) - before;
+				if (made < 5) throw new AssertionError("The " + trail + " trail made only " + made);
+				context.takeScreenshot("set-trail-" + trail);
+				// stopped and turned aside, seen from the front: the trail behind floats down beside the player
+				context.runOnClient(mc -> { TestHooks.walk(false, false); TestHooks.turn(-60); mc.player.setXRot(10); TestHooks.cosmeticsSelf(null, true); });
+				context.waitTicks(6);
+				context.takeScreenshot("set-trail-" + trail + "-stopped");
+				context.waitTicks(60);
+			}
+			context.runOnClient(mc -> { TestHooks.wear("trail", null); TestHooks.lookSouth(); TestHooks.cosmeticsSelf(null, true); });
 			context.waitTicks(100);
 			// the rings: leaves lying under the feet, from the front; walking kicks some up (seen from behind)
 			for (String variant : new String[] {"gold", "autumn"}) {
@@ -53,6 +78,18 @@ public class GameAutumnLeaves implements FabricClientGameTest {
 				context.getInput().setCursorPos(4, 4);
 				context.waitTicks(60);
 				context.takeScreenshot("leaves-menu-aura-" + variant);
+			}
+			for (String aura : new String[] {"infernal", "frostaura"}) {
+				context.runOnClient(mc -> { TestHooks.cosmeticsMenu("aura"); TestHooks.cosmeticsWorn("aura", aura); });
+				context.getInput().setCursorPos(4, 4);
+				context.waitTicks(40);
+				context.takeScreenshot("set-menu-aura-" + aura);
+			}
+			for (String trail : new String[] {"feathers", "leaves_fall"}) {
+				context.runOnClient(mc -> { TestHooks.cosmeticsMenu("trail"); TestHooks.cosmeticsWorn("trail", trail); });
+				context.getInput().setCursorPos(4, 4);
+				context.waitTicks(40);
+				context.takeScreenshot("set-menu-trail-" + trail);
 			}
 			for (String variant : new String[] {"gold", "autumn"}) {
 				context.runOnClient(mc -> { TestHooks.cosmeticsMenu("ring"); TestHooks.cosmeticsWorn("ring", "ring_leaves_" + variant); });

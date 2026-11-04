@@ -24,4 +24,6 @@ export const COSMETIC_TEXTURES = [
   'entity/cat/cat_red', 'entity/cat/red',
   ...Array.from({ length: 8 }, (_, i) => `particle/spell_${i}`),
   'particle/critical_hit', 'particle/drip_fall', 'particle/drip_hang', 'particle/nautilus', 'particle/firefly',
+  // the infernal aura's embers
+  'particle/lava',
 ];
