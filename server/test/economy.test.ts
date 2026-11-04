@@ -88,8 +88,8 @@ describe('sparks and achievements', () => {
     assert.ok(shop.length >= 12);
     const total = shop.reduce((n, i) => n + i.price!, 0);
     assert.ok(TOTAL_SPARKS < total && TOTAL_SPARKS > total * 0.5, `${TOTAL_SPARKS} of ${total}`);
-    // nothing free became paid (but the capes free until 0.9.69, which every account from before keeps), nothing earned is sold
-    for (const i of shop) assert.ok(i.since === '0.9.22' || (FORMERLY_FREE_CAPES as readonly string[]).includes(i.id), i.id);
+    // nothing free became paid (but the capes free until 0.9.69, which every account from before keeps; 0.9.70's are new), nothing earned is sold
+    for (const i of shop) assert.ok(i.since === '0.9.22' || i.since === '0.9.70' || (FORMERLY_FREE_CAPES as readonly string[]).includes(i.id), i.id);
     assert.ok(!shop.some((i) => i.achievement || i.rank));
   });
 
@@ -400,6 +400,23 @@ describe('sparks and achievements', () => {
     for (const id of ['spray_spark', 'spray_trophy', 'ring_ocean', 'acid', 'glacier']) assert.equal((await call('POST', `/v1/shop/${id}/buy`, p.token)).status, 200);
     const ids = unlockedIds(p.user.id);
     assert.ok(ids.includes('shop_1') && ids.includes('shop_5') && ids.includes('big_spender'));
+  });
+
+  it('sells the knight, pirate and obsidian pieces (shields, swords, tricorn, eyepatch) from 0.9.70 on', async () => {
+    const p = await login('Korsarz');
+    const prices = { shield_crest: 500, shield_obsidian: 500, sword_knight: 600, sword_saber: 600, tricorn: 400, eyepatch: 300 } as Record<string, number>;
+    const ids = Object.keys(prices);
+    const items = (await call('GET', '/v1/cosmetics', p.token, undefined, { 'X-SlashClient': 'launcher/0.9.70' })).body.items.filter((i: any) => ids.includes(i.id));
+    assert.deepEqual(items.map((i: any) => [i.id, i.price, i.available]).sort(), ids.map((id) => [id, prices[id], false]).sort());
+    for (const client of ['launcher/0.9.69', 'mod/0.9.69']) {
+      assert.ok(!(await call('GET', '/v1/cosmetics', p.token, undefined, { 'X-SlashClient': client })).body.items.some((i: any) => ids.includes(i.id)), client);
+    }
+    assert.equal((await call('POST', '/v1/me', p.token, { loadout: { hat: 'tricorn' } })).body.error, 'bad_item');
+    app.wallet.change(p.user.id, 3000, 'admin', '', 'test');
+    for (const id of ids) assert.equal((await call('POST', `/v1/shop/${id}/buy`, p.token)).status, 200, id);
+    const loadout = { hat: 'tricorn', face: 'eyepatch', weapon: 'sword_saber', shield: 'shield_obsidian' };
+    assert.deepEqual((await call('POST', '/v1/me', p.token, { loadout })).body.loadout, loadout);
+    assert.equal((await call('POST', '/v1/me', p.token, { loadout: { face: 'tricorn' } })).body.error, 'bad_item');
   });
 
   it('lets only admins give and take sparks, with a reason, in the admin log, and change prices', async () => {

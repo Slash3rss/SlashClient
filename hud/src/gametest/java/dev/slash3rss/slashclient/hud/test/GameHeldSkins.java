@@ -16,7 +16,7 @@ public class GameHeldSkins implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.heldSkins());
-		if (!known.equals("shield_dragon,shield_demon,shield_cardboard,shield_golden,shield_ice,shield_slash,shield_heart|sword_beam,sword_katana,sword_flame,sword_ice,bow_dragon,bow_crystal"))
+		if (!known.equals("shield_dragon,shield_demon,shield_cardboard,shield_golden,shield_ice,shield_slash,shield_heart,shield_crest,shield_obsidian|sword_beam,sword_katana,sword_flame,sword_ice,sword_knight,sword_saber,bow_dragon,bow_crystal"))
 			throw new AssertionError("Not the held skins we made: " + known);
 		context.getInput().setCursorPos(10, 10);
 		// the menu's tabs from the main menu: the figure holds them
@@ -38,28 +38,50 @@ public class GameHeldSkins implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("held-vanilla-front");
 			// every shield (with the katana) and every sword, from the front
-			for (String shield : new String[] {"shield_dragon", "shield_demon", "shield_cardboard", "shield_golden", "shield_ice", "shield_slash", "shield_heart"}) {
+			for (String shield : new String[] {"shield_dragon", "shield_demon", "shield_cardboard", "shield_golden", "shield_ice", "shield_slash", "shield_heart", "shield_crest", "shield_obsidian"}) {
 				context.runOnClient(mc -> { TestHooks.wear("shield", shield); TestHooks.wear("weapon", "sword_katana"); });
 				context.waitTicks(3);
 				context.takeScreenshot("held-" + shield + "-front");
 			}
-			for (String sword : new String[] {"sword_beam", "sword_flame", "sword_ice"}) {
+			for (String sword : new String[] {"sword_beam", "sword_flame", "sword_ice", "sword_knight", "sword_saber"}) {
 				context.runOnClient(mc -> TestHooks.wear("weapon", sword));
 				context.waitTicks(3);
 				context.takeScreenshot("held-" + sword + "-front");
 			}
 			// ours always show; another player's only when switched on
 			String own = context.computeOnClient(mc -> TestHooks.heldPick(true));
-			if (!own.equals("sword_ice,shield_heart")) throw new AssertionError("Our own skins: " + own);
+			if (!own.equals("sword_saber,shield_obsidian")) throw new AssertionError("Our own skins: " + own);
 			String other = context.computeOnClient(mc -> TestHooks.heldPick(false));
 			if (!other.equals("-,-")) throw new AssertionError("Other players' skins while switched off: " + other);
 			context.runOnClient(mc -> TestHooks.heldOthers(true));
 			other = context.computeOnClient(mc -> TestHooks.heldPick(false));
-			if (!other.equals("sword_ice,shield_heart")) throw new AssertionError("Other players' skins while switched on: " + other);
+			if (!other.equals("sword_saber,shield_obsidian")) throw new AssertionError("Other players' skins while switched on: " + other);
 			context.runOnClient(mc -> TestHooks.heldOthers(false));
 			int swapped = context.computeOnClient(mc -> TestHooks.heldSwapped());
 			if (swapped < 10) throw new AssertionError("The held skins were hardly drawn: " + swapped);
 
+			// the sets' pieces, from the front and behind (the shield's face, the sword's flat): the knight's sword and
+			// crest, the pirate's saber with the tricorn and the eyepatch (and the obsidian shield)
+			context.runOnClient(mc -> { TestHooks.wear("shield", "shield_crest"); TestHooks.wear("weapon", "sword_knight"); TestHooks.wear("hat", "crown"); });
+			context.waitTicks(3);
+			context.takeScreenshot("held-knight-front");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, false));
+			context.waitTicks(5);
+			context.takeScreenshot("held-knight-back");
+			context.runOnClient(mc -> TestHooks.firstPerson());
+			context.waitTicks(5);
+			context.takeScreenshot("held-knight-firstperson");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, false));
+			context.runOnClient(mc -> { TestHooks.wear("shield", "shield_obsidian"); TestHooks.wear("weapon", "sword_saber"); TestHooks.wear("hat", "tricorn"); TestHooks.wear("face", "eyepatch"); });
+			context.waitTicks(3);
+			context.takeScreenshot("held-pirate-back");
+			context.runOnClient(mc -> TestHooks.firstPerson());
+			context.waitTicks(5);
+			context.takeScreenshot("held-pirate-firstperson");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
+			context.waitTicks(5);
+			context.takeScreenshot("held-pirate-front");
+			context.runOnClient(mc -> { TestHooks.wear("hat", null); TestHooks.wear("face", null); });
 			// from behind and from the side
 			context.runOnClient(mc -> { TestHooks.wear("shield", "shield_slash"); TestHooks.wear("weapon", "sword_flame"); });
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, false));

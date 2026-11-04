@@ -153,6 +153,41 @@ function bow({ wood, grip, string, tips, arrow, pull }) {
   return s;
 }
 
+/**
+ * A cutlass: a broad blade from the grip up to the top right that curves back (its edge on the outside
+ * of the curve), a gold basket guard wrapped round the hand from the guard down to the pommel.
+ */
+function saber() {
+  const s = sprite();
+  // the blade along a curve from the guard to the tip, bowed out to the bottom right, widest two thirds up
+  const P = [[5, 10.5], [12, 8.5], [14.6, 0.8]];
+  const at = (t) => [0, 1].map((i) => (1 - t) ** 2 * P[0][i] + 2 * (1 - t) * t * P[1][i] + t * t * P[2][i]);
+  const width = (t) => (t < 0.7 ? 2.1 + t : 2.8 * (1 - t) / 0.3);
+  for (let y = 0; y < 11; y++) for (let x = 4; x < 16; x++) {
+    let best = Infinity, bt = 0;
+    for (let i = 0; i <= 200; i++) {
+      const [cx, cy] = at(i / 200);
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d < best) [best, bt] = [d, i / 200];
+    }
+    if (best >= width(bt) / 2) continue;
+    // which side of the middle line: the edge (outside of the curve) bright, the back dark
+    const [cx, cy] = at(bt), [nx, ny] = at(Math.min(1, bt + 0.01));
+    const side = (nx - cx) * (y + 0.5 - cy) - (ny - cy) * (x + 0.5 - cx);
+    const across = side / (width(bt) / 2) / Math.hypot(nx - cx, ny - cy);
+    s.put(x, y, across > 0.35 ? hex('#ffffff') : across > -0.35 ? mix(hex('#c3ccd6'), hex('#e3e8ee'), bt) : hex('#717b87'));
+  }
+  // the guard across the blade's foot, a short quillon back towards the top left
+  for (const [x, y, c] of [[3, 10, '#f2c94a'], [4, 11, '#e3b341'], [5, 11, '#fff0a8'], [4, 10, '#b8860b']]) s.put(x, y, hex(c));
+  // the basket: a gold bow from the guard round the knuckles to the pommel (the hand inside it in shadow)
+  for (const [x, y, c] of [[5, 12, '#f2c94a'], [6, 13, '#e3b341'], [6, 14, '#c9a227'], [5, 15, '#e3b341'], [4, 15, '#c9a227'], [3, 15, '#b8860b'], [2, 15, '#b8860b'], [1, 15, '#e3b341']]) s.put(x, y, hex(c));
+  // the grip inside it, black leather wound with gold wire, and the pommel
+  for (const [x, y, c] of [[3, 12, '#2a1c14'], [2, 13, '#c9a227'], [1, 14, '#2a1c14']]) s.put(x, y, hex(c));
+  s.put(0, 15, hex('#f2c94a'));
+  s.outline();
+  return s;
+}
+
 const WEAPONS = {
   // a blade of light: white in the middle, glowing cyan, a short metal hilt with no guard to speak of
   sword_beam: () => sword({
@@ -195,6 +230,17 @@ const WEAPONS = {
       for (const [x, y] of [[9, 7], [13, 3]]) s.put(x, y, hex('#8fd3ff'));
     },
   }),
+  // a knight's longsword: a bright silver blade with a groove down its middle, a long gold cross-guard,
+  // a purple wrapped grip and a gold pommel (the knight's set)
+  sword_knight: () => sword({
+    len: 10,
+    blade: (t, k) => [k % 4 === 2 ? hex('#7d8792') : hex('#6b7380'), mix(hex('#f4f7fa'), hex('#ffffff'), t), k < 8 ? hex('#b8c0ca') : hex('#d6dce3')],
+    guard: (j, side) => (j === 0 ? hex('#fff0a8') : Math.abs(j) === 2 ? (side ? hex('#a8780e') : hex('#f2c94a')) : side ? hex('#b8860b') : hex('#e3b341')),
+    grip: [hex('#5b2a86'), hex('#8a4fc4'), hex('#5b2a86')],
+    pommel: hex('#f2c94a'),
+  }),
+  // a pirate's cutlass: a broad blade curving back to its tip, a gold basket guard round the hand (the pirate's set)
+  sword_saber: () => saber(),
 };
 
 const BOWS = {
@@ -286,6 +332,32 @@ function logoAt(u, v, w, h) {
 
 /** A heart as the game draws them (9×8). */
 const HEART = ['.##...##.', '#hh#.#hh#', '#h#######', '#########', '.#######.', '..#####..', '...###...', '....#....'];
+
+/** The obsidian shield's facets: centre x, y, half width, half height (texels of its 48×88 face), colour. */
+const OBSIDIAN_FACETS = [
+  [14, 16, 9, 12, '#2e1065'], [34, 22, 8, 14, '#3b0764'], [22, 42, 12, 10, '#1e1b4b'], [12, 64, 8, 13, '#3b0764'],
+  [35, 60, 9, 12, '#2e1065'], [24, 80, 7, 6, '#1e1b4b'], [40, 40, 5, 8, '#4c1d95'],
+];
+
+/** A gold crown 30 texels wide round (0, 0), the top of its band: three points with pearls, a ruby in the band; null off it. */
+function crownAt(cx, cy) {
+  if (Math.abs(cx) > 15) return null;
+  if (cy >= 0 && cy < 7) {
+    if (Math.hypot(cx, cy - 3.5) < 2.6) return Math.hypot(cx + 0.7, cy - 2.8) < 1 ? hex('#ff9aa5') : hex('#c0142c');
+    if (cy < 1 || cy >= 6) return hex('#a8780e');
+    return Math.floor(cx + 15) % 6 === 2 ? hex('#fff0a8') : hex('#e3b341');
+  }
+  if (cy < 0 && cy > -15) {
+    // the points, at the middle (taller) and the two ends, a pearl on each
+    for (const px of [-12, 0, 12]) {
+      const top = px === 0 ? -12 : -9;
+      if (Math.hypot(cx - px, cy - top) < 2) return hex('#f8f4ea');
+      if (cy > top && Math.abs(cx - px) < (cy - top) * 0.45 + 0.6) return cx < px ? hex('#f2c94a') : hex('#d6a425');
+    }
+    if (cy > -3) return hex('#e3b341');
+  }
+  return null;
+}
 
 /**
  * How each shield is painted: `face(x, y, w, h)` for every texel of the front (x, y from its top
@@ -412,6 +484,50 @@ const SHIELDS = {
       return dots ? hex('#ffd6e7') : hex('#ffb8d2');
     },
     back: hex('#d94f87'), rim: hex('#ff9ec4'), handle: hex('#7a1f45'),
+  },
+  // a knight's coat of arms: a field parted down the middle, blue and red (as the knight's tabard), a gold
+  // crown at the top, a gold chevron over both halves and three gold roundels under it, a gold border
+  shield_crest: {
+    face(x, y, w, h) {
+      if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) return (x + y) % 12 < 2 ? hex('#fff0a8') : hex('#d6a425');
+      if (x < 4 || y < 4 || x >= w - 4 || y >= h - 4) return hex('#6b4a10');
+      const mx = x + 0.5 - w / 2;
+      const crown = crownAt(mx, y + 0.5 - 30);
+      if (crown) return crown;
+      // the chevron, its point up
+      const cy = 50 + Math.abs(mx) * 0.9;
+      if (y >= cy && y < cy + 5) return y < cy + 1 ? hex('#fff0a8') : hex('#e3b341');
+      if (y >= cy + 5 && y < cy + 6) return hex('#6b4a10');
+      for (const [dx, dy] of [[-13, 50], [13, 50], [0, 74]]) {
+        const r = Math.hypot(mx - dx, y + 0.5 - dy);
+        if (r < 3) return r < 1.4 && mx < dx ? hex('#fff0a8') : hex('#e3b341');
+      }
+      // the parting: a thin gold line down the middle
+      if (Math.abs(mx) < 1) return hex('#e3b341');
+      // the field: blue on the left (the bearer's right), red on the right, a faint lattice over it
+      const base = mx < 0 ? mix(hex('#2a52b8'), hex('#16306e'), y / h) : mix(hex('#c0262d'), hex('#7a1218'), y / h);
+      return Math.abs((x % 8) - 4) + Math.abs((y % 8) - 4) === 4 ? shade(base, 1.15) : base;
+    },
+    back: hex('#16306e'), rim: hex('#d6a425'), handle: hex('#4a2f1d'),
+  },
+  // volcanic glass: near-black violet with sharp facets, glinting purple along their edges (as the obsidian cape and wings)
+  shield_obsidian: {
+    face(x, y, w, h) {
+      if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) return (x + y) % 10 < 2 ? hex('#c084fc') : hex('#7e22ce');
+      for (const [fx, fy, fw, fh, c] of OBSIDIAN_FACETS) {
+        const u = (x + 0.5 - fx) / fw, v = (y + 0.5 - fy) / fh;
+        const d = Math.abs(u) + Math.abs(v);
+        if (d < 1) {
+          if (d > 0.84 && v < 0 && u > 0) return hex('#d8b4fe');
+          if (d > 0.84) return shade(hex(c), 0.7);
+          return mix(shade(hex(c), 1.25), hex(c), d);
+        }
+      }
+      // crying obsidian's purple specks here and there
+      if (grain(13, x >> 1, y >> 1) > 0.975) return hex('#a855f7');
+      return mix(mix(hex('#1e1b2e'), hex('#0a0612'), y / h), hex('#2e1065'), grain(12, x >> 2, y >> 2) * 0.3);
+    },
+    back: hex('#120c1f'), rim: hex('#7e22ce'), handle: hex('#1e1b2e'),
   },
 };
 

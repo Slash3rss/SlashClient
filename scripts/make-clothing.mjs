@@ -134,6 +134,33 @@ const PAINT = {
     if ((face === 'down' || face === 'up') && !ring) return null;
     return shade(hex('#ffe680'), 0.92 + (Math.sin(x * 0.7 + y * 0.3) + 1) * 0.05);
   },
+  tricorn({ box, face, x, y, w, h, px, py }) {
+    const felt = shade(hex('#1c1a1f'), 0.9 + grain(70, px, py) * 0.16);
+    const gold = shade(hex('#e3b341'), 0.9 + grain(71, x, y) * 0.18);
+    if (box === 0) {
+      // the brim under the walls: only the triangle between them (its point in front, at the bottom of the picture)
+      if (isSide(face)) return null;
+      const t = (y + 0.5) / h;
+      if (Math.abs((x + 0.5) / w - 0.5) * 2 > 1 - t) return null;
+      return face === 'up' ? shade(felt, 0.8) : felt;
+    }
+    if (box === 5) {
+      // the little skull on the front point: bone white, black eyes and nose, teeth below
+      if (face !== 'north') return null;
+      const SKULL = ['..####..', '.######.', '########', '#..##..#', '#..##..#', '###..###', '.######.', '.#.##.#.'];
+      const c = SKULL[Math.floor((y / h) * 8)][Math.floor((x / w) * 8)];
+      return c === '#' ? shade(hex('#efe6cf'), 0.92 + grain(72, x, y) * 0.1) : y < h * 0.75 && y > h * 0.3 ? hex('#121014') : null;
+    }
+    // the walls: a gold braid along their top edge, the felt a little lighter outside
+    if (box >= 2) {
+      if (face === 'down') return gold;
+      if (isSide(face) && y < K / 2) return gold;
+      if (isSide(face) && y === K / 2) return shade(gold, 0.6);
+      return face === 'up' ? shade(felt, 0.7) : felt;
+    }
+    // the crown: low and round-topped, its top a little lit
+    return face === 'down' ? shade(felt, 1.25) : face === 'up' ? shade(felt, 0.6) : felt;
+  },
   scarf({ box, face, x, y, h, px, py }) {
     const red = hex('#c62f3a'), cream = hex('#f2ece0');
     const f = 0.9 + grain(11, px, py) * 0.14;

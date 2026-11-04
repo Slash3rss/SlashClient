@@ -11,14 +11,14 @@ public class GameClothing implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.clothing());
-		if (!known.equals("tophat,crown,cap,headphones,beanie,wizard,halo|scarf,bowtie,tie,medal,jacket,autumnscarf")) throw new AssertionError("Not the clothing we made: " + known);
+		if (!known.equals("tophat,crown,cap,headphones,beanie,wizard,halo,tricorn|scarf,bowtie,tie,medal,jacket,autumnscarf")) throw new AssertionError("Not the clothing we made: " + known);
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
 			// every item, a hat and a top at a time, seen from the front
 			String[][] outfits = {{"tophat", "bowtie"}, {"crown", "medal"}, {"cap", "jacket"}, {"headphones", "scarf"},
-				{"beanie", "scarf"}, {"wizard", "tie"}, {"halo", "jacket"}, {"cap", "autumnscarf"}};
+				{"beanie", "scarf"}, {"wizard", "tie"}, {"halo", "jacket"}, {"cap", "autumnscarf"}, {"tricorn", "scarf"}};
 			for (String[] o : outfits) {
 				context.runOnClient(mc -> { TestHooks.wear("hat", o[0]); TestHooks.wear("top", o[1]); });
 				context.waitTicks(5);
