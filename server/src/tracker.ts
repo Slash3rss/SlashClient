@@ -67,7 +67,7 @@ function str(v: unknown, max: number): string {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
 }
 
-export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, Handler][]; cleanup: () => Promise<void> } {
+export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, Handler][]; cleanup: () => Promise<void>; removeOwner: (uuid: string) => Promise<void> } {
   const { db } = ctx;
   const logDays = () => ctx.logDays?.() ?? LOG_DAYS;
   mkdirSync(ctx.dir, { recursive: true });
@@ -204,5 +204,13 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
     }
   }
 
-  return { routes, cleanup };
+  /** A deleted account's shared logs, with their files (a bug report's log stays for its time). */
+  async function removeOwner(uuid: string) {
+    for (const id of db.ownedLogs(uuid)) {
+      await rm(fileOf(id), { force: true });
+      db.removeLog(id);
+    }
+  }
+
+  return { routes, cleanup, removeOwner };
 }

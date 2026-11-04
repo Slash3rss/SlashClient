@@ -35,7 +35,12 @@ export interface AdminContext {
   badge?: (u: { id: string; role: string; handle: string }) => string | readonly string[];
   /** The dashboard's further numbers (adminStats.ts). */
   stats?: AdminStats;
+  /** Deletes an account keeping a snapshot to restore it from, and the files it left (adminAccount.ts). */
+  deleteAccount?: (userId: string, by: string) => Promise<void>;
 }
+
+/** The longest reason of a ban (the player sees it). */
+export const MAX_BAN_REASON = 300;
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
 
@@ -86,13 +91,23 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
     ['POST', /^\/v1\/admin\/users\/([\w-]+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
       const user = userOr404(id);
-      const { banned, role, cape, rank } = await ctx.body(req);
+      const { banned, banReason, banUntil, role, cape, rank } = await ctx.body(req);
+      // a ban may say why (the player sees it when signing in) and end on its own (`banUntil`, ms; 0 or none = for good);
+      // sent again for a banned account, it changes the reason or the end
+      if (banReason !== undefined && (typeof banReason !== 'string' || banReason.length > MAX_BAN_REASON)) ctx.fail(400, 'bad_reason');
+      if (banUntil !== undefined && banUntil !== null && banUntil !== 0 && (typeof banUntil !== 'number' || !Number.isSafeInteger(banUntil) || banUntil <= Date.now())) ctx.fail(400, 'bad_until');
+      const reason = typeof banReason === 'string' ? banReason.trim() : '';
+      const until = typeof banUntil === 'number' ? banUntil : 0;
+      const banText = () => `${reason || 'bez powodu'}${until ? `, do ${new Date(until).toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''}`;
       if (typeof banned === 'boolean' && banned !== user.banned) {
         if (id === me) ctx.fail(400, 'self');
         if (banned && ctx.configAdmins.has(user.handle.toLowerCase())) ctx.fail(400, 'config_admin');
-        db.setBanned(id, banned);
+        db.setBanned(id, banned, reason, until);
         if (banned) ctx.kick(id);
-        db.log(me, banned ? 'ban' : 'unban', user.handle);
+        db.log(me, banned ? 'ban' : 'unban', user.handle, banned ? banText() : '', id);
+      } else if (banned === true && user.banned && (banReason !== undefined || banUntil !== undefined)) {
+        db.setBanned(id, true, reason, until);
+        db.log(me, 'ban_edit', user.handle, banText(), id);
       }
       if (typeof role === 'string') {
         if (role !== 'admin' && role !== '') ctx.fail(400, 'bad_role');
@@ -132,14 +147,19 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       db.log(me, 'logout', user.handle);
       return { ok: true };
     }],
-    ['DELETE', /^\/v1\/admin\/users\/([\w-]+)$/, (req, [id]) => {
+    ['DELETE', /^\/v1\/admin\/users\/([\w-]+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
       const user = userOr404(id);
       if (id === me) ctx.fail(400, 'self');
       if (ctx.configAdmins.has(user.handle.toLowerCase())) ctx.fail(400, 'config_admin');
+      // with a snapshot to restore from and the files it left (adminAccount.ts)
+      if (ctx.deleteAccount) {
+        await ctx.deleteAccount(id, me);
+        return { ok: true, restorable: true };
+      }
       ctx.kick(id);
       db.deleteUser(id);
-      db.log(me, 'delete', user.handle, user.name);
+      db.log(me, 'delete', user.handle, user.name, id);
       return { ok: true };
     }],
 

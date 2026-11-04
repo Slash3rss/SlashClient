@@ -207,5 +207,13 @@ export function profileShareRoutes(ctx: ShareContext) {
     }
   }
 
-  return { routes, serve, cleanup };
+  /** A deleted account's shared profiles, with their files. */
+  async function removeOwner(uuid: string) {
+    for (const s of db.profileShares(uuid)) {
+      await rm(fileOf(s.code), { force: true });
+      db.removeProfileShare(s.code);
+    }
+  }
+
+  return { routes, serve, cleanup, removeOwner };
 }

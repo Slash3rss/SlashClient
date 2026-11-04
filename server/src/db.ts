@@ -16,6 +16,8 @@ export interface User { id: string; handle: string; name: string; avatar: string
 /** An account as the admin panel lists it. */
 export interface AdminUser extends User {
   createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number;
+  /** Why the account is banned (shown to the player when they try to sign in) and until when (0 = for good). */
+  banReason: string; banUntil: number;
   /** the cape each linked Minecraft account wears in game: its own set's, or else the account's ('' for none) */
   worn: { name: string; cape: string }[];
 }
@@ -26,7 +28,7 @@ export interface CosmeticSetting {
   /** The supporter level set in the admin panel (supporterItems.ts): 0 = for everyone, missing = as cosmetics.ts has it. */
   supporter?: number;
 }
-export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string; adminHandle?: string | null }
+export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string; adminHandle?: string | null; targetId?: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
 /** `party`: the invite is one of a party's (sharing.ts), so Join also says "I'm in". */
@@ -118,22 +120,29 @@ const AVATAR = (t: string) => `CASE WHEN ${t}.avatar_source = 'provider' AND ${t
     (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.rowid LIMIT 1),
     NULLIF(${t}.avatar, ''), '') END`;
 
+/**
+ * Whether an account is banned now (table alias `t`): a ban with an end (ban_until) is over once it
+ * passes, at once for everything that asks, before the minute's tick clears it (adminAccount.ts).
+ */
+const BANNED = (t: string) => `(${t}.banned != 0 AND (${t}.ban_until = 0 OR ${t}.ban_until > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)))`;
+
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
 
 /**
  * An account as the admin panel lists it, in one query: its friends and sessions counted, its sign-in
  * providers (in order, once each) and its Minecraft accounts (in the order they were linked) as JSON.
  */
-const ADMIN_USER = `SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen,
+const ADMIN_USER = `SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, ${BANNED('users')} AS banned, loadout, created_at, last_seen, ban_reason, ban_until,
   (SELECT COUNT(*) FROM friendships f WHERE f.a = users.uuid OR f.b = users.uuid) AS friends,
   (SELECT COUNT(*) FROM sessions s WHERE s.uuid = users.uuid) AS sessions,
   (SELECT json_group_array(p ORDER BY p) FROM (SELECT DISTINCT i.provider AS p FROM identities i WHERE i.uuid = users.uuid)) AS providers,
   (SELECT json_group_array(json_object('name', i.label, 'loadout', i.loadout) ORDER BY i.rowid) FROM identities i WHERE i.uuid = users.uuid AND i.provider = 'minecraft') AS characters
   FROM users`;
-type AdminUserRow = UserRow & { created_at: number; last_seen: number; friends: number; sessions: number; providers: string; characters: string };
+type AdminUserRow = UserRow & { created_at: number; last_seen: number; friends: number; sessions: number; providers: string; characters: string; ban_reason: string; ban_until: number };
 const toAdminUser = (row: AdminUserRow): AdminUser => ({
   ...toUser(row), createdAt: row.created_at, lastSeen: row.last_seen, providers: JSON.parse(row.providers) as string[],
   friends: Number(row.friends), sessions: Number(row.sessions),
+  banReason: row.banned ? row.ban_reason : '', banUntil: row.banned ? Number(row.ban_until) : 0,
   // a character with its own set wears that set's cape (none: ''), the others the account's
   worn: (JSON.parse(row.characters) as { name: string; loadout: string }[]).map((c) => ({ name: c.name, cape: c.loadout ? parseLoadout(c.loadout).cape ?? '' : row.cape })),
 });
@@ -184,6 +193,10 @@ export function cosmeticSettingsChanged(sql: DatabaseSync) {
   cosmeticVersions.set(sql, (cosmeticVersions.get(sql) ?? 0) + 1);
 }
 
+/** Admin log actions whose target is an account (its nick or id), so the entry is linked to the account (Db.log). */
+export const USER_ACTIONS = new Set(['ban', 'unban', 'make_admin', 'remove_admin', 'set_cape', 'logout', 'delete', 'grant', 'revoke', 'set_rank', 'sparks_give', 'sparks_take',
+  'ach_grant', 'ach_revoke', 'profile_hide', 'profile_show', 'rank_grant', 'rank_revoke', 'support_grant', 'support_extend', 'support_revoke', 'streams_unlink']);
+
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
@@ -221,6 +234,9 @@ export class Db {
     if (!userColumns.some((c) => c.name === 'loadout')) this.db.exec("ALTER TABLE users ADD COLUMN loadout TEXT NOT NULL DEFAULT '{}'");
     // which picture is the avatar: '' (the Minecraft face, the default) or 'provider' (Discord's, Google's…)
     if (!userColumns.some((c) => c.name === 'avatar_source')) this.db.exec("ALTER TABLE users ADD COLUMN avatar_source TEXT NOT NULL DEFAULT ''");
+    // a ban's reason (the player sees it when signing in) and end (0 = for good), from the admin panel
+    if (!userColumns.some((c) => c.name === 'ban_reason')) this.db.exec("ALTER TABLE users ADD COLUMN ban_reason TEXT NOT NULL DEFAULT ''");
+    if (!userColumns.some((c) => c.name === 'ban_until')) this.db.exec('ALTER TABLE users ADD COLUMN ban_until INTEGER NOT NULL DEFAULT 0');
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
@@ -274,6 +290,20 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS data_migrations (id TEXT PRIMARY KEY, at INTEGER NOT NULL, detail TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
+`);
+    // whom an admin log entry is about (an account's id; '' = not an account, or from before), so an
+    // account's own log in the panel survives a change of nick
+    const logColumns = this.db.prepare('PRAGMA table_info(admin_log)').all() as { name: string }[];
+    if (!logColumns.some((c) => c.name === 'target_id')) this.db.exec("ALTER TABLE admin_log ADD COLUMN target_id TEXT NOT NULL DEFAULT ''");
+    this.db.exec(`
+CREATE INDEX IF NOT EXISTS admin_log_target ON admin_log(target_id, id);
+-- nicks an account had before an admin changed it: /u/<old nick> leads to the profile while nobody else has it
+CREATE TABLE IF NOT EXISTS handle_history (handle_lower TEXT PRIMARY KEY, uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, handle TEXT NOT NULL, changed_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS handle_history_uuid ON handle_history(uuid);
+-- accounts deleted in the admin panel, kept whole for a while so a mistake can be undone (adminAccount.ts)
+CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL, handle TEXT NOT NULL, name TEXT NOT NULL,
+  data TEXT NOT NULL, deleted_at INTEGER NOT NULL, by_uuid TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS deleted_accounts_at ON deleted_accounts(deleted_at);
 `);
   }
 
@@ -425,7 +455,7 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   }
 
   user(uuid: string): User | undefined {
-    const row = this.stmt(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?`).get(uuid) as UserRow | undefined;
+    const row = this.stmt(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, ${BANNED('users')} AS banned, loadout FROM users WHERE uuid = ?`).get(uuid) as UserRow | undefined;
     return row && toUser(row);
   }
 
@@ -508,14 +538,89 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     this.stmt('UPDATE users SET role = ? WHERE uuid = ?').run(role, uuid);
   }
 
-  setBanned(uuid: string, banned: boolean) {
-    this.stmt('UPDATE users SET banned = ? WHERE uuid = ?').run(banned ? 1 : 0, uuid);
+  /** A ban (with what the player is told and its end, 0 = for good) signs the account out everywhere; lifting one clears both. */
+  setBanned(uuid: string, banned: boolean, reason = '', until = 0) {
+    this.stmt('UPDATE users SET banned = ?, ban_reason = ?, ban_until = ? WHERE uuid = ?').run(banned ? 1 : 0, banned ? reason : '', banned ? until : 0, uuid);
     if (banned) this.removeSessions(uuid);
+  }
+
+  /** Why an account is banned and until when (0 = for good), while the ban lasts; undefined when it is not banned. */
+  banInfo(uuid: string): { reason: string; until: number } | undefined {
+    const row = this.stmt(`SELECT ban_reason AS reason, ban_until AS until FROM users WHERE uuid = ? AND ${BANNED('users')}`).get(uuid) as { reason: string; until: number } | undefined;
+    return row && { reason: row.reason, until: Number(row.until) };
+  }
+
+  /** Bans whose end has passed are lifted (they stopped counting already, see BANNED); returns whose. */
+  liftExpiredBans(now = Date.now()): { id: string; handle: string }[] {
+    const rows = this.stmt('SELECT uuid AS id, handle FROM users WHERE banned != 0 AND ban_until != 0 AND ban_until <= ?').all(now) as { id: string; handle: string }[];
+    for (const r of rows) this.stmt("UPDATE users SET banned = 0, ban_reason = '', ban_until = 0 WHERE uuid = ?").run(r.id);
+    return rows;
+  }
+
+  // ---- account details the admin panel changes (adminAccount.ts) ----
+
+  /** Whether a nick is someone else's (case does not matter). */
+  handleTaken(handle: string, except = ''): boolean {
+    return !!this.stmt('SELECT 1 FROM users WHERE handle_lower = ? AND uuid != ?').get(handle.toLowerCase(), except);
+  }
+
+  setName(uuid: string, name: string) {
+    this.stmt('UPDATE users SET name = ? WHERE uuid = ?').run(name, uuid);
+  }
+
+  /** A new nick; the old one is remembered (handle_history) so links to the old profile address keep working. */
+  setHandle(uuid: string, handle: string, now = Date.now()) {
+    const old = this.stmt('SELECT handle FROM users WHERE uuid = ?').get(uuid) as { handle: string } | undefined;
+    if (!old || old.handle === handle) return;
+    this.stmt('UPDATE users SET handle = ?, handle_lower = ? WHERE uuid = ?').run(handle, handle.toLowerCase(), uuid);
+    // the account's own nick is nobody's "former" one any more
+    this.stmt('DELETE FROM handle_history WHERE handle_lower = ?').run(handle.toLowerCase());
+    if (old.handle.toLowerCase() !== handle.toLowerCase()) {
+      this.stmt('INSERT OR REPLACE INTO handle_history (handle_lower, uuid, handle, changed_at) VALUES (?, ?, ?, ?)').run(old.handle.toLowerCase(), uuid, old.handle, now);
+    }
+  }
+
+  /** The account a former nick leads to now, while nobody has it as their nick. */
+  formerHandle(handle: string): User | undefined {
+    if (this.stmt('SELECT 1 FROM users WHERE handle_lower = ?').get(handle.toLowerCase())) return undefined;
+    const row = this.stmt('SELECT uuid FROM handle_history WHERE handle_lower = ?').get(handle.toLowerCase()) as { uuid: string } | undefined;
+    return row && this.user(row.uuid);
+  }
+
+  /** The nicks an account had before, newest first. */
+  formerHandles(uuid: string): string[] {
+    return (this.stmt('SELECT handle FROM handle_history WHERE uuid = ? ORDER BY changed_at DESC').all(uuid) as { handle: string }[]).map((r) => r.handle);
+  }
+
+  /** Every way to sign in to an account, in the order they were linked (a Minecraft account with whether it has its own set). */
+  identitiesOf(uuid: string): { provider: string; subject: string; label: string; ownLoadout: boolean }[] {
+    return (this.stmt('SELECT provider, subject, label, loadout FROM identities WHERE uuid = ? ORDER BY rowid').all(uuid) as { provider: string; subject: string; label: string; loadout: string }[])
+      .map((r) => ({ provider: r.provider, subject: r.subject, label: r.label, ownLoadout: !!r.loadout }));
+  }
+
+  /** An account's sessions (signed-in launchers and browsers), newest first; `id` is the row's number, never the token's hash. */
+  sessionsOf(uuid: string): { id: number; createdAt: number; lastUsed: number }[] {
+    return (this.stmt('SELECT rowid AS id, created_at AS createdAt, last_used AS lastUsed FROM sessions WHERE uuid = ? ORDER BY last_used DESC').all(uuid) as { id: number; createdAt: number; lastUsed: number }[])
+      .map((r) => ({ id: Number(r.id), createdAt: r.createdAt, lastUsed: r.lastUsed }));
+  }
+
+  /** Ends one of an account's sessions; gives its token's hash (to close its live connections), or undefined when there was none. */
+  removeSessionById(uuid: string, id: number): string | undefined {
+    const row = this.stmt('SELECT token_hash FROM sessions WHERE rowid = ? AND uuid = ?').get(id, uuid) as { token_hash: string } | undefined;
+    if (row) this.removeSession(row.token_hash);
+    return row?.token_hash;
+  }
+
+  /** How many chat devices (launchers' keys, the password backup's) an account has; the panel only shows the number. */
+  deviceKeyCount(uuid: string): number {
+    return (this.stmt('SELECT COUNT(*) AS n FROM device_keys WHERE uuid = ?').get(uuid) as { n: number }).n;
   }
 
   /** Removes an account with everything that hangs on it (sign-ins, sessions, friends, messages, grants). */
   deleteUser(uuid: string) {
     this.stmt('DELETE FROM messages WHERE from_uuid = ? OR to_uuid = ?').run(uuid, uuid);
+    // what has no link to the account in the database (payments stay: the law keeps them, see the privacy policy)
+    if (this.stmt("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'support_prefs'").get()) this.stmt('DELETE FROM support_prefs WHERE user = ?').run(uuid);
     // the admin statistics' rows of the account (adminStats.ts), where they exist
     for (const table of ['stats_active_days', 'stats_clients']) {
       if (this.stmt("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) this.stmt(`DELETE FROM ${table} WHERE uuid = ?`).run(uuid);
@@ -716,9 +821,29 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
     return counts;
   }
 
-  log(admin: string, action: string, target: string, detail = '') {
-    this.stmt('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
+  /**
+   * An admin's action. `targetId`: the account it is about; when not given, an action about an account
+   * (USER_ACTIONS) or a target that is an account's id finds the account itself (by id or nick).
+   */
+  log(admin: string, action: string, target: string, detail = '', targetId?: string) {
+    let about = targetId ?? '';
+    if (targetId === undefined && target) {
+      const byId = this.stmt('SELECT uuid FROM users WHERE uuid = ?').get(target) as { uuid: string } | undefined;
+      const byHandle = !byId && USER_ACTIONS.has(action)
+        ? this.stmt('SELECT uuid FROM users WHERE handle_lower = ?').get(target.replace(/^@/, '').toLowerCase()) as { uuid: string } | undefined : undefined;
+      about = byId?.uuid ?? byHandle?.uuid ?? '';
+    }
+    this.stmt('INSERT INTO admin_log (at, admin, action, target, detail, target_id) VALUES (?, ?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail, about);
     this.logged++;
+  }
+
+  /** The admin log about one account: by its id, and (entries from before ids were kept) by its nicks now and before. */
+  logFor(uuid: string, limit: number): LogEntry[] {
+    const handles = [this.user(uuid)?.handle ?? '', ...this.formerHandles(uuid)].filter(Boolean).map((h) => h.toLowerCase());
+    const actions = [...USER_ACTIONS];
+    return this.db.prepare(`SELECT l.id, l.at, l.admin, l.action, l.target, l.detail, l.target_id AS targetId, u.handle AS adminHandle FROM admin_log l LEFT JOIN users u ON u.uuid = l.admin
+      WHERE l.target_id = ? OR (l.target_id = '' AND l.action IN (${actions.map(() => '?').join(',')}) AND lower(l.target) IN (${handles.map(() => '?').join(',') || "''"}))
+      ORDER BY l.id DESC LIMIT ?`).all(uuid, ...actions, ...handles, limit) as unknown as LogEntry[];
   }
 
   /** The admin log keeps moderation accountable for a set time (the privacy policy names it), not forever. */
@@ -959,6 +1084,11 @@ CREATE TABLE IF NOT EXISTS cape_grants_kept (uuid TEXT NOT NULL REFERENCES users
   }
 
   /** Logs older than `before`, to remove with their files. */
+  /** An account's shared logs, except those a bug report links to (the public bug history keeps them for their time). */
+  ownedLogs(owner: string): string[] {
+    return (this.stmt('SELECT id FROM logs WHERE owner = ? AND id NOT IN (SELECT log_id FROM bugs)').all(owner) as { id: string }[]).map((r) => r.id);
+  }
+
   oldLogs(before: number): string[] {
     return (this.stmt('SELECT id FROM logs WHERE created_at < ?').all(before) as { id: string }[]).map((r) => r.id);
   }

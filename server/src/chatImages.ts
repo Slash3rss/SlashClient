@@ -453,5 +453,14 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     }
   }
 
-  return { routes, serve, forMessage, attach, decorate, cleanup, has, remove, removeChat, usage, chatLimits };
+  /** A deleted account's pictures: the ones it sent (direct and in groups) and the ones sent to it, files and rows. */
+  async function removeOf(uuid: string) {
+    const rows = sql.prepare('SELECT id FROM chat_images WHERE owner = ? OR recipient = ?').all(uuid, uuid) as { id: string }[];
+    for (const { id } of rows) {
+      await rm(fileOf(id), { force: true });
+      sql.prepare('DELETE FROM chat_images WHERE id = ?').run(id);
+    }
+  }
+
+  return { routes, serve, forMessage, attach, decorate, cleanup, has, remove, removeChat, removeOf, usage, chatLimits };
 }
