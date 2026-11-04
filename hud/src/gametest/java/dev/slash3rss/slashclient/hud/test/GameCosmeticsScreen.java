@@ -14,7 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  */
 public class GameCosmeticsScreen implements FabricClientGameTest {
 	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
-	private static final String[] HATS = {"tophat", "crown", "cap", "beanie", "wizard", "halo"};
+	private static final String[] HATS = {"tophat", "crown", "cap", "beanie", "wizard", "halo", "tricorn"};
 	private static final String[] TOPS = {"scarf", "bowtie", "tie", "medal", "jacket", "autumnscarf"};
 	/** Window width, height and GUI scale. */
 	private static final int[][] SIZES = {{854, 480, 2}, {640, 480, 2}, {1280, 720, 2}, {1376, 986, 2}, {1920, 1080, 3}, {1920, 1080, 4}, {2560, 1440, 2}};

@@ -77,6 +77,10 @@ describe('clothing', () => {
     const ear = CLOTHING.find((i) => i.id === 'catears')!.boxes[0];
     assert.ok(shownWith(ear, undefined) && shownWith(ear, 'cap') && !shownWith(ear, 'tophat'));
     assert.ok(shownWith(CLOTHING.find((i) => i.id === 'sunglasses')!.boxes[0], 'tophat'));
+    // the tricorn sits over the head as the top hat does: whatever is shown with that is shown with it, nothing else
+    for (const item of CLOTHING.filter((i) => i.slot === 'face' || i.slot === 'ears')) {
+      for (const b of item.boxes) assert.equal(shownWith(b, 'tricorn'), shownWith(b, 'tophat'), item.id);
+    }
     // the earmuffs: under a hat only the band over the head hides, under a brim only its top; the headphones' cups take their place
     const muffs = CLOTHING.find((i) => i.id === 'earmuffs')!.boxes;
     const shown = (hat?: string) => muffs.map((b) => shownWith(b, hat));
@@ -90,6 +94,6 @@ describe('clothing', () => {
     const during = Array.from({ length: 20 }, (_, i) => twitchAngle(TWITCH_EVERY * 3 + (i * TWITCH_LENGTH) / 20, twitch));
     assert.ok(during.some((a) => Math.abs(a) > 0.02) && during.every((a) => Math.abs(a) <= (twitch.amp * Math.PI) / 180));
     // glasses and the mustache stay on under a helmet
-    assert.deepEqual(CLOTHING.filter((i) => i.underHelmet).map((i) => i.id), ['sunglasses', 'aviators', 'glasses3d', 'monocle', 'mustache']);
+    assert.deepEqual(CLOTHING.filter((i) => i.underHelmet).map((i) => i.id), ['sunglasses', 'aviators', 'glasses3d', 'monocle', 'mustache', 'eyepatch']);
   });
 });

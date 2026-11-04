@@ -403,6 +403,23 @@ describe('sparks and achievements', () => {
     assert.ok(ids.includes('shop_1') && ids.includes('shop_5') && ids.includes('big_spender'));
   });
 
+  it('sells the knight, pirate and obsidian pieces (shields, swords, tricorn, eyepatch) from 0.9.70 on', async () => {
+    const p = await login('Korsarz');
+    const prices = { shield_crest: 500, shield_obsidian: 500, sword_knight: 600, sword_saber: 600, tricorn: 400, eyepatch: 300 } as Record<string, number>;
+    const ids = Object.keys(prices);
+    const items = (await call('GET', '/v1/cosmetics', p.token, undefined, { 'X-SlashClient': 'launcher/0.9.70' })).body.items.filter((i: any) => ids.includes(i.id));
+    assert.deepEqual(items.map((i: any) => [i.id, i.price, i.available]).sort(), ids.map((id) => [id, prices[id], false]).sort());
+    for (const client of ['launcher/0.9.69', 'mod/0.9.69']) {
+      assert.ok(!(await call('GET', '/v1/cosmetics', p.token, undefined, { 'X-SlashClient': client })).body.items.some((i: any) => ids.includes(i.id)), client);
+    }
+    assert.equal((await call('POST', '/v1/me', p.token, { loadout: { hat: 'tricorn' } })).body.error, 'bad_item');
+    app.wallet.change(p.user.id, 3000, 'admin', '', 'test');
+    for (const id of ids) assert.equal((await call('POST', `/v1/shop/${id}/buy`, p.token)).status, 200, id);
+    const loadout = { hat: 'tricorn', face: 'eyepatch', weapon: 'sword_saber', shield: 'shield_obsidian' };
+    assert.deepEqual((await call('POST', '/v1/me', p.token, { loadout })).body.loadout, loadout);
+    assert.equal((await call('POST', '/v1/me', p.token, { loadout: { face: 'tricorn' } })).body.error, 'bad_item');
+  });
+
   it('lets only admins give and take sparks, with a reason, in the admin log, and change prices', async () => {
     const boss = await login('SzefEko');
     const p = await login('Obdarowany');

@@ -174,6 +174,21 @@ export function headwearPaint({ hex, shade, grain, isSide, K }) {
       // a mirrored lens, orange at the top to purple at the bottom
       return lens(x, y, w, h, hex('#ff8a1c'), hex('#8a2be2'));
     },
+    eyepatch({ box, face, x, y, w, h }) {
+      const black = shade(hex('#121014'), 0.9 + grain(73, x, y) * 0.25);
+      // the strap: its sides only
+      if (box === 1) return isSide(face) ? (y === 0 ? shade(black, 1.6) : black) : null;
+      if (face === 'south') return null;
+      if (!front(face)) return black;
+      // the patch: black leather rounded at the corners, stitched round the edge, a dull shine at the top
+      const [u, v] = at(x, y, w, h);
+      const cx = Math.abs(u - 0.5) * 2, cy = Math.abs(v - 0.5) * 2;
+      const r = cx ** 3 + cy ** 3;
+      if (r > 1) return null;
+      if (r > 0.5 && r < 0.68 && (x + y) % 3 === 0) return hex('#4a3e34');
+      if (Math.hypot((u - 0.36) * w, (v - 0.32) * h) < 1.2) return hex('#34303a');
+      return black;
+    },
     catears({ box, face, x, y, w, h, px, py }) {
       const [n] = step(box, 3);
       const fur = shade(hex('#26232a'), 0.85 + grain(50, px * 5 + x, py * 5 + y) * 0.3);

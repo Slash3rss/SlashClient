@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * hide), on a skin with a big outer head layer, ears twitching, and in the menus.
  */
 public class GameHeadwear implements FabricClientGameTest {
-	private static final String[] FACE = {"sunglasses", "aviators", "glasses3d", "monocle", "mustache", "gasmask", "kitsune", "oni", "skigoggles"};
+	private static final String[] FACE = {"sunglasses", "aviators", "glasses3d", "monocle", "mustache", "gasmask", "kitsune", "oni", "skigoggles", "eyepatch"};
 	private static final String[] EARS = {"catears", "foxears", "bunnyears", "elfears", "devilhorns", "ramhorns", "antlers", "unicorn", "earmuffs", "dragonhorns", "wolfears", "pandaears"};
 
 	@Override
@@ -26,6 +26,10 @@ public class GameHeadwear implements FabricClientGameTest {
 		if (!context.computeOnClient(mc -> TestHooks.headwearPose("catears", "tophat", 2f)).endsWith("|false")) throw new AssertionError("The ear goes through the top hat");
 		if (!context.computeOnClient(mc -> TestHooks.headwearPose("catears", "cap", 2f)).endsWith("|true")) throw new AssertionError("The ear hides under a cap");
 		if (!context.computeOnClient(mc -> TestHooks.headwearPose("sunglasses", "tophat", 2f)).endsWith("|true")) throw new AssertionError("The glasses hide with a top hat");
+		// the tricorn sits over the head as the top hat: ears on top go, ears and horns on the sides and the eyepatch stay
+		if (!context.computeOnClient(mc -> TestHooks.headwearPose("catears", "tricorn", 2f)).endsWith("|false")) throw new AssertionError("The ear goes through the tricorn");
+		if (!context.computeOnClient(mc -> TestHooks.headwearPose("elfears", "tricorn", 2f)).endsWith("|true")) throw new AssertionError("The elf's ear hides under the tricorn");
+		if (!context.computeOnClient(mc -> TestHooks.headwearPose("eyepatch", "tricorn", 2f)).endsWith("|true")) throw new AssertionError("The eyepatch hides with the tricorn");
 		// the earmuffs' band over the head: on without a hat and with the halo over it, gone under a cap
 		if (!context.computeOnClient(mc -> TestHooks.headwearPose("earmuffs", null, 2f)).equals("0.0|true")) throw new AssertionError("The earmuffs' band is not on");
 		if (!context.computeOnClient(mc -> TestHooks.headwearPose("earmuffs", "halo", 2f)).endsWith("|true")) throw new AssertionError("The earmuffs' band hides under the halo");
@@ -69,6 +73,20 @@ public class GameHeadwear implements FabricClientGameTest {
 				context.runOnClient(mc -> { TestHooks.wear("hat", o[0]); TestHooks.wear("ears", o[1]); TestHooks.wear("face", o[2]); });
 				context.waitTicks(5);
 				context.takeScreenshot("headwear-hat-" + o[0] + "-" + o[1] + "-" + o[2]);
+			}
+			// the pirate: the tricorn and the eyepatch from the front, the side and behind, with ears on the sides and on top (gone)
+			for (String[] o : new String[][] {{"tricorn", null, "eyepatch"}, {"tricorn", "elfears", "eyepatch"}, {"tricorn", "catears", "monocle"}, {"tricorn", "earmuffs", null}, {"cap", null, "eyepatch"}}) {
+				String name = "headwear-" + o[0] + (o[1] == null ? "" : "-" + o[1]) + (o[2] == null ? "" : "-" + o[2]);
+				context.runOnClient(mc -> { TestHooks.wear("hat", o[0]); TestHooks.wear("ears", o[1]); TestHooks.wear("face", o[2]); });
+				context.waitTicks(5);
+				context.takeScreenshot(name + "-front");
+				context.runOnClient(mc -> { TestHooks.cosmeticsSelf(null, false); TestHooks.cameraTurn(90); });
+				context.waitTicks(5);
+				context.takeScreenshot(name + "-side");
+				context.runOnClient(mc -> TestHooks.cameraTurn(0));
+				context.waitTicks(5);
+				context.takeScreenshot(name + "-back");
+				context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
 			}
 			// the earmuffs from the front and the side: alone, with hats (the band hides under them, the muffs stay) and under the headphones (gone)
 			context.runOnClient(mc -> TestHooks.wear("face", null));
@@ -125,6 +143,9 @@ public class GameHeadwear implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.wear("face", "gasmask"));
 			context.waitTicks(5);
 			context.takeScreenshot("headwear-helmet-gasmask");
+			context.runOnClient(mc -> TestHooks.wear("face", "eyepatch"));
+			context.waitTicks(5);
+			context.takeScreenshot("headwear-helmet-eyepatch");
 			world.getServer().runCommand("item replace entity @a armor.head with air");
 			// a skin whose outer head layer is a big box all round: everything stands outside it
 			context.runOnClient(mc -> TestHooks.testSkin("figure/tvhead"));

@@ -110,6 +110,17 @@ export const CLOTHING: ClothingItem[] = [
   { id: 'halo', slot: 'hat', name: 'Aureola', boxes: [
     { bone: 'head', from: [-3, -12, -3], size: [6, 1, 6] },
   ] },
+  // a pirate's three-cornered hat over the head (as the top hat, its brim just above it): a triangle of
+  // brim pointing forward (only the triangle painted), turned up into three walls round a low crown, a
+  // little skull on the front point. The two front walls are turned on their middles to meet at the point
+  { id: 'tricorn', slot: 'hat', name: 'Trikorn', boxes: [
+    { bone: 'head', from: [-7.5, -9, -8], size: [15, 0.5, 13] },
+    { bone: 'head', from: [-3, -12.75, -2], size: [6, 4, 6] },
+    { bone: 'head', from: [-4.25, -11.75, -2], size: [16, 3, 1], pivot: [3.75, -10.25, -1.5], rotate: [0, -60, 0] },
+    { bone: 'head', from: [-11.75, -11.75, -2], size: [16, 3, 1], pivot: [-3.75, -10.25, -1.5], rotate: [0, 60, 0] },
+    { bone: 'head', from: [-8, -11.75, 4.5], size: [16, 3, 1] },
+    { bone: 'head', from: [-1, -11.5, -9.6], size: [2, 2, 0.5] },
+  ] },
   // ---------- on the body ----------
   { id: 'scarf', slot: 'top', name: 'Szalik', boxes: [
     { bone: 'body', from: [-4, 0.5, -2], size: [8, 2, 4], inflate: 0.6 },
@@ -271,6 +282,12 @@ export const CLOTHING: ClothingItem[] = [
     { bone: 'head', from: [-4.4, -5.25, -5.05], size: [8.8, 2.5, 0.55] },
     { bone: 'head', from: [-4, -5, -4], size: [8, 1.75, 8], inflate: 0.6 },
   ] },
+  // a black patch over the right eye (where the pirate suit has one) and its strap round the head, tipped
+  // to run from the patch up across the forehead (only its sides drawn); it lies flat under a helmet's face
+  { id: 'eyepatch', slot: 'face', name: 'Opaska na oko', underHelmet: true, boxes: [
+    { bone: 'head', from: [-3.6, -4.9, -4.95], size: [3.2, 2.9, 0.35] },
+    { bone: 'head', from: [-4.55, -4.35, -4.55], size: [9.35, 0.3, 9.1], inflate: 0.2, pivot: [-2, -4.2, 0], rotate: [0, 0, -16] },
+  ] },
   // ---------- ears and horns (the skin's outer layer ends at y -8.5 on top, x ±4.5 on the sides) ----------
   // ears twitch now and then about their base; `hats` are the hats they poke out of (the tall
   // ones and the crown's ring would have them go through, so there they hide)
@@ -285,7 +302,7 @@ export const CLOTHING: ClothingItem[] = [
     { bone: 'head', from: [4.25, -5, -0.5], size: [1.25, 3, 1.5] },
     { bone: 'head', from: [4.5, -6.5, 0.25], size: [1, 1.5, 1.25] },
     { bone: 'head', from: [4.5, -7.75, 1], size: [0.75, 1.25, 1] },
-  ], { pivot: [4.5, -3.5, 0.25], twitch: { axis: 'z', amp: 7, phase: 0 }, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo'] }) },
+  ], { pivot: [4.5, -3.5, 0.25], twitch: { axis: 'z', amp: 7, phase: 0 }, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo', 'tricorn'] }) },
   { id: 'devilhorns', slot: 'ears', name: 'Rogi diabła', boxes: sides([
     { bone: 'head', from: [1.5, -9.5, -3.25], size: [1.5, 1.5, 1.5] },
     { bone: 'head', from: [2, -10.5, -3], size: [1.25, 1, 1.25] },
@@ -297,7 +314,7 @@ export const CLOTHING: ClothingItem[] = [
     { bone: 'head', from: [4.5, -6, 0], size: [1.75, 3, 2] },
     { bone: 'head', from: [4.75, -3.5, -2], size: [1.5, 1.5, 2.5] },
     { bone: 'head', from: [4.75, -4.75, -2.75], size: [1.25, 1.5, 1] },
-  ], { hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo'] }) },
+  ], { hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo', 'tricorn'] }) },
   { id: 'antlers', slot: 'ears', name: 'Poroże', boxes: sides([
     { bone: 'head', from: [1.5, -9.5, -2.75], size: [1, 1.5, 1] },
     { bone: 'head', from: [2, -12.5, -2.75], size: [1, 3, 1] },
@@ -316,9 +333,9 @@ export const CLOTHING: ClothingItem[] = [
   { id: 'earmuffs', slot: 'ears', name: 'Nauszniki', boxes: [
     { bone: 'head', from: [-5.2, -9.35, -0.75], size: [10.4, 0.6, 1], hats: ['halo'] },
     ...sides([
-      { bone: 'head', from: [4.6, -8.75, -0.75], size: [0.55, 2.75, 1], hats: ['tophat', 'wizard', 'halo'] },
+      { bone: 'head', from: [4.6, -8.75, -0.75], size: [0.55, 2.75, 1], hats: ['tophat', 'wizard', 'halo', 'tricorn'] },
       ...([[[4.4, -5.75, -2.25], [1.85, 4, 4]], [[4.45, -6.25, -1.5], [1.6, 5, 2.5]], [[4.45, -5, -2.75], [1.6, 2.5, 5]]] as [number, number, number][][])
-        .map(([from, size]): ClothingBox => ({ bone: 'head', from, size, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo'] })),
+        .map(([from, size]): ClothingBox => ({ bone: 'head', from, size, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo', 'tricorn'] })),
     ]),
   ] },
   // from the top of the head near the front: up, then sweeping back over it and thinning to a tip that dips a little
