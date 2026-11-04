@@ -55,9 +55,11 @@ public final class CosmeticEffects {
 
 	/** One puff behind the feet, where the player just was. */
 	private static void trail(Minecraft mc, String kind, Vec3 pos, Vec3 before) {
-		double x = before.x + (RANDOM.nextDouble() - 0.5) * 0.3;
+		// (feathers and leaves a little wider: they stay in the air long after)
+		double wide = kind.equals("feathers") || kind.equals("leaves_fall") ? 0.8 : 0.3;
+		double x = before.x + (RANDOM.nextDouble() - 0.5) * wide;
 		double y = pos.y + 0.1 + RANDOM.nextDouble() * 0.2;
-		double z = before.z + (RANDOM.nextDouble() - 0.5) * 0.3;
+		double z = before.z + (RANDOM.nextDouble() - 0.5) * wide;
 		switch (kind) {
 			case "hearts" -> add(mc, ParticleTypes.HEART, x, y + 0.3, z, 0, 0, 0);
 			case "sparks" -> add(mc, ParticleTypes.ELECTRIC_SPARK, x, y, z, (RANDOM.nextDouble() - 0.5) * 0.1, 0.05, (RANDOM.nextDouble() - 0.5) * 0.1);
@@ -74,6 +76,13 @@ public final class CosmeticEffects {
 			case "witch" -> add(mc, ParticleTypes.WITCH, x, y + 0.2, z, 0, 0, 0);
 			case "ink" -> add(mc, ParticleTypes.SQUID_INK, x, y, z, 0, 0.01, 0);
 			case "ash" -> add(mc, ParticleTypes.WHITE_ASH, x, y + 0.3, z, 0, 0, 0);
+			// ours (Leaves): white feathers left floating at the height of the back, swaying slowly down
+			case "feathers" -> {
+				if (RANDOM.nextInt(3) == 0) break;
+				Leaves.feather(mc, x, pos.y + 0.7 + RANDOM.nextDouble() * 0.9, z);
+			}
+			// autumn leaves let fall from above the shoulders as the player goes
+			case "leaves_fall" -> Leaves.fall(mc, "autumn", x, pos.y + 1.0 + RANDOM.nextDouble() * 0.9, z);
 			default -> {}
 		}
 	}
@@ -108,6 +117,22 @@ public final class CosmeticEffects {
 			//#if MC >= 1.21.5
 			case "fireflies" -> add(mc, ParticleTypes.FIREFLY, x, y, z, 0, 0, 0);
 			//#endif
+			// the demon set's: embers and small flames rising, drops of lava falling from the shoulders, a little smoke,
+			// now and then a spark of lava popping up from the feet
+			case "infernal" -> {
+				add(mc, ParticleTypes.SMALL_FLAME, x, y, z, 0, 0.015, 0);
+				add(mc, ParticleTypes.FLAME, p.getX() + Math.cos(a + 2) * r, p.getY() + 0.1 + RANDOM.nextDouble() * 0.6, p.getZ() + Math.sin(a + 2) * r, 0, 0.02, 0);
+				if (RANDOM.nextInt(2) == 0) add(mc, ParticleTypes.SMALL_FLAME, p.getX() + Math.cos(a + 4) * r, p.getY() + 0.2 + RANDOM.nextDouble() * 1.4, p.getZ() + Math.sin(a + 4) * r, 0, 0.015, 0);
+				if (RANDOM.nextInt(2) == 0) add(mc, ParticleTypes.FALLING_LAVA, p.getX() - (x - p.getX()), p.getY() + 1.4 + RANDOM.nextDouble() * 0.5, p.getZ() - (z - p.getZ()), 0, 0, 0);
+				if (RANDOM.nextInt(3) == 0) add(mc, ParticleTypes.SMOKE, x, p.getY() + 0.3 + RANDOM.nextDouble() * 1.2, z, 0, 0.03, 0);
+				if (RANDOM.nextInt(6) == 0) add(mc, ParticleTypes.LAVA, x, p.getY() + 0.1, z, 0, 0, 0);
+			}
+			// the frost set's: snowflakes drifting round the player, and crumbs of frost about the feet
+			case "frostaura" -> {
+				add(mc, ParticleTypes.SNOWFLAKE, x, y, z, -Math.sin(a) * 0.03, -0.01, Math.cos(a) * 0.03);
+				if (RANDOM.nextInt(2) == 0) add(mc, ParticleTypes.SNOWFLAKE, p.getX() - (x - p.getX()), p.getY() + 1.6 + RANDOM.nextDouble() * 0.5, p.getZ() - (z - p.getZ()), 0, -0.02, 0);
+				if (RANDOM.nextInt(3) == 0) add(mc, ParticleTypes.ITEM_SNOWBALL, x, p.getY() + 0.1 + RANDOM.nextDouble() * 0.3, z, 0, 0.05, 0);
+			}
 			case "royal" -> {
 				add(mc, ParticleTypes.TOTEM_OF_UNDYING, x, y, z, 0, 0.04, 0);
 				if (RANDOM.nextInt(3) == 0) add(mc, ParticleTypes.END_ROD, p.getX() - (x - p.getX()), y, p.getZ() - (z - p.getZ()), 0, 0.01, 0);

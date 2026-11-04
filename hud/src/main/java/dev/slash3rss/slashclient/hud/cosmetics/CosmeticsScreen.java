@@ -49,6 +49,7 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("crits", Items.IRON_SWORD), Map.entry("witch", Items.WITCH_SPAWN_EGG), Map.entry("ink", Items.INK_SAC),
 		Map.entry("ash", Items.BASALT),
 		Map.entry("spores", Items.SPORE_BLOSSOM), Map.entry("nautilus", Items.NAUTILUS_SHELL), Map.entry("tears", Items.CRYING_OBSIDIAN),
+		Map.entry("infernal", Items.MAGMA_CREAM), Map.entry("frostaura", Items.PACKED_ICE),
 		//#if MC >= 1.21.5
 		Map.entry("fireflies", Items.FIREFLY_BUSH),
 		//#endif
@@ -931,6 +932,12 @@ public class CosmeticsScreen extends Screen {
 					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[0], 2), x + 4, y + 8, 0, 0, 16, 16, 8, 8, 8, 8, alpha);
 					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[1], 0), x + 18, y + 6, 0, 0, 10, 10, 8, 8, 8, 8, alpha);
 					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[2], 1), x + 16, y + 22, 0, 0, 12, 12, 8, 8, 8, 8, alpha);
+				}
+				// the feathers trail: three of its feathers, floating down
+				if (e.id().equals("feathers")) {
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.feather(0), x + 4, y + 8, 0, 0, 16, 16, 8, 8, 8, 8, alpha);
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.feather(1), x + 18, y + 6, 0, 0, 10, 10, 8, 8, 8, 8, alpha);
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.feather(3), x + 16, y + 22, 0, 0, 12, 12, 8, 8, 8, 8, alpha);
 				}
 				Item item = ITEMS.get(e.id());
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);

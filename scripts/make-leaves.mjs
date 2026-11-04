@@ -1,6 +1,8 @@
 // Paints the autumn leaves of the SlashClient cosmetics and writes them for the mod:
 //   hud/src/main/resources/assets/slashclient-hud/textures/particle/leaf_<colour>_<n>.png  one falling leaf (8×8),
 //     in the game's particle atlas as slashclient-hud:leaf_<colour>_<n> (Leaves.java: the auras' leaves and the ones kicked up)
+//   hud/src/main/resources/assets/slashclient-hud/textures/particle/feather_<n>.png  one white feather (8×8), for the
+//     feathers trail (Leaves.java: they fall the leaves' way, only slower)
 //   hud/src/main/resources/assets/slashclient-hud/textures/ring/ring_leaves_<variant>.png  the leaves lying under the feet,
 //     a ring picture like scripts/make-rings.mjs's (two squares side by side: the leaves on the left, the right one see-through)
 // The golden variant is golden leaves only, the autumn one red, brown and golden ones together. build.mjs copies
@@ -66,9 +68,23 @@ export const COLOURS = {
 /** What falls in each variant (the same in Leaves.java). */
 export const VARIANTS = { gold: ['gold'], autumn: ['red', 'brown', 'gold'] };
 
+/**
+ * The feathers' shapes, 8×8, in the leaves' letters (`h` the shaft, `v` the quill): a long one leaning right,
+ * a straight one, a small downy one and a long one leaning left.
+ */
+export const FEATHER_SHAPES = [
+  ['.....oo.', '....olbo', '...olhbo', '..olhbo.', '..ohbo..', '.ohbo...', '.ho.....', 'v.......'],
+  ['....o...', '...olo..', '...olbo.', '..olhbo.', '..olhbo.', '..ohbo..', '...ho...', '...v....'],
+  ['........', '..o.o...', '.olobo..', '.ollhbo.', '..olhbo.', '...ohbo.', '....oh..', '.....v..'],
+  ['.oo.....', 'oblo....', 'obhlo...', '.obhlo..', '..obho..', '...obho.', '.....oh.', '.......v'],
+];
+/** A feather's grey edge, its white, the lit half, the shaft and the quill. */
+export const FEATHER = { o: '#b4bfcc', b: '#e9eef5', l: '#ffffff', h: '#d2d9e3', v: '#98a3b1' };
+
 function leafPixels(shape, colour) {
-  const palette = COLOURS[colour];
-  return SHAPES[shape].map((row) => [...row].map((c) => (palette[c] ? hex(palette[c]) : null)));
+  const palette = colour === 'feather' ? FEATHER : COLOURS[colour];
+  const shapes = colour === 'feather' ? FEATHER_SHAPES : SHAPES;
+  return shapes[shape].map((row) => [...row].map((c) => (palette[c] ? hex(palette[c]) : null)));
 }
 
 function leafPng(shape, colour) {
@@ -150,6 +166,7 @@ let n = 0;
 for (const colour of Object.keys(COLOURS)) {
   for (let i = 0; i < SHAPES.length; i++, n++) writeFileSync(path.join(textures, 'particle', `leaf_${colour}_${i}.png`), leafPng(i, colour));
 }
+for (let i = 0; i < FEATHER_SHAPES.length; i++) writeFileSync(path.join(textures, 'particle', `feather_${i}.png`), leafPng(i, 'feather'));
 writeFileSync(path.join(textures, 'ring', 'ring_leaves_gold.png'), carpet('gold', 7));
 writeFileSync(path.join(textures, 'ring', 'ring_leaves_autumn.png'), carpet('autumn', 11));
-console.log(`${n} leaves and 2 leaf rings written to ${textures}`);
+console.log(`${n} leaves, ${FEATHER_SHAPES.length} feathers and 2 leaf rings written to ${textures}`);

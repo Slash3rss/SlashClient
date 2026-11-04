@@ -38,12 +38,17 @@ interface Effect {
   life: number;
   /** Pictures of ours (<particles>/<frame>.png, from the mod's textures/particle) rather than the game's. */
   ours?: boolean;
-  /** Seconds between two new ones (0.12 when not given). */
+  /** Seconds between two new ones (0.12 for an aura and 0.09 for a trail when not given). */
   every?: number;
+  /** A second kind of particle made now and then along with these (one in `chance`). */
+  also?: { effect: Effect; chance: number };
 }
 
 /** The leaf auras' pictures: each colour's five leaves (scripts/make-leaves.mjs). */
 const leaves = (...colours: string[]) => colours.flatMap((c) => Array.from({ length: 5 }, (_, i) => `leaf_${c}_${i}`));
+
+/** The feathers trail's pictures (scripts/make-leaves.mjs). */
+const feathers = () => Array.from({ length: 4 }, (_, i) => `feather_${i}`);
 
 const range = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `particle/${prefix}_${i}`);
 const EFFECTS: Record<string, Effect> = {
@@ -77,6 +82,14 @@ const EFFECTS: Record<string, Effect> = {
   // autumn leaves of ours: golden only, or red, brown and golden together
   leaves_gold: { kind: 'aura', frames: leaves('gold'), ours: true, size: 2.8, motion: 'leaf', life: 5.5, every: 0.22 },
   leaves_autumn: { kind: 'aura', frames: leaves('red', 'brown', 'gold'), ours: true, size: 2.8, motion: 'leaf', life: 5.5, every: 0.22 },
+  // the sets' ones: the demon's flames and embers with drops of lava, the frost's snowflakes with a glint of frost,
+  // the angel's white feathers and the autumn's leaves left behind
+  infernal: { kind: 'aura', frames: ['particle/flame', 'particle/flame', 'particle/lava'], size: 2.2, motion: 'rise', life: 1.1,
+    also: { effect: { kind: 'aura', frames: ['particle/drip_fall'], tint: 0xff6a10, size: 2, motion: 'fall', life: 1.2 }, chance: 3 } },
+  frostaura: { kind: 'aura', frames: range('generic', 8).reverse(), animate: true, tint: 0xe8f6ff, size: 2.6, motion: 'fall', life: 2,
+    also: { effect: { kind: 'aura', frames: range('glitter', 8).reverse(), animate: true, tint: 0xbfe8ff, size: 2.2, motion: 'rise', life: 1.2 }, chance: 4 } },
+  feathers: { kind: 'trail', frames: feathers(), ours: true, size: 2.6, motion: 'leaf', life: 3.2, every: 0.2 },
+  leaves_fall: { kind: 'trail', frames: leaves('red', 'brown', 'gold'), ours: true, size: 2.8, motion: 'leaf', life: 2.6, every: 0.16 },
 };
 
 /** The pets' pictures (the bat's moved into a folder in 26.1) and their size next to the player. */
@@ -406,9 +419,11 @@ export class CosmeticPreview {
     if (effect.motion === 'inward') { vx = -sprite.position.x * 0.8; vz = -sprite.position.z * 0.8; vy = (6 - sprite.position.y) * 0.4; }
     let spin = 0;
     if (effect.motion === 'leaf') {
-      // from above the head, near the body or a little further off, down to the ground by the end of its life
+      // from above the head, near the body or a little further off (a trail's: behind, from the back's height),
+      // down to the ground by the end of its life
       const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 10;
-      sprite.position.set(Math.cos(a) * r, 17 + Math.random() * 6, Math.sin(a) * r);
+      if (effect.kind === 'trail') sprite.position.set((Math.random() - 0.5) * 10, -2 + Math.random() * 12, -5 - Math.random() * 4);
+      else sprite.position.set(Math.cos(a) * r, 17 + Math.random() * 6, Math.sin(a) * r);
       vy = -(sprite.position.y + 15.5) / effect.life;
       spin = (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random() * 0.8);
       material.rotation = Math.random() * Math.PI * 2;
@@ -446,13 +461,15 @@ export class CosmeticPreview {
         p.material.needsUpdate = true;
       }
     }
-    if (this.trail && (this.spawnTrail += dt) > 0.09) {
+    if (this.trail && (this.spawnTrail += dt) > (this.trail.every ?? 0.09)) {
       this.spawnTrail = 0;
       this.emit(this.trail);
+      if (this.trail.also && Math.random() * this.trail.also.chance < 1) this.emit(this.trail.also.effect);
     }
     if (this.aura && (this.spawnAura += dt) > (this.aura.every ?? 0.12)) {
       this.spawnAura = 0;
       this.emit(this.aura);
+      if (this.aura.also && Math.random() * this.aura.also.chance < 1) this.emit(this.aura.also.effect);
     }
     for (const p of this.particles) {
       p.age += dt;
@@ -510,7 +527,7 @@ export function cosmeticIcon(pictures: Record<string, string>, id: string, parti
   if (egg) return { srcs: [egg] };
   const e = EFFECTS[id];
   if (!e) return undefined;
-  // our own leaves (also without a game): three of them, of each colour it has
+  // our own leaves and feathers (also without a game): three of them, of each colour it has
   if (e.ours) return { srcs: (e.frames.length > 5 ? [2, 7, 11] : [2, 0, 1]).map((i) => `${particles}${e.frames[i]}.png`) };
   const n = e.frames.length;
   const srcs = (ICON_FRAMES[id] ?? [e.frames[0], e.frames[Math.floor(n / 3)], e.frames[Math.floor((2 * n) / 3)]])

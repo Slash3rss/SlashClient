@@ -150,6 +150,17 @@ public final class FigureParticles {
 			case "witch" -> add(new Style(frames("spell", 7, 0), 0xFFA040D8, 0.14f, true), x, y + 0.2f, z, 0, 0.3f, back, 0.9f);
 			case "ink" -> add(new Style(frames("generic", 7, 0), 0xFF15151C, 0.2f, true), x, y, z, 0, 0.05f, back, 0.9f);
 			case "ash" -> add(new Style(frames("generic", 2, 0), 0xFFCFCFCF, 0.08f, true), x, y + 0.3f, z, spread(0.2f), -0.1f, back, 1.2f);
+			// ours: white feathers, or autumn leaves, left in the air behind and swaying down to the ground
+			case "feathers", "leaves_fall" -> {
+				boolean feather = kind.equals("feathers");
+				if (random.nextInt(feather ? 4 : 3) != 0) break;
+				String name = feather ? "slashclient-hud:feather_" + random.nextInt(dev.slash3rss.slashclient.hud.cosmetics.Leaves.FEATHERS) : leaf("autumn");
+				float fall = feather ? 0.28f : 0.4f;
+				P p = add(style(name, 0xFFFFFFFF, feather ? 0.15f : 0.16f), x * 1.4f, 0.7f + random.nextFloat() * 0.9f, z, 0, -fall, back, 5.0f);
+				p.sway = 0.5f + random.nextFloat() * 0.3f;
+				p.phase = random.nextFloat() * 6.3f;
+				p.life = (p.y + 0.02f) / fall;
+			}
 			default -> add(GENERIC, x, y, z, 0, 0.1f, back, 0.8f);
 		}
 	}
@@ -173,10 +184,8 @@ public final class FigureParticles {
 			case "leaves_gold", "leaves_autumn" -> {
 				// they fall slowly: fewer of them, or the figure would be buried
 				if (random.nextInt(2) != 0) break;
-				String[] colours = dev.slash3rss.slashclient.hud.cosmetics.Leaves.colours(dev.slash3rss.slashclient.hud.cosmetics.Leaves.variant(kind));
-				String leaf = "slashclient-hud:leaf_" + colours[random.nextInt(colours.length)] + "_" + random.nextInt(dev.slash3rss.slashclient.hud.cosmetics.Leaves.SHAPES);
 				float lr = 0.5f + random.nextFloat() * 0.6f;
-				P p = add(style(leaf, 0xFFFFFFFF, 0.16f), x / r * lr, 2.1f + random.nextFloat() * 0.4f, z / r * lr, 0, -0.38f, 0, 5.0f);
+				P p = add(style(leaf(dev.slash3rss.slashclient.hud.cosmetics.Leaves.variant(kind)), 0xFFFFFFFF, 0.16f), x / r * lr, 2.1f + random.nextFloat() * 0.4f, z / r * lr, 0, -0.38f, 0, 5.0f);
 				p.sway = 0.5f + random.nextFloat() * 0.3f;
 				p.phase = random.nextFloat() * 6.3f;
 				// it lies down on the ground at the end
@@ -198,6 +207,19 @@ public final class FigureParticles {
 				P p = add(style(exists("firefly") ? "firefly" : "glow", exists("firefly") ? 0xFFFFFFFF : 0xFFF2F25A, 0.1f), x * 1.3f, y, z * 1.3f, spread(0.4f), spread(0.3f), spread(0.4f), 2.4f);
 				p.blink = true;
 			}
+			// the demon set's: small flames and embers rising, drops of lava falling from the shoulders, a little smoke
+			case "infernal" -> {
+				add(style("flame", 0xFFFFFFFF, 0.1f), x, y, z, 0, 0.3f, 0, 0.9f);
+				if (random.nextInt(3) == 0) add(style("drip_fall", 0xFFFF6A10, 0.1f), -x, 1.5f + random.nextFloat() * 0.4f, -z, 0, -0.4f, 0, 1.2f).gravity = 2.5f;
+				if (random.nextInt(3) == 0) add(new Style(frames("generic", 7, 0), 0xFF3A3434, 0.18f, true), x, y + 0.2f, z, 0, 0.35f, 0, 1.2f);
+				if (random.nextInt(8) == 0) add(style("lava", 0xFFFFFFFF, 0.12f), x, 0.1f, z, spread(0.6f), 1.4f, spread(0.6f), 1.0f).gravity = 3.0f;
+			}
+			// the frost set's: snowflakes drifting round the body, and frost glinting about the feet
+			case "frostaura" -> {
+				add(new Style(frames("generic", 3, 0), 0xFFF0F8FF, 0.1f, true), x, y, z, -z * 0.3f, -0.18f, x * 0.3f, 1.8f);
+				if (random.nextInt(2) == 0) add(new Style(frames("generic", 3, 0), 0xFFF0F8FF, 0.1f, true), -x, 1.6f + random.nextFloat() * 0.5f, -z, 0, -0.3f, 0, 2.0f);
+				if (random.nextInt(4) == 0) add(new Style(frames("glitter", 7, 0), 0xFFCFEFFF, 0.1f, true), x, 0.1f + random.nextFloat() * 0.3f, z, 0, 0.08f, 0, 1.2f);
+			}
 			case "royal" -> {
 				int c = random.nextBoolean() ? 0xFF9BE35A : 0xFFF5D84A;
 				add(new Style(frames("glitter", 7, 0), c, 0.14f, true), x, y, z, 0, 0.35f, 0, 1.2f);
@@ -205,6 +227,12 @@ public final class FigureParticles {
 			}
 			default -> add(GENERIC, x, y, z, 0, 0.3f, 0, 1.0f);
 		}
+	}
+
+	/** One of our leaves of a variant, at random, by its name in the particle pictures. */
+	private String leaf(String variant) {
+		String[] colours = dev.slash3rss.slashclient.hud.cosmetics.Leaves.colours(variant);
+		return "slashclient-hud:leaf_" + colours[random.nextInt(colours.length)] + "_" + random.nextInt(dev.slash3rss.slashclient.hud.cosmetics.Leaves.SHAPES);
 	}
 
 	private static final Map<String, Boolean> EXISTS = new HashMap<>();

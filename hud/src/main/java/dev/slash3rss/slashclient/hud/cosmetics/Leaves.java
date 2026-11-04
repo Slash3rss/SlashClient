@@ -15,6 +15,7 @@ import dev.slash3rss.slashclient.hud.SlashHud;
  * until they touch the ground), with pictures of ours instead of the game's (textures/particle/leaf_<colour>_<n>.png,
  * scripts/make-leaves.mjs; the game's particle atlas takes every pack's particle pictures, ours too).
  * The golden variant drops golden leaves only, the autumn one red, brown and golden ones together.
+ * The feathers trail's white feathers (textures/particle/feather_<n>.png) fall the same way, only slower.
  */
 public final class Leaves {
 	private Leaves() {}
@@ -23,14 +24,22 @@ public final class Leaves {
 	private static final Map<String, String[]> COLOURS = Map.of("gold", new String[] {"gold"}, "autumn", new String[] {"red", "brown", "gold"});
 	/** How many leaf shapes each colour has. */
 	public static final int SHAPES = 5;
+	/** How many feather shapes there are. */
+	public static final int FEATHERS = 4;
 	private static final RandomSource R = RandomSource.create();
 	/** For the test: how many leaves have been made. */
 	public static int made;
 
-	/** The variant of a leaf item ("gold" or "autumn"), or null for any other item. */
+	/** The variant of a leaf item ("gold" or "autumn"; the falling leaves trail is autumn), or null for any other item. */
 	public static String variant(String id) {
 		if (id == null || !id.contains("leaves_")) return null;
+		if (id.equals("leaves_fall")) return "autumn";
 		return id.endsWith("_gold") ? "gold" : id.endsWith("_autumn") ? "autumn" : null;
+	}
+
+	/** One feather's picture as a texture of its own (for the menus). */
+	public static Identifier feather(int shape) {
+		return Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/particle/feather_" + shape + ".png");
 	}
 
 	/** One leaf's picture as a texture of its own (for the menus). */
@@ -49,6 +58,15 @@ public final class Leaves {
 		if (leaf != null) mc.particleEngine.add(leaf);
 	}
 
+	/** A white feather left floating in the air at (x, y, z): it sways down slower than a leaf, gone when it lands. */
+	static void feather(Minecraft mc, double x, double y, double z) {
+		if (mc.level == null || mc.options.particles().get().ordinal() == 2) return;
+		TextureAtlasSprite sprite = sprite(mc, Identifier.fromNamespaceAndPath(SlashHud.ID, "feather_" + R.nextInt(FEATHERS)));
+		if (sprite == null) return;
+		mc.particleEngine.add(new Leaf(mc.level, x, y, z, sprite, 1.5f + R.nextFloat() * 0.4f, 0.035f, 0.01f));
+		made++;
+	}
+
 	/** A leaf kicked up from the ground by the feet: it hops up a little and flutters down again. */
 	static void kick(Minecraft mc, String variant, double x, double y, double z, double vx, double vy, double vz) {
 		Leaf leaf = make(mc, variant, x, y, z, 1.4f + R.nextFloat() * 0.4f);
@@ -65,7 +83,7 @@ public final class Leaves {
 		Identifier name = Identifier.fromNamespaceAndPath(SlashHud.ID, "leaf_" + colours[R.nextInt(colours.length)] + "_" + R.nextInt(SHAPES));
 		TextureAtlasSprite sprite = sprite(mc, name);
 		if (sprite == null) return null;
-		Leaf leaf = new Leaf(mc.level, x, y, z, sprite, size);
+		Leaf leaf = new Leaf(mc.level, x, y, z, sprite, size, 0.07f, 0.021f);
 		// not all of them in the same light
 		float light = 0.86f + R.nextFloat() * 0.14f;
 		leaf.setColor(light, light, light);
@@ -103,25 +121,26 @@ public final class Leaves {
 	/**
 	 * The game's falling leaf with our picture: like the leaves falling from trees (slow, swaying, with
 	 * a swirl), a little bigger than the cherry tree's petals. Before 1.21.4 only the cherry's exists.
+	 * `fall` is how fast it gathers speed downwards and `speed` how fast it starts (a feather: both lower).
 	 */
 	//#if MC >= 1.21.9
 	private static final class Leaf extends net.minecraft.client.particle.FallingLeavesParticle {
-		Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size) {
-			super(level, x, y, z, sprite, 0.07f, 10f, true, false, size, 0.021f);
+		Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size, float fall, float speed) {
+			super(level, x, y, z, sprite, fall, 10f, true, false, size, speed);
 		}
 	//#elif MC >= 1.21.4
 	//$ private static final class Leaf extends net.minecraft.client.particle.FallingLeavesParticle {
-	//$ 	Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size) {
-	//$ 		super(level, x, y, z, one(sprite), 0.07f, 10f, true, false, size, 0.021f);
+	//$ 	Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size, float fall, float speed) {
+	//$ 		super(level, x, y, z, one(sprite), fall, 10f, true, false, size, speed);
 	//$ 	}
 	//#else
 	//$ private static final class Leaf extends net.minecraft.client.particle.CherryParticle {
-	//$ 	Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size) {
+	//$ 	Leaf(ClientLevel level, double x, double y, double z, TextureAtlasSprite sprite, float size, float fall, float speed) {
 	//$ 		super(level, x, y, z, one(sprite));
 	//$ 		// the cherry's petals are half the size, and fall a little faster
 	//$ 		this.quadSize *= size;
-	//$ 		this.gravity *= 0.4f;
-	//$ 		this.yd = -0.021;
+	//$ 		this.gravity *= 0.4f * fall / 0.07f;
+	//$ 		this.yd = -speed;
 	//$ 	}
 	//#endif
 

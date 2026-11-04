@@ -59,14 +59,14 @@ public final class Cosmetics {
 	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn",
 		"aurum", "glacier", "acid", "supporter_wings", "dragonelytra", "obsidianelytra", "sapphireelytra");
 	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
-		"crits", "witch", "ink", "ash");
+		"crits", "witch", "ink", "ash", "feathers", "leaves_fall");
 	// fireflies came with 1.21.5
 	//#if MC >= 1.21.5
 	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
-		"spores", "nautilus", "tears", "fireflies", "leaves_gold", "leaves_autumn");
+		"spores", "nautilus", "tears", "fireflies", "leaves_gold", "leaves_autumn", "infernal", "frostaura");
 	//#else
 	//$ static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
-	//$ 	"spores", "nautilus", "tears", "leaves_gold", "leaves_autumn");
+	//$ 	"spores", "nautilus", "tears", "leaves_gold", "leaves_autumn", "infernal", "frostaura");
 	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "cat", "duszek_haze", "pet_wheelbarrow", "pet_wheelbarrow_autumn");
 	private static final Map<String, List<String>> SLOTS = Map.ofEntries(Map.entry("cape", CAPES), Map.entry("wings", WINGS), Map.entry("elytra", ELYTRAS),

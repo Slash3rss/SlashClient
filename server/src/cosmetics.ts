@@ -168,6 +168,9 @@ export const ITEMS: Item[] = [
   { id: 'witch', slot: 'trail', name: 'Czary', since: '0.9.2' },
   { id: 'ink', slot: 'trail', name: 'Atrament', since: '0.9.2' },
   { id: 'ash', slot: 'trail', name: 'Popiół', since: '0.9.2' },
+  // of the sets: the angel's white feathers (pictures of ours) and the autumn's leaves, left behind as the player goes
+  { id: 'feathers', slot: 'trail', name: 'Piórka', since: '0.9.70', price: 400 },
+  { id: 'leaves_fall', slot: 'trail', name: 'Spadające liście', since: '0.9.70', price: 400 },
   { id: 'enchant', slot: 'aura', name: 'Runy' },
   { id: 'portal', slot: 'aura', name: 'Portal' },
   { id: 'cherry', slot: 'aura', name: 'Wiśnia' },
@@ -184,6 +187,9 @@ export const ITEMS: Item[] = [
   // autumn leaves of our own falling around the player: golden only, or red, brown and golden together
   { id: 'leaves_gold', slot: 'aura', name: 'Złote liście', since: '0.9.29' },
   { id: 'leaves_autumn', slot: 'aura', name: 'Jesienne liście', since: '0.9.29' },
+  // of the sets: the demon's embers, lava and smoke, and the frost's snowflakes
+  { id: 'infernal', slot: 'aura', name: 'Piekielny żar', since: '0.9.70', price: 600 },
+  { id: 'frostaura', slot: 'aura', name: 'Mróz', since: '0.9.70', price: 500 },
   // pets: a small copy of one of the game's mobs flying at the shoulder
   { id: 'allay', slot: 'pet', name: 'Allay' },
   { id: 'vex', slot: 'pet', name: 'Vex' },

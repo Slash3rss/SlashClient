@@ -588,6 +588,7 @@ const ITEM_ICONS = {
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
   leaves_gold: 'fa-leaf', leaves_autumn: 'fa-leaf',
+  infernal: 'fa-fire-flame-simple', frostaura: 'fa-snowflake', feathers: 'fa-feather', leaves_fall: 'fa-leaf',
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw', cat: 'fa-cat',
   // kill effects
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
