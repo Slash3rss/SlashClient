@@ -163,14 +163,14 @@ describe('wiki on the site and for the launcher', () => {
     assert.match(pl.text, /<meta name="description"/);
     const page = await call('GET', '/wiki/start-witaj');
     assert.equal(page.status, 200);
-    assert.match(page.text, /Witaj w wiki SlashClient/);
-    assert.match(page.text, /<img src="\/wiki\/img\/start-wiki-baner.webp"/);
+    assert.match(page.text, /Witaj w SlashClient/);
+    assert.match(page.text, /<img src="\/wiki\/img\/strona-glowna.webp"/);
     assert.match(page.text, /class="legal-toc wiki-toc"/);
     assert.match(page.text, /href="\/en\/wiki\/start-witaj" hreflang="en"/);
     assert.match(page.text, /class="wiki-step next" href="\/wiki\/start-o-wiki"/);
     const en = await call('GET', '/en/wiki/start-witaj');
     assert.match(en.text, /<html lang="en">/);
-    assert.match(en.text, /Welcome to the SlashClient wiki/);
+    assert.match(en.text, /Welcome to SlashClient/);
     assert.match(en.text, /href="\/en\/wiki\/start-o-wiki"/);
     assert.equal((await call('GET', '/wiki/nie-ma-takiej')).status, 404);
     // the search without the script
@@ -198,16 +198,16 @@ describe('wiki on the site and for the launcher', () => {
     const start = list.body.sections.find((s: any) => s.id === 'start');
     assert.equal(start.title, 'Getting started');
     const page = start.pages.find((p: any) => p.slug === 'start-witaj');
-    assert.equal(page.title, 'Welcome to the SlashClient wiki');
-    assert.ok(page.headings.includes('How to read this wiki'));
+    assert.equal(page.title, 'Welcome to SlashClient');
+    assert.ok(page.headings.includes('What you get'));
     const a = await call('GET', '/v1/wiki/start-witaj?lang=en');
     assert.equal(a.body.lang, 'en');
-    assert.match(a.body.html, /src="https:\/\/slashclient.example\/wiki\/img\/start-wiki-baner.webp"/);
+    assert.match(a.body.html, /src="https:\/\/slashclient.example\/wiki\/img\/strona-glowna.webp"/);
     assert.match(a.body.html, /href="\/en\/wiki\/start-o-wiki"/);
     assert.equal(a.body.url, 'https://slashclient.example/en/wiki/start-witaj');
     assert.deepEqual(a.body.next, { slug: 'start-o-wiki', title: 'How to use the wiki' });
-    assert.ok(a.body.toc.some((e: any) => e.id === 'how-to-read-this-wiki'));
-    assert.equal((await call('GET', '/v1/wiki/start-witaj')).body.title, 'Witaj w wiki SlashClient');
+    assert.ok(a.body.toc.some((e: any) => e.id === 'what-you-get'));
+    assert.equal((await call('GET', '/v1/wiki/start-witaj')).body.title, 'Witaj w SlashClient');
     assert.equal((await call('GET', '/v1/wiki/nie-ma')).status, 404);
   });
 

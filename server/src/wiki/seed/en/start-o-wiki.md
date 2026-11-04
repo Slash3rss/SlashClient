@@ -1,4 +1,4 @@
-<!-- dzial: start | kolejnosc: 20 | ikona: fa-book-open | opis: Search, contents, the Polish version and the wiki in the launcher -->
+<!-- dzial: start | kolejnosc: 15 | ikona: fa-book-open | opis: Search, contents, the Polish version and the wiki in the launcher -->
 # How to use the wiki
 
 ## Search

@@ -1,4 +1,4 @@
-<!-- dzial: start | kolejnosc: 20 | ikona: fa-book-open | opis: Wyszukiwarka, spis treści, wersja angielska i wiki w launcherze -->
+<!-- dzial: start | kolejnosc: 15 | ikona: fa-book-open | opis: Wyszukiwarka, spis treści, wersja angielska i wiki w launcherze -->
 # Jak korzystać z wiki
 
 ## Wyszukiwarka
