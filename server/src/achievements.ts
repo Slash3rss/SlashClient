@@ -596,6 +596,11 @@ CREATE TABLE IF NOT EXISTS play_server_days (uuid TEXT NOT NULL REFERENCES users
       .run(uuid, key, Math.max(1, since));
   }
 
+  /** The admin panel starts a counter again (adminUserExtras.ts); what the tables show (`live`) still counts. */
+  resetCounter(uuid: string, key: Counter) {
+    this.sql.prepare('DELETE FROM achievement_counters WHERE uuid = ? AND key = ?').run(uuid, key);
+  }
+
   counter(uuid: string, key: Counter): number {
     return (this.sql.prepare('SELECT n FROM achievement_counters WHERE uuid = ? AND key = ?').get(uuid, key) as { n: number } | undefined)?.n ?? 0;
   }

@@ -274,5 +274,15 @@ export function profileCloudRoutes(ctx: CloudContext) {
     await storage.sweep('cloud', (where, name) => used.has(`${where}:${name.replace(/\.mrpack(\.part)?$/, '')}`), now);
   }
 
-  return { routes, serve, cleanup };
+  /** For the admin panel (adminUserExtras.ts): a player's profiles, and taking one off the account as the owner's delete does. */
+  const list = (owner: string) => store.list(owner);
+  async function remove(owner: string, id: string): Promise<boolean> {
+    const p = store.get(owner, id);
+    if (!p) return false;
+    store.remove(owner, p.id);
+    await storage.remove(p.store, [keyOf(p.file)]);
+    return true;
+  }
+
+  return { routes, serve, cleanup, list, remove };
 }

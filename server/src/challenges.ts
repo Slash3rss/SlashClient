@@ -300,6 +300,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS sparks_ledger_challenge ON sparks_ledger(uuid,
     for (const c of list) ins.run(uuid, period, c.id, JSON.stringify(c), at);
   }
 
+  /** The admin panel starts a counter of one period again (adminUserExtras.ts): its count and what it counted once (servers, days). */
+  resetCounter(uuid: string, period: string, counter: string) {
+    this.sql.prepare('DELETE FROM challenge_progress WHERE uuid = ? AND period = ? AND counter = ?').run(uuid, period, counter);
+    this.sql.prepare('DELETE FROM challenge_keys WHERE uuid = ? AND period = ? AND counter = ?').run(uuid, period, counter);
+  }
+
   /** Marks one done; false when it was already. */
   finish(uuid: string, period: string, id: string, at: number): boolean {
     return this.sql.prepare('UPDATE challenge_assigned SET done_at = ? WHERE uuid = ? AND period = ? AND id = ? AND done_at IS NULL').run(at, uuid, period, id).changes > 0;

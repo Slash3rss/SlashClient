@@ -453,5 +453,27 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     }
   }
 
-  return { routes, serve, forMessage, attach, decorate, cleanup, has, remove, removeChat, usage, chatLimits };
+  /**
+   * For the admin panel (adminUserExtras.ts): what a player sent, without the keys (the pictures are
+   * encrypted, the panel never sees them), newest first; `recipient` is a friend's id or "g:<group>".
+   */
+  function ofOwner(owner: string, limit = 200) {
+    return (sql.prepare('SELECT id, recipient, size, created_at, message_id, removed_at FROM chat_images WHERE owner = ? ORDER BY created_at DESC LIMIT ?').all(owner, limit) as unknown as
+      Pick<Row, 'id' | 'recipient' | 'size' | 'created_at' | 'message_id' | 'removed_at'>[])
+      .map((r) => ({ id: r.id, recipient: r.recipient, size: r.size, at: r.created_at, message: r.message_id, removedAt: r.removed_at }));
+  }
+
+  /** The admin takes one picture down, as a moderator would: the file goes, the message shows it was taken down, both sides hear it. */
+  async function takeDownOne(id: string, by: string, owner?: string): Promise<boolean> {
+    const r = row(id);
+    if (!r || r.removed_at !== null || (owner !== undefined && r.owner !== owner)) return false;
+    await takeDown([r], by);
+    if (r.message_id !== null) {
+      if (r.recipient.startsWith('g:')) ctx.changedGroup?.(r.recipient.slice(2), r.message_id, by);
+      else ctx.changedDirect?.(r.owner, r.recipient, r.message_id);
+    }
+    return true;
+  }
+
+  return { routes, serve, forMessage, attach, decorate, cleanup, has, remove, removeChat, usage, chatLimits, ofOwner, takeDownOne };
 }

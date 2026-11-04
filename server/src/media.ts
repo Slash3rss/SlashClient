@@ -452,5 +452,8 @@ export function mediaRoutes(ctx: MediaContext) {
     await storage.sweep('media', (where, name) => known.has(`${where}:${name.slice(0, 10)}`), now);
   }
 
-  return { routes, serve, cleanup, limits };
+  /** A player's links still working, for the admin panel (adminUserExtras.ts; it deletes through DELETE /v1/media/<id>). */
+  const ofOwner = (owner: string) => store.ofOwner(owner);
+
+  return { routes, serve, cleanup, limits, ofOwner };
 }

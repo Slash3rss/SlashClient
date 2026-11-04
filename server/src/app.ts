@@ -9,6 +9,7 @@ import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './pre
 import { SprayLimit, cleanSpray } from './sprays.ts';
 import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, compareVersions, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
+import { adminUserExtrasRoutes } from './adminUserExtras.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -1810,6 +1811,7 @@ export function createApp(cfg: Config) {
         throw new HttpError(status, code);
       },
     }),
+    ...adminUserExtrasRoutes({ db, admin, body, push, configAdmins, cosmeticsChanged, wallet, achievements, challenges, referrals, communities, groups, mutes, support, shares, cloud, media, images, fail: (status, code) => { throw new HttpError(status, code); } }),
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged, supporterLevel: (id) => support.cosmeticsLevel(id), badge: wearOf,
       setRank: (id, rank, by) => ranks.setOnly(id, rank, by),
