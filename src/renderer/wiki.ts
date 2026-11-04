@@ -1,13 +1,15 @@
 import { t } from '../shared/i18n';
 import { control, el, icon } from './dialog';
+import { featureOn, onFeatures } from './features';
 import { createSkyupWiki } from './skyupWiki';
+import { createSlashWiki } from './slashWiki';
 
 /**
  * The "Wiki" view: minecraft.wiki search and articles (recipes, mobs, blocks) without a browser.
  * The main process fetches, caches and sanitizes everything (src/shared/wikiHtml.ts), so the HTML
  * put in here has no scripts, styles or handlers; links to articles open in this panel, other links
  * in the browser. Sections load when opened. A switch in the view's header leads to the SkyUp.pl
- * wiki (skyupWiki.ts).
+ * wiki (skyupWiki.ts) and to the SlashClient wiki of the launcher's server (slashWiki.ts).
  */
 
 interface Hit { title: string; snippet: string; thumbnail?: string }
@@ -32,39 +34,72 @@ const LOADING_AFTER_MS = 150;
 export function createWiki(root: HTMLElement, deps: WikiDeps) {
   const mc = el('div', { className: 'wiki-pane' });
   const skyPane = el('div', { className: 'wiki-pane wiki-skyup hidden' });
-  root.append(mc, skyPane);
+  const slashPane = el('div', { className: 'wiki-pane wiki-slash hidden' });
+  root.append(mc, skyPane, slashPane);
   const mcWiki = createMinecraftWiki(mc, deps);
   const sky = createSkyupWiki(skyPane, deps);
 
-  // the switch between the two wikis, in the view's header
+  // the switch between the wikis, in the view's header; SlashClient's only when the server has one
+  const tabSlash = el('button', { type: 'button', className: 'hidden', title: t('Wiki SlashClient') }, icon('fa-book-open'), ' SlashClient');
   const tabMc = el('button', { type: 'button', title: t('Wiki Minecrafta') }, icon('fa-cube'), ' minecraft.wiki');
   const tabSky = el('button', { type: 'button', title: t('Wiki serwera SkyUp.pl') }, icon('fa-cloud'), ' SkyUp.pl');
-  const tabs = el('div', { className: 'segmented wiki-tabs' }, tabMc, tabSky);
+  const tabs = el('div', { className: 'segmented wiki-tabs' }, tabSlash, tabMc, tabSky);
   (root.closest('.view')?.querySelector('.view-head') ?? root).append(tabs);
 
-  let tab: 'mc' | 'skyup' = 'mc';
+  type Tab = 'mc' | 'skyup' | 'slash';
+  let tab: Tab = 'mc';
   try {
-    if (localStorage.getItem(TAB_KEY) === 'skyup') tab = 'skyup';
+    const kept = localStorage.getItem(TAB_KEY);
+    if (kept === 'skyup' || kept === 'slash') tab = kept;
   } catch { /* storage may be unavailable */ }
-  function select(next: 'mc' | 'skyup', focus = true) {
+  /** `remember`: the player's own choice (a tab shown only because SlashClient's went away is not one). */
+  function select(next: Tab, focus = true, remember = true) {
     tab = next;
-    try {
-      localStorage.setItem(TAB_KEY, next);
-    } catch { /* storage may be unavailable */ }
+    if (remember) {
+      try {
+        localStorage.setItem(TAB_KEY, next);
+      } catch { /* storage may be unavailable */ }
+    }
     tabMc.classList.toggle('active', next === 'mc');
     tabSky.classList.toggle('active', next === 'skyup');
+    tabSlash.classList.toggle('active', next === 'slash');
     mc.classList.toggle('hidden', next !== 'mc');
     skyPane.classList.toggle('hidden', next !== 'skyup');
+    slashPane.classList.toggle('hidden', next !== 'slash');
     if (next === 'skyup') sky.show(focus);
+    else if (next === 'slash') slash.show(focus);
     else if (focus) mcWiki.focus();
   }
-  tabMc.addEventListener('click', () => select('mc'));
-  tabSky.addEventListener('click', () => select('skyup'));
-  select(tab, false);
+  // a server without the wiki (older, or switched off): no switch, and minecraft.wiki in its place
+  let available = false;
+  function setAvailable(yes: boolean) {
+    available = yes && featureOn('wiki');
+    tabSlash.classList.toggle('hidden', !available);
+    if (!available && tab === 'slash') select('mc', false, false);
+  }
+  const slash = createSlashWiki(slashPane, { ...deps, onAvailable: setAvailable });
+  // the player's last choice: SlashClient's only once the server said it has the wiki
+  let wanted = tab;
+  const pick = (next: Tab) => {
+    wanted = next;
+    select(next);
+  };
+  tabMc.addEventListener('click', () => pick('mc'));
+  tabSky.addEventListener('click', () => pick('skyup'));
+  tabSlash.addEventListener('click', () => pick('slash'));
+  select(tab === 'slash' ? 'mc' : tab, false, false);
+  const probe = () => void slash.probe().then((yes) => {
+    if (yes && wanted === 'slash' && tab !== 'slash') select('slash', false, false);
+  });
+  probe();
+  onFeatures(() => {
+    if (!featureOn('wiki')) setAvailable(false);
+    else if (!available) probe();
+  });
 
   return {
     /** Called when the view opens. */
-    focus: () => select(tab),
+    focus: () => select(tab, true, false),
   };
 }
 

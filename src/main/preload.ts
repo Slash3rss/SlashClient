@@ -241,6 +241,8 @@ const api = {
   skyupWikiIndex: () => invoke('wiki:skyupIndex'),
   skyupWikiArticle: (slug: string) => invoke('wiki:skyupArticle', slug),
   skyupWikiSearch: (query: string) => invoke('wiki:skyupSearch', query),
+  slashWikiIndex: (lang: string) => invoke('wiki:slashIndex', lang),
+  slashWikiArticle: (slug: string, lang: string) => invoke('wiki:slashArticle', slug, lang),
   gpuSupported: () => invoke('gpu:supported'),
   /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
   notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string } | { view: 'achievements' }) => invoke('notify:show', title, body, target),
