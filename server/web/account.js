@@ -226,21 +226,29 @@ function renderAccount(reload = false) {
     toast(done);
     renderAccount();
   };
+  // sets of items that go together (servers from 0.9.70): a tab of their own after the slots
+  const sets = (cosmetics.sets ?? []).filter((s) => Object.keys(s.parts).length);
+  if (slot === 'sets' && !sets.length) slot = 'cape';
   const tabs = el('div', { class: 'slot-tabs' }, ...SLOTS.filter(([s]) => items.some((i) => i.slot === s)).map(([s, name, ic, nameEn]) =>
-    el('button', { class: `${s === slot ? 'active' : ''}${worn[s] ? ' worn' : ''}`, onclick: () => { slot = s; renderAccount(); } }, icon(ic), L(name, nameEn))));
+    el('button', { class: `${s === slot ? 'active' : ''}${worn[s] ? ' worn' : ''}`, onclick: () => { slot = s; renderAccount(); } }, icon(ic), L(name, nameEn))),
+    sets.length ? el('button', { class: slot === 'sets' ? 'active' : '', onclick: () => { slot = 'sets'; renderAccount(); } }, icon('fa-solid fa-layer-group'), L('Zestawy', 'Sets')) : '');
   const pick = el('div', { class: 'cape-picker' });
-  const noteText = SLOT_NOTES[slot] ?? ((slot === 'cape' || slot === 'wings') && worn.back ? L('Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.', 'You wear something on your back: in game it shows instead of the cape and the wings.') : '');
+  const noteText = slot === 'sets' ? L('Przedmioty, które do siebie pasują. „Załóż zestaw” zakłada naraz wszystkie części, które masz; pod spodem widać, jak zdobyć resztę.',
+    'Items that go together. “Wear the set” puts on all the parts you have at once; below it says how to get the rest.')
+    : SLOT_NOTES[slot] ?? ((slot === 'cape' || slot === 'wings') && worn.back ? L('Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.', 'You wear something on your back: in game it shows instead of the cape and the wings.') : '');
   const note = noteText ? el('p', { class: 'muted small', textContent: noteText }) : '';
+  /** Why a locked item cannot be worn, and how to get it. */
+  const lockedWhy = (item, name) => item.price && !item.owned ? L(`${name}: w sklepie za ${sparks(item.price)}`, `${name}: in the shop for ${sparks(item.price)}`)
+    : item.rank ? L(`${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}`, `${name}: only for the ${RANK_NAMES[item.rank] ?? item.rank} rank`)
+    : item.supporter ? L(`${name}: dla wspierających projekt (strona Wesprzyj)`, `${name}: for supporters of the project (the Support page)`)
+    : (EN ? item.hintEn ?? item.hint : item.hint) ?? L(`${name}: ekskluzywne, przyznaje admin`, `${name}: exclusive, given by the admins`);
   const choice = (item) => {
     const id = item?.id ?? '';
     const name = item?.name ?? L('Nic', 'Nothing');
     const locked = item && !item.available;
     // sold in the shop for sparks: the price on it, a click asks to buy (sparks.js)
     const forSale = locked && item.price && !item.owned;
-    const why = forSale ? L(`${name}: w sklepie za ${sparks(item.price)}`, `${name}: in the shop for ${sparks(item.price)}`)
-      : item?.rank ? L(`${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}`, `${name}: only for the ${RANK_NAMES[item.rank] ?? item.rank} rank`)
-      : item?.supporter ? L(`${name}: dla wspierających projekt (strona Wesprzyj)`, `${name}: for supporters of the project (the Support page)`)
-      : (EN ? item?.hintEn ?? item?.hint : item?.hint) ?? L(`${name}: ekskluzywne, przyznaje admin`, `${name}: exclusive, given by the admins`);
+    const why = locked ? lockedWhy(item, name) : '';
     const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, disabled: !!locked && !forSale, title: locked ? why : name },
       item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { class: 'cape-name' }, el('span', { textContent: name })), forSale ? priceTag(item.price) : '', locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
     // under the mouse the figure tries it on; leaving puts back what is worn
@@ -250,8 +258,43 @@ function renderAccount(reload = false) {
       id ? L(`${name}: założone. Widać po następnym wejściu do gry.`, `${name}: put on. It shows the next time you join the game.`) : L('Zdjęte.', 'Taken off.')));
     return b;
   };
-  pick.append(choice(undefined));
-  for (const c of items.filter((i) => i.slot === slot)) pick.append(choice(c));
+  // a set: its name, how many of its parts are ours, the parts (the missing ones dimmed, with their price or how to earn
+  // them), and a button that puts on every part we have in one go; under the mouse the figure tries it on
+  const setCard = (s) => {
+    const parts = Object.entries(s.parts).map(([sl, id]) => items.find((i) => i.id === id && i.slot === sl)).filter(Boolean);
+    const owned = parts.filter((p) => p.available);
+    const missing = parts.filter((p) => !p.available);
+    const wearing = owned.length > 0 && owned.every((p) => (worn[p.slot] || '') === p.id);
+    const setName = L(s.name, s.nameEn);
+    const part = (p) => {
+      const forSale = !p.available && p.price && !p.owned;
+      const b = el('button', { class: `set-part${p.available ? '' : ' locked'}${forSale ? ' for-sale' : ''}`, disabled: !p.available && !forSale, title: p.available ? p.name : lockedWhy(p, p.name) },
+        cosmeticEl(p.id, p.slot, true), forSale ? priceTag(p.price) : '', p.available ? '' : el('i', { class: 'fa-solid fa-lock lock' }));
+      if (forSale) b.addEventListener('click', async () => (await buy(p, cosmetics.wallet?.balance ?? 0)) && refresh());
+      return b;
+    };
+    const wear = el('button', { class: wearing ? '' : 'primary', disabled: !owned.length || wearing, onclick: () => {
+      const loadout = Object.fromEntries(owned.filter((p) => p.slot !== 'cape').map((p) => [p.slot, p.id]));
+      const cape = owned.find((p) => p.slot === 'cape');
+      send({ ...(cape ? { cape: cape.id } : {}), ...(Object.keys(loadout).length ? { loadout } : {}) },
+        L(`Zestaw ${setName}: założone (${owned.length} z ${parts.length}). Widać po następnym wejściu do gry.`, `${setName} set: put on (${owned.length} of ${parts.length}). It shows the next time you join the game.`));
+    } }, icon(wearing ? 'fa-solid fa-check' : 'fa-solid fa-shirt'), wearing ? L('Założony', 'Worn') : L('Załóż zestaw', 'Wear the set'));
+    const card = el('div', { class: `set-card${wearing ? ' worn' : ''}` },
+      el('div', { class: 'set-head' }, el('b', { class: 'grow', textContent: setName }),
+        el('span', { class: `chip${owned.length === parts.length ? ' blue' : ''}`, title: L('Masz / wszystkie części', 'Owned / all parts'), textContent: `${owned.length}/${parts.length}` }), wear),
+      el('div', { class: 'set-parts' }, ...parts.map(part)),
+      missing.length ? el('ul', { class: 'set-missing muted small' }, ...missing.map((p) => el('li', { textContent: lockedWhy(p, p.name) }))) : '');
+    card.addEventListener('mouseenter', () => preview?.show({ ...previewWorn, ...Object.fromEntries(owned.map((p) => [p.slot, p.id])) }));
+    card.addEventListener('mouseleave', () => preview?.show(previewWorn));
+    return card;
+  };
+  if (slot === 'sets') {
+    pick.className = 'set-list';
+    pick.append(...sets.map(setCard));
+  } else {
+    pick.append(choice(undefined));
+    for (const c of items.filter((i) => i.slot === slot)) pick.append(choice(c));
+  }
   // every card is as wide as the others; a name too long for it slides from end to end and back
   // (measured once the cards are on the page, when the site's font has come, and when their size changes)
   const fit = () => {
