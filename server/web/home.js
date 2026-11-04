@@ -1,7 +1,7 @@
 // The landing page: download button for the visitor's system, the screenshot that straightens
 // as you scroll, sections that fade in and the capes. The words, the modules, the features and
 // the FAQ come in the page from the server (edited in the admin panel's "Strona główna").
-import { $, animateCape, api, el, icon, motionOff, token } from './common.js';
+import { $, animateCape, api, cosmeticsCatalog, el, icon, motionOff, token } from './common.js';
 
 const EN = document.documentElement.lang === 'en';
 
@@ -66,16 +66,20 @@ if (token.get()) {
 }
 
 // ---------- capes ----------
+const strip = $('#cape-strip');
+// asked first, so the capes' frames (animateCape) come from the same answer (common.js)
+const catalog = strip ? cosmeticsCatalog() : undefined;
 for (const c of document.querySelectorAll('[data-cape]')) {
   c.style.backgroundImage = `url(/vendor/capes/${c.dataset.cape}.png)`;
   animateCape(c, c.dataset.cape);
 }
-const strip = $('#cape-strip');
 if (strip) {
-  api('GET', '/v1/cosmetics').then(({ capes, items }) => {
+  catalog.then(({ capes, items }) => {
     // the shop's capes carry their price in sparks (from achievements)
     const prices = Object.fromEntries((items ?? []).filter((i) => i.price).map((i) => [i.id, i.price]));
-    strip.replaceChildren(...capes.map((c) => {
+    // `capes` only from a server before `items` had every slot (0.8)
+    const list = items ? items.filter((i) => i.slot === 'cape').map((i) => ({ ...i, exclusive: i.exclusive || !!i.rank })) : capes;
+    strip.replaceChildren(...list.map((c) => {
       const price = prices[c.id];
       const title = price ? (EN ? `${c.name}: in the shop for ${price} Sparks from achievements` : `${c.name}: w sklepie za ${price} Iskier z osiągnięć`)
         : c.exclusive ? `${c.name} (${EN ? 'exclusive' : 'ekskluzywna'})` : c.name;

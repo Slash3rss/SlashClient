@@ -13,7 +13,7 @@ const EN = english();
 
 let me;
 let health = { providers: [], dev: false };
-let cosmetics = { capes: [] };
+let cosmetics = { items: [] };
 /** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
 const RANK_NAMES = EN ? { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Friend', friend_pink: 'Friend' } : { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel' };
 let slot = 'cape';
@@ -210,7 +210,8 @@ function renderAccount(reload = false) {
       me.admin ? el('a', { class: 'btn', href: '/admin' }, icon('fa-solid fa-shield-halved'), L('Panel admina', 'Admin panel')) : '',
       el('button', { onclick: async () => { await signOut(); me = undefined; renderNav(); renderAccount(); } }, icon('fa-solid fa-right-from-bracket'), L('Wyloguj', 'Sign out'))));
 
-  const items = cosmetics.items ?? cosmetics.capes.map((c) => ({ ...c, slot: 'cape' }));
+  // `capes` only from a server before `items` had every slot (0.8)
+  const items = cosmetics.items ?? cosmetics.capes?.map((c) => ({ ...c, slot: 'cape' })) ?? [];
   const characters = me.minecraft ?? [];
   if (!characters.some((m) => m.uuid === forCharacter)) forCharacter = '';
   const character = characters.find((m) => m.uuid === forCharacter);
@@ -356,12 +357,15 @@ async function partnersCard() {
   return section;
 }
 
-async function refresh() {
-  me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
-  cosmetics = await api('GET', '/v1/cosmetics').catch(() => ({ capes: [] }));
+/** Who is signed in and the cosmetics as they see them, asked at the same time; `first`: the sign-in ways too. */
+async function refresh(first) {
+  [me, cosmetics] = await Promise.all([
+    token.get() ? api('GET', '/v1/me').catch(() => undefined) : undefined,
+    api('GET', '/v1/cosmetics').catch(() => ({ items: [] })),
+    first ? api('GET', '/v1/health').then((h) => { health = h; }, () => {}) : undefined,
+  ]);
   renderNav();
   renderAccount(true);
 }
 
-health = await api('GET', '/v1/health').catch(() => health);
-refresh().catch((err) => toast(errorText(err), true));
+refresh(true).catch((err) => toast(errorText(err), true));
