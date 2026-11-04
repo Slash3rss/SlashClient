@@ -1498,7 +1498,7 @@ registerMaintenance({
   trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir), defaultJavaVendor: () => store.settings.javaVendor,
 });
 registerLauncherTools({
-  handle, profiles: () => store.profiles, running: profileBusy,
+  handle, profiles: () => store.profiles, running: profileBusy, socialUrl: () => store.settings.socialUrl,
   // the account the profile plays as (its own, else the one picked on the Play tab) may have shared settings of its own
   sharedDir: (profile) => sharedDirFor(store.accounts.some((a) => a.id === profile.accountId) ? profile.accountId : store.settings.selectedAccountId, store.settings.sharedPerAccount),
 });

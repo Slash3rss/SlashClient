@@ -6,13 +6,13 @@ import { siteFooter, siteNav } from '../siteFooter.ts';
 
 const UI = {
   pl: {
-    nav: [['/#funkcje', 'Funkcje'], ['/#kosmetyki', 'Kosmetyki'], ['/#faq', 'FAQ'], ['/zgloszenia', 'Zgłoszenia'], ['/wsparcie', 'Wesprzyj']],
+    nav: [['/#funkcje', 'Funkcje'], ['/#kosmetyki', 'Kosmetyki'], ['/wiki', 'Wiki'], ['/zgloszenia', 'Zgłoszenia'], ['/wsparcie', 'Wesprzyj']],
     other: 'English', toc: 'Spis treści', updated: 'Ostatnia aktualizacja:', print: 'Drukuj', home: 'Strona główna',
     draft: 'Projekt / wersja robocza — do weryfikacji przez prawnika przed publikacją jako wiążące. Fragmenty oznaczone [UZUPEŁNIJ: …] uzupełnia właściciel serwisu.',
     unofficial: 'SlashClient · nie jest powiązany z Mojang ani Microsoft.', locale: 'pl-PL',
   },
   en: {
-    nav: [['/en#funkcje', 'Features'], ['/en#kosmetyki', 'Cosmetics'], ['/en#faq', 'FAQ'], ['/bugs', 'Bug reports'], ['/support', 'Support us']],
+    nav: [['/en#funkcje', 'Features'], ['/en#kosmetyki', 'Cosmetics'], ['/en/wiki', 'Wiki'], ['/bugs', 'Bug reports'], ['/support', 'Support us']],
     other: 'Polski', toc: 'Contents', updated: 'Last updated:', print: 'Print', home: 'Home',
     draft: 'Draft — to be reviewed by a lawyer before it is published as binding. Parts marked [UZUPEŁNIJ: …] (to be filled in) are completed by the owner of the service. The Polish version prevails.',
     unofficial: 'SlashClient · not affiliated with Mojang or Microsoft.', locale: 'en-GB',

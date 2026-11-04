@@ -206,7 +206,7 @@ export const DEFAULTS: Record<Lang, Content> = {
       imageAlt: 'SlashClient – Minecraft, tylko lepiej. Launcher z HUD-em, znajomymi i kosmetykami.',
     },
     nav: {
-      links: [nav('Funkcje', '#funkcje'), nav('HUD', '#hud'), nav('Kosmetyki', '#kosmetyki'), nav('FAQ', '#faq'), nav('Zgłoszenia', '/zgloszenia'),
+      links: [nav('Funkcje', '#funkcje'), nav('HUD', '#hud'), nav('Kosmetyki', '#kosmetyki'), nav('FAQ', '#faq'), nav('Wiki', '/wiki'), nav('Zgłoszenia', '/zgloszenia'),
         nav('Wesprzyj', '/wsparcie', 'fa-solid fa-heart', true)],
       admin: 'Panel admina', account: 'Zaloguj się', accountTitle: 'Twoje konto', download: 'Pobierz',
     },
@@ -282,7 +282,7 @@ export const DEFAULTS: Record<Lang, Content> = {
     final: { title: 'Pobierz SlashClient', text: 'Za darmo, na Windows, macOS i Linux.', button: 'Pobierz SlashClient' },
     footer: {
       note: 'Nie jest powiązany z Mojang ani Microsoft.',
-      links: [link('Zgłoś błąd', '/zgloszenia'), link('Twoje konto', '/konto'), link('Wesprzyj projekt', '/wsparcie', 'fa-solid fa-heart')],
+      links: [link('Wiki', '/wiki', 'fa-solid fa-book-open'), link('Zgłoś błąd', '/zgloszenia'), link('Twoje konto', '/konto'), link('Wesprzyj projekt', '/wsparcie', 'fa-solid fa-heart')],
       terms: 'Regulamin', privacy: 'Polityka prywatności', langShow: true, langLabel: 'English',
     },
   },
@@ -296,7 +296,7 @@ export const DEFAULTS: Record<Lang, Content> = {
       imageAlt: 'SlashClient – Minecraft, only better. A launcher with a HUD, friends and cosmetics.',
     },
     nav: {
-      links: [nav('Features', '#funkcje'), nav('HUD', '#hud'), nav('Cosmetics', '#kosmetyki'), nav('FAQ', '#faq'), nav('Bug reports', '/bugs'),
+      links: [nav('Features', '#funkcje'), nav('HUD', '#hud'), nav('Cosmetics', '#kosmetyki'), nav('FAQ', '#faq'), nav('Wiki', '/en/wiki'), nav('Bug reports', '/bugs'),
         nav('Support us', '/support', 'fa-solid fa-heart', true)],
       admin: 'Admin panel', account: 'Sign in', accountTitle: 'Your account', download: 'Download',
     },
@@ -372,7 +372,7 @@ export const DEFAULTS: Record<Lang, Content> = {
     final: { title: 'Download SlashClient', text: 'Free, for Windows, macOS and Linux.', button: 'Download SlashClient' },
     footer: {
       note: 'Not affiliated with Mojang or Microsoft.',
-      links: [link('Report a bug', '/bugs'), link('Your account', '/account'), link('Support the project', '/support', 'fa-solid fa-heart')],
+      links: [link('Wiki', '/en/wiki', 'fa-solid fa-book-open'), link('Report a bug', '/bugs'), link('Your account', '/account'), link('Support the project', '/support', 'fa-solid fa-heart')],
       terms: 'Terms of Service', privacy: 'Privacy Policy', langShow: true, langLabel: 'Polski',
     },
   },

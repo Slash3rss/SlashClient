@@ -102,6 +102,14 @@ export const TOOLS_EN: Record<string, string> = {
   'Na wiki nie ma takiej strony.': 'The wiki has no such page.',
   'Wiki zwróciła błąd: {0}': 'The wiki returned an error: {0}',
 
+  // the SlashClient wiki (the server's /wiki)
+  'Wiki SlashClient': 'The SlashClient wiki',
+  'Szukaj w wiki SlashClient, np. mapa, peleryna, profile…': 'Search the SlashClient wiki, e.g. map, cape, profiles…',
+  'Wiki SlashClient: opis wszystkich funkcji launchera, HUD-u i kosmetyków.': 'The SlashClient wiki: every feature of the launcher, the HUD and cosmetics explained.',
+  'Na stronie': 'On the website',
+  'Poprzednia': 'Previous',
+  'Następna': 'Next',
+
   // the SkyUp.pl wiki
   'Wiki serwera SkyUp.pl': 'The SkyUp.pl server wiki',
   'Szukaj na wiki SkyUp.pl, np. klejnoty, pety, lej…': 'Search the SkyUp.pl wiki (in Polish), e.g. klejnoty, pety, lej…',

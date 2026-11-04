@@ -5,8 +5,8 @@
 export function siteFooter(lang: 'pl' | 'en'): string {
   const en = lang === 'en';
   const links: [string, string][] = en
-    ? [['/bugs', 'Report a bug'], ['/account', 'Your account'], ['/support', '<i class="fa-solid fa-heart"></i> Support the project'], ['/terms', 'Terms of Service'], ['/privacy', 'Privacy Policy']]
-    : [['/zgloszenia', 'Zgłoś błąd'], ['/konto', 'Twoje konto'], ['/wsparcie', '<i class="fa-solid fa-heart"></i> Wesprzyj projekt'], ['/regulamin', 'Regulamin'], ['/polityka-prywatnosci', 'Polityka prywatności']];
+    ? [['/en/wiki', 'Wiki'], ['/bugs', 'Report a bug'], ['/account', 'Your account'], ['/support', '<i class="fa-solid fa-heart"></i> Support the project'], ['/terms', 'Terms of Service'], ['/privacy', 'Privacy Policy']]
+    : [['/wiki', 'Wiki'], ['/zgloszenia', 'Zgłoś błąd'], ['/konto', 'Twoje konto'], ['/wsparcie', '<i class="fa-solid fa-heart"></i> Wesprzyj projekt'], ['/regulamin', 'Regulamin'], ['/polityka-prywatnosci', 'Polityka prywatności']];
   return `<footer class="foot">
     <div class="wrap foot-row">
       <a class="brand" href="${en ? '/en' : '/'}"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>

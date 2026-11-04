@@ -1534,6 +1534,19 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .wiki-sky-content .w-color-red { color: #f87171; font-weight: 600; }
 .wiki-sky-content .w-color-green { color: #4ade80; font-weight: 600; }
 .wiki-sky-content .w-color-gold { color: #fbbf24; }
+/* the SlashClient wiki (slashWiki.ts): pictures with captions, notes and steps to the next page */
+.wiki-slash-icon { color: var(--accent-light); font-size: 15px; }
+.wiki-slash .wiki-sky-item { align-items: flex-start; }
+.wiki-head h2 .fa-solid { color: var(--accent-light); font-size: .8em; }
+.wiki-slash-lead { margin: -2px 0 10px; font-size: 13.5px; }
+.wiki-slash-content .w-wiki-figure { margin: 12px 0 16px; }
+.wiki-slash-content .w-wiki-figure img { display: block; max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--glass-border); }
+.wiki-slash-content figcaption { margin-top: 5px; font-size: 12.5px; color: var(--text-muted); }
+.wiki-slash-content .w-note { padding: 10px 12px; border-radius: 10px; background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .25); }
+.wiki-slash-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--glass-border); }
+.wiki-slash-step { flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 8px 12px; text-align: left; }
+.wiki-slash-step.next { align-items: flex-end; text-align: right; grid-column: 2; }
+.wiki-slash-step small { color: var(--text-muted); font-size: 11.5px; }
 @media (max-width: 900px) {
   .wiki-split { grid-template-columns: minmax(0, 1fr); }
   .wiki-content .w-infobox { float: none; width: auto; margin: 0 0 12px; }

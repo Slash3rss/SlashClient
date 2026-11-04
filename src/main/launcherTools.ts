@@ -9,6 +9,7 @@ import { setDownloadLimit } from './rateLimit';
 import { profileGameDir, type Profile, type Settings } from './store';
 import { wikiArticle, wikiSearch, wikiSection } from './wiki';
 import { skyupArticle, skyupIndex, skyupSearch } from './skyupWiki';
+import { slashWikiArticle, slashWikiIndex } from './slashWiki';
 
 /**
  * IPC and launch hooks of four smaller launcher tools, kept out of main.ts: key conflicts in a
@@ -24,6 +25,8 @@ export interface LauncherToolsDeps {
   running: (profileId: string) => boolean;
   /** The folder of the shared game settings this profile's games use (sync.ts). */
   sharedDir: (profile: Profile) => string;
+  /** The SlashClient server's address (Settings), for its wiki. */
+  socialUrl: () => string;
 }
 
 /**
@@ -101,6 +104,9 @@ export function registerLauncherTools(deps: LauncherToolsDeps): void {
   handle('wiki:skyupIndex', () => skyupIndex());
   handle('wiki:skyupArticle', (slug: string) => skyupArticle(slug));
   handle('wiki:skyupSearch', (query: string) => skyupSearch(query));
+  // the SlashClient wiki, from the SlashClient server (null: the server has none)
+  handle('wiki:slashIndex', (lang: string) => slashWikiIndex(deps.socialUrl(), lang));
+  handle('wiki:slashArticle', (slug: string, lang: string) => slashWikiArticle(deps.socialUrl(), slug, lang));
   handle('gpu:supported', () => gpuOptionSupported());
 }
 
