@@ -6,6 +6,7 @@ import path from 'node:path';
 import { downloadAll, fetchJson } from './download';
 import { installVersion, type StageFn } from './install';
 import { ensureJava } from './java';
+import { cachedJson } from './jsonCache';
 import { paths } from './paths';
 import { resolveVersion, type VersionJson } from './versions';
 import { t } from '../shared/i18n';
@@ -24,14 +25,20 @@ export interface LoaderVersion {
   stable: boolean;
 }
 
-/** Loader versions available for a game version, newest first. */
-export async function loaderVersions(loader: Loader, gameVersion: string): Promise<LoaderVersion[]> {
+/** How long the Play click trusts the kept list of Fabric/Quilt versions (jsonCache.ts). */
+const LOADER_LIST_MS = 6 * 60 * 60_000;
+
+/**
+ * Loader versions available for a game version, newest first. `cached`: the Play click's newest-stable
+ * pick may use the list kept on disk (and starts offline with it); the profile editor asks fresh.
+ */
+export async function loaderVersions(loader: Loader, gameVersion: string, cached = false): Promise<LoaderVersion[]> {
   if (loader === 'vanilla') return [];
   if (loader === 'forge') return forgeVersions(gameVersion);
   if (loader === 'neoforge') return neoforgeVersions(gameVersion);
-  const list = await fetchJson<{ loader: { version: string; stable?: boolean } }[]>(
-    `${META[loader]}/versions/loader/${encodeURIComponent(gameVersion)}`,
-  );
+  const url = `${META[loader]}/versions/loader/${encodeURIComponent(gameVersion)}`;
+  type Row = { loader: { version: string; stable?: boolean } };
+  const list = cached ? await cachedJson<Row[]>(url, `${loader}-loaders-${gameVersion}`, LOADER_LIST_MS) : await fetchJson<Row[]>(url);
   return list
     .map(({ loader: l }) => ({
       version: l.version,
@@ -70,17 +77,39 @@ export async function installLoader(loader: Loader, gameVersion: string, loaderV
   if (loader === 'vanilla') return gameVersion;
   let version = loaderVersion;
   if (!version) {
-    const all = await loaderVersions(loader, gameVersion);
+    const all = await loaderVersions(loader, gameVersion, true);
     if (!all.length) throw new Error(t('{0} nie wspiera jeszcze wersji {1}.', LOADER_NAMES[loader], gameVersion));
     version = (all.find((v) => v.stable) ?? all[0]).version;
   }
   if (loader === 'forge' || loader === 'neoforge') return installForgeLike(loader, gameVersion, version, ctx);
+  // this loader version's profile is already on disk, whole: nothing to ask or write (and it starts offline)
+  const known = await installedLoaderProfile(loader, gameVersion, version);
+  if (known) return known;
   const profile = await fetchJson<VersionJson>(
     `${META[loader]}/versions/loader/${encodeURIComponent(gameVersion)}/${encodeURIComponent(version)}/profile/json`,
   );
   await fs.mkdir(paths.versionDir(profile.id), { recursive: true });
   await fs.writeFile(paths.versionJson(profile.id), JSON.stringify(profile, null, 2));
   return profile.id;
+}
+
+/** The id Fabric's and Quilt's meta give a loader profile ("fabric-loader-0.19.5-26.3"). */
+export const loaderProfileId = (loader: 'fabric' | 'quilt', gameVersion: string, version: string) => `${loader}-loader-${version}-${gameVersion}`;
+
+/**
+ * The profile written by an earlier Play click, when it is complete: the expected id, made for this game
+ * version, with a main class and libraries. Anything else (missing, cut short, edited) is fetched again.
+ */
+export async function installedLoaderProfile(loader: 'fabric' | 'quilt', gameVersion: string, version: string, file = (id: string) => paths.versionJson(id)): Promise<string | undefined> {
+  const id = loaderProfileId(loader, gameVersion, version);
+  try {
+    const json = JSON.parse(await fs.readFile(file(id), 'utf8')) as Partial<VersionJson>;
+    const whole = json.id === id && json.inheritsFrom === gameVersion && typeof json.mainClass === 'string' && json.mainClass.length > 0
+      && Array.isArray(json.libraries) && json.libraries.length > 0 && json.libraries.some((l) => typeof l?.name === 'string' && l.name.includes(`:${version}`));
+    return whole ? id : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------- Forge and NeoForge (installer-based) ----------

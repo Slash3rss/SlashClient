@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { downloadAll, fetchJson, type ProgressFn } from './download';
+import { cachedJson } from './jsonCache';
 import { paths } from './paths';
 import type { VersionJson } from './versions';
 import { t } from '../shared/i18n';
@@ -42,7 +43,8 @@ function javaExecutable(home: string): string {
  */
 export async function ensureJava(version: VersionJson, onProgress?: ProgressFn): Promise<string> {
   const component = version.javaVersion?.component ?? 'jre-legacy';
-  const index = await fetchJson<RuntimeIndex>(RUNTIMES_URL);
+  // the index changes a few times a year: kept on disk for six hours, and used when offline (jsonCache.ts)
+  const index = await cachedJson<RuntimeIndex>(RUNTIMES_URL, 'java-runtimes', 6 * 60 * 60_000);
 
   // Apple Silicon has no native build of some old runtimes; fall back to x64 (Rosetta).
   const platform = platformKeys().find((key) => (index[key]?.[component]?.length ?? 0) > 0);

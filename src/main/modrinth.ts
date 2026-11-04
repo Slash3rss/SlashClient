@@ -205,9 +205,16 @@ export async function findFitting(slugOrId: string, gameVersion: string, loader?
  * The newest fitting file of a mod, kept in `dir` (outside any mods/ folder) and reused
  * while it is still the newest. Without a connection the copy already there is used.
  */
-export async function cachedModFile(slugOrId: string, gameVersion: string, loader: string, dir: string): Promise<string> {
+export async function cachedModFile(slugOrId: string, gameVersion: string, loader: string, dir: string, now = Date.now()): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
   const present = (await fs.readdir(dir)).filter((f) => f.endsWith('.jar'));
+  // checked against Modrinth less than six hours ago: the Play click asks nothing
+  const marker = path.join(dir, '.checked');
+  const key = `${slugOrId}|${gameVersion}|${loader}`;
+  const checked = await fs.readFile(marker, 'utf8').then((s) => JSON.parse(s) as { key?: string; at?: number; file?: string }, () => undefined);
+  if (checked?.key === key && typeof checked.at === 'number' && now - checked.at >= 0 && now - checked.at < MOD_CHECK_MS && checked.file && present.length === 1 && present[0] === checked.file) {
+    return path.join(dir, checked.file);
+  }
   let version: ModrinthVersion;
   try {
     version = await pickVersion(slugOrId, gameVersion, loader);
@@ -222,8 +229,11 @@ export async function cachedModFile(slugOrId: string, gameVersion: string, loade
   }
   // only one version in the folder, or Fabric would see the mod twice
   for (const f of present) if (f !== path.basename(dest)) await fs.rm(path.join(dir, f), { force: true });
+  await fs.writeFile(marker, JSON.stringify({ key, at: now, file: path.basename(dest) })).catch(() => undefined);
   return dest;
 }
+/** How long a mod file checked as the newest is trusted without asking Modrinth again. */
+const MOD_CHECK_MS = 6 * 60 * 60_000;
 
 /** Mod ids that are already installed (by Modrinth project id), so a pack doesn't reinstall them. */
 export async function installedProjectIds(gameDir: string): Promise<Set<string>> {
