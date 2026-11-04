@@ -2061,13 +2061,61 @@ const invites = createReferrals({
     void api.saveSettings({ referralPromptSkipped: store.settings.referralPromptSkipped }).catch(() => undefined);
   },
 });
+/** The balance at the top of the window: shown while signed in to a server with sparks, and lit up when it changes. */
+let topSparks: number | undefined;
+function showTopSparks(n: number | undefined) {
+  const pill = $('#top-sparks');
+  pill.classList.toggle('hidden', n === undefined);
+  if (n === undefined) return;
+  $('#top-sparks-value').textContent = n.toLocaleString(locale());
+  pill.title = t('Twoje {0}: {1}. Otwórz sklep', currencyName(), sparks(n));
+  if (topSparks !== undefined && topSparks !== n) {
+    pill.classList.remove('changed');
+    void pill.offsetWidth;
+    pill.classList.add('changed');
+  }
+  topSparks = n;
+}
+/** The sets for the Shop view: the account's own (not one character's), worn in one request like in the cosmetics menu. */
+async function shopSets(redraw: () => void): Promise<Node[]> {
+  const { me, catalog, walletBalance, sets } = await readCosmetics();
+  if (!sets?.length) return [];
+  const worn: Partial<Record<Slot, string>> = { ...me?.loadout, cape: me?.cape ?? '' };
+  return renderSets({
+    sets: sets.filter((s) => Object.entries(s.parts).some(([slot, id]) => catalog.some((c) => c.id === id && c.slot === slot))),
+    catalog, worn, signedIn: !!me,
+    picture: (item) => cosmeticPicture(item.slot, item.id),
+    sparks, rankName: (rank) => RANK_NAMES[rank] ?? rank,
+    wear: async (set, body, owned, all) => {
+      if (!(await guard(() => api.socialApi('POST', '/v1/me', body)))) return;
+      toast(t('Zestaw {0}: założone {1} z {2}.', getLang() === 'en' ? set.nameEn : set.name, owned, all));
+      redraw();
+      renderSlashCapes();
+    },
+    buy: async (item) => {
+      if ((await buyWithConfirm(item, walletBalance ?? achievements.balance(), { api, toast, errorText }, cosmeticPicture(item.slot, item.id))) === undefined) return;
+      redraw();
+      renderSlashCapes();
+    },
+    // no figure here: the cosmetics menu (Accounts) is where sets are tried on
+    tryOn: () => undefined,
+  });
+}
 const achievements = createAchievements($('#achievements-root'), {
-  api, toast, errorText, badge: $('#sparks-badge'), invites,
+  api, toast, errorText, invites, onBalance: showTopSparks, shopRoot: $('#shop-root'), sets: shopSets,
   // the shop shows the cosmetics as the cosmetics menu does
   picture: (slot, id) => cosmeticPicture(slot as Slot, id),
   slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),
 });
 document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
+/** The Shop view: not in the menu (no entry is lit), opened from the balance at the top or the cosmetics menu. */
+function openShop(which: 'shop' | 'sets' = 'shop') {
+  document.querySelectorAll('.nav').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-shop'));
+  updateSkinRendering();
+  achievements.showShop(which);
+}
+$('#top-sparks').addEventListener('click', () => openShop());
 // recommending SlashClient is also a button in Friends (only in Achievements nobody looked for it), named
 // so it is not taken for a friend request: a window with the code, the link and the friends who joined;
 // shown only when the server has invites
@@ -4566,7 +4614,7 @@ async function renderSlashCapes(fresh = true) {
   $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
   if (walletBalance !== undefined) achievements.setBalance(walletBalance);
-  // the balance and the way to the shop (in the Achievements view), while signed in to a server that has it
+  // the balance and the way to the shop (the Shop view), while signed in to a server that has it
   $('#cosmetic-shop').classList.toggle('hidden', walletBalance === undefined);
   $('#cosmetic-sparks').textContent = (walletBalance ?? 0).toLocaleString(locale());
   $('#cosmetic-shop').title = t('Twoje {0}: {1}', currencyName(), sparks(walletBalance ?? 0));
@@ -4738,7 +4786,7 @@ async function readCosmetics(): Promise<NonNullable<typeof cosmeticsKept>> {
   return { me, catalog, walletBalance, sets };
 }
 
-$('#cosmetic-shop').addEventListener('click', () => achievements.showShop());
+$('#cosmetic-shop').addEventListener('click', () => openShop());
 $('#cosmetic-shared').addEventListener('click', async () => {
   if (!cosmeticCharacter || !(await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })))) return;
   toast(t('Ta postać nosi teraz zestaw całego konta.'));

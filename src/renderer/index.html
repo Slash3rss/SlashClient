@@ -20,6 +20,8 @@
     <div class="splash-text" id="splash-text">Ładowanie…</div>
   </div>
   <div class="titlebar" aria-hidden="true"></div>
+  <!-- the balance of sparks and the way to the shop, on every view (next to the window's buttons) -->
+  <button type="button" class="top-sparks feature-shop hidden" id="top-sparks"><span class="spark-sign">✦</span><b id="top-sparks-value"></b><span class="top-sparks-shop"><i class="fa-solid fa-store"></i> Sklep</span></button>
   <canvas id="stars" aria-hidden="true"></canvas>
   <div class="background-decorations" aria-hidden="true">
     <div class="glow-orb orb-1"></div>
@@ -37,7 +39,7 @@
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
       <button class="nav" data-view="discover"><i class="fa-solid fa-compass"></i>Odkrywaj</button>
       <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
-      <button class="nav" data-view="achievements"><i class="fa-solid fa-trophy"></i>Osiągnięcia<span class="nav-sparks hidden" id="sparks-badge"></span></button>
+      <button class="nav" data-view="achievements"><i class="fa-solid fa-trophy"></i>Osiągnięcia</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="wiki"><i class="fa-solid fa-book-open"></i>Wiki</button>
@@ -594,6 +596,12 @@
     <section class="view" id="view-achievements">
       <header class="view-head"><h2 class="gradient-title">Osiągnięcia</h2></header>
       <div class="ach-root" id="achievements-root"></div>
+    </section>
+
+    <!-- opened from the balance at the top of the window, not from the menu -->
+    <section class="view" id="view-shop">
+      <header class="view-head"><h2 class="gradient-title">Sklep</h2></header>
+      <div class="ach-root" id="shop-root"></div>
     </section>
 
     <section class="view" id="view-settings">

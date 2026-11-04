@@ -58,7 +58,9 @@ describe('cosmetic sets in the launcher', () => {
       assert.ok(texts.length >= 3, file);
       for (const text of texts) assert.notEqual(t(text), text, `no English for: ${text}`);
     }
-    for (const text of Object.keys(SETS_EN)) assert.ok(readFileSync('src/renderer/app.ts', 'utf8').includes(`t('${text}'`) || readFileSync('src/renderer/cosmeticSets.ts', 'utf8').includes(`t('${text}'`), text);
+    // the Shop view's sets tab is drawn by achievements.ts
+    const used = ['src/renderer/app.ts', 'src/renderer/cosmeticSets.ts', 'src/renderer/achievements.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
+    for (const text of Object.keys(SETS_EN)) assert.ok(used.includes(`t('${text}'`), text);
     setLang('pl');
   });
 });

@@ -1,5 +1,5 @@
 import { getLang, locale, t } from '../shared/i18n';
-import { currencyName, currencyOf, signedSparks, sparkAmount, sparkShort, sparks } from '../shared/sparks';
+import { currencyName, currencyOf, signedSparks, sparkAmount, sparks } from '../shared/sparks';
 import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
 import { bonusText, completedText, renderChallenges, type Challenge, type Challenges } from './challenges';
 import type { createReferrals, Referrals } from './referrals';
@@ -40,8 +40,15 @@ export interface AchievementsDeps {
   picture?: (slot: string, id: string) => Node;
   /** A slot's name in the player's language ("Peleryna"). */
   slotName?: (slot: string) => string;
-  /** The balance next to the menu entry (hidden while signed out). */
-  badge?: HTMLElement;
+  /** The balance changed (undefined: signed out), for the balance and shop button at the top of every view. */
+  onBalance?: (n: number | undefined) => void;
+  /**
+   * The Shop view (a view of its own, opened from the top of the window): its tabs (the cosmetics for
+   * sale, the sets, the history of the sparks) are drawn there instead of among the achievements' tabs.
+   */
+  shopRoot?: HTMLElement;
+  /** The sets as cards for the Shop view (cosmeticSets.ts); none (an older server): no tab. */
+  sets?: (redraw: () => void) => Promise<Node[]>;
   /** Inviting friends (referrals.ts): the "Zaproś" tab, shown only when the server has it. */
   invites?: ReturnType<typeof createReferrals>;
 }
@@ -109,7 +116,7 @@ export function byCategory(list: Achievement[], order: string[]): { category: st
   }).filter((g) => g.items.length);
 }
 
-type Tab = 'list' | 'challenges' | 'shop' | 'history' | 'invite';
+type Tab = 'list' | 'challenges' | 'shop' | 'sets' | 'history' | 'invite';
 
 export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
   const { api } = deps;
@@ -123,18 +130,18 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
   /** When a toast about unlocks was last shown, so the "unseen" summary does not repeat it. */
   let lastNoticeAt = 0;
 
+  /** With the shop switched off in the admin panel the history of the sparks stays among the achievements' tabs. */
+  const shopOff = () => !deps.shopRoot || document.body.classList.contains('feature-off-shop');
+  /** Whether the tab belongs to the Shop view. */
+  const inShop = () => !shopOff() && (tab === 'shop' || tab === 'sets' || tab === 'history');
+  /** Where the page is drawn now: the Shop view for its tabs, the Achievements view for the rest. */
+  const here = () => (!friend && inShop() ? deps.shopRoot! : root);
+
   function setBalance(n: number | undefined) {
-    if (n === undefined) {
-      deps.badge?.classList.add('hidden');
-      return;
-    }
+    deps.onBalance?.(n);
+    if (n === undefined) return;
     balance = n;
-    if (deps.badge) {
-      deps.badge.textContent = sparkShort(n);
-      deps.badge.title = t('Twoje {0}: {1}', currencyName(), sparks(n));
-      deps.badge.classList.remove('hidden');
-    }
-    root.querySelectorAll('.spark-balance-value').forEach((b) => (b.textContent = fmt(n)));
+    for (const r of [root, deps.shopRoot]) r?.querySelectorAll('.spark-balance-value').forEach((b) => (b.textContent = fmt(n)));
   }
 
   /** The cape's front from its texture (10×16 at 1,1 of the 64×32 layout, at 4×). */
@@ -203,9 +210,12 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
 
   function tabs() {
     const bar = el('div', { className: 'ach-tabs' });
-    const all = [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][];
+    const history: [Tab, string, string] = ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left'];
+    const all = (inShop()
+      ? [['shop', t('Kosmetyki'), 'fa-store'], ...(deps.sets ? [['sets', t('Zestawy'), 'fa-layer-group']] : []), history]
+      : [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ...(shopOff() ? [history] : [])]) as [Tab, string, string][];
     // inviting friends: only when the server has it (an older one, or switched off, has no tab)
-    if (deps.invites?.available() || tab === 'invite') all.push(['invite', t('Poleć'), 'fa-gift']);
+    if (!inShop() && (deps.invites?.available() || tab === 'invite')) all.push(['invite', t('Poleć'), 'fa-gift']);
     for (const [key, label, iconName] of all) {
       const b = el('button', { type: 'button', className: `ach-tab${tab === key ? ' active' : ''}` }, icon(iconName), ` ${label}`);
       b.addEventListener('click', () => {
@@ -298,6 +308,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     | { kind: 'friend'; f: { id: string; name: string }; achievements: Achievement[] }
     | { kind: 'list'; mine: Mine }
     | { kind: 'shop'; res: ShopData }
+    | { kind: 'sets'; cards: Node[] }
     | { kind: 'history'; w: Wallet }
     | { kind: 'challenges'; res?: Challenges; fetchedAt: number }
     | { kind: 'invite'; res?: Referrals };
@@ -324,6 +335,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       if (res.wallet) setBalance(res.wallet.balance);
       return { kind: 'shop', res };
     }
+    if (tab === 'sets') return { kind: 'sets', cards: (await deps.sets?.(() => void render(true))) ?? [] };
     if (tab === 'history') {
       const w: Wallet = await api.socialApi('GET', '/v1/wallet');
       setBalance(w.balance);
@@ -360,7 +372,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
         void render();
       });
       const { chips, sections, unlocked } = renderList(achievements, false, Object.keys(CATEGORY));
-      root.replaceChildren(
+      here().replaceChildren(
         el('div', { className: 'ach-head' }, el('h3', {}, icon('fa-trophy'), t(' Osiągnięcia: {0}', f.name)),
           el('span', { className: 'muted', textContent: t('{0} z {1} odblokowanych', unlocked, achievements.length) }), back),
         chips, ...sections);
@@ -370,12 +382,14 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       const body = data.res && deps.invites
         ? deps.invites.render(data.res, () => void render(true))
         : [el('div', { className: 'card glass-panel' }, el('p', { className: 'muted', textContent: t('Zaproszenia są teraz wyłączone.') }))];
-      root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
+      here().replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
       return;
     }
     if (data.kind !== 'list') {
-      const body = data.kind === 'shop' ? renderShop(data.res) : data.kind === 'history' ? renderHistory(data.w) : renderChallengesTab(data.res, data.fetchedAt);
-      root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
+      const body = data.kind === 'shop' ? renderShop(data.res) : data.kind === 'history' ? renderHistory(data.w)
+        : data.kind === 'sets' ? (data.cards.length ? [el('div', { className: 'slash-capes shop-sets' }, ...data.cards)] : [el('p', { className: 'muted', textContent: t('Ten serwer SlashClient nie ma jeszcze zestawów.') })])
+        : renderChallengesTab(data.res, data.fetchedAt);
+      here().replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
       return;
     }
     const { mine } = data;
@@ -383,7 +397,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     const stat = (iconName: string, value: string, label: string) =>
       el('div', { className: 'ach-stat glass-panel' }, icon(iconName), el('b', { textContent: value }), el('small', { className: 'muted', textContent: label }));
     const { chips, sections } = renderList(mine.achievements, true, mine.categories ?? Object.keys(CATEGORY));
-    root.replaceChildren(
+    here().replaceChildren(
       el('div', { className: 'ach-top' }, mine.sparks ? balanceCard(mine.sparks.earned, mine.sparks.total) : '', tabs()),
       el('div', { className: 'ach-stats' },
         stat('fa-fire', String(s.streak), t('dni z rzędu (rekord {0})', s.bestStreak)),
@@ -410,7 +424,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       draw(shown.data);
       onScreen = `${key}|${shown.json}`;
     } else if (!shown && !quiet) {
-      root.replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
+      here().replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
       onScreen = '';
     }
     const state = await api.socialState().catch(() => undefined);
@@ -421,7 +435,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       setBalance(undefined);
       const go = el('button', { type: 'button', className: 'primary' }, icon('fa-user-group'), t(' Przejdź do Znajomych'));
       go.addEventListener('click', () => document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click());
-      root.replaceChildren(el('div', { className: 'card glass-panel' },
+      here().replaceChildren(el('div', { className: 'card glass-panel' },
         el('h3', {}, icon('fa-trophy'), t(' Osiągnięcia SlashClient')),
         el('p', { className: 'muted', textContent: t('Zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia: serie dni gry, godziny, znajomych i serwery. Każde daje {0} na kosmetyki w sklepie, a niektóre wyjątkowe peleryny.', currencyName()) }),
         el('div', { className: 'row' }, go)));
@@ -430,7 +444,8 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     try {
       const data = await load();
       if (ticket !== loading) return;
-      const json = JSON.stringify(data);
+      // the sets' cards are drawn already (not data): always shown anew
+      const json = data.kind === 'sets' ? String(Date.now()) : JSON.stringify(data);
       kept.set(key, { data, json });
       // shown from memory and nothing changed: the page stays as it is (no redraw, no jump)
       if (onScreen === `${key}|${json}`) return;
@@ -442,12 +457,12 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       if (shown) return;
       const retry = el('button', { type: 'button' }, icon('fa-rotate-right'), t(' Spróbuj ponownie'));
       retry.addEventListener('click', () => void render());
-      root.replaceChildren(el('div', { className: 'card glass-panel' }, el('p', { className: 'fr-error', textContent: deps.errorText(err) }), el('div', { className: 'row' }, retry)));
+      here().replaceChildren(el('div', { className: 'card glass-panel' }, el('p', { className: 'fr-error', textContent: deps.errorText(err) }), el('div', { className: 'row' }, retry)));
       onScreen = '';
     }
   }
 
-  const isVisible = () => root.closest('.view')?.classList.contains('active');
+  const isVisible = () => here().closest('.view')?.classList.contains('active');
 
   /** Shows a notice in the window or, in the background, as a system notification. */
   function notice(title: string, body: string) {
@@ -534,13 +549,13 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     /** Called when the view opens: the player's own achievements. */
     show() {
       friend = undefined;
+      if (inShop()) tab = 'list';
       void render();
     },
-    /** Opens the shop tab (from the cosmetics menu). */
-    showShop() {
-      document.querySelector<HTMLButtonElement>('.nav[data-view="achievements"]')?.click();
+    /** Called when the Shop view opens (the button at the top, the cosmetics menu): one of its tabs. */
+    showShop(which: 'shop' | 'sets' = 'shop') {
       friend = undefined;
-      tab = 'shop';
+      tab = which === 'sets' && deps.sets ? 'sets' : 'shop';
       void render();
     },
     /** A friend's unlocked achievements (from the friends list). */

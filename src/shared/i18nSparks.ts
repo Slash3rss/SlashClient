@@ -21,6 +21,7 @@ export const SPARKS_EN: Record<string, string> = {
   'dni gry': 'days played',
   'Twoje {0}': 'Your {0}',
   'Twoje {0}: {1}': 'Your {0}: {1}',
+  'Twoje {0}: {1}. Otwórz sklep': 'Your {0}: {1}. Open the shop',
   'Z osiągnięć: {0} z {1} do zdobycia': 'From achievements: {0} of {1} to earn',
   'Zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia: serie dni gry, godziny, znajomych i serwery. Każde daje {0} na kosmetyki w sklepie, a niektóre wyjątkowe peleryny.':
     'Sign in to a SlashClient account in the Friends tab to collect achievements: play streaks, hours, friends and servers. Each one gives {0} for cosmetics in the shop, and some give unique capes.',

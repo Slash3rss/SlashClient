@@ -1633,9 +1633,22 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 
 /* ---------- sparks (the achievements' currency), the shop and the achievements in categories ---------- */
 .spark-sign { color: #fbbf24; text-shadow: 0 0 6px rgba(251, 191, 36, .45); }
-.nav-sparks { margin-left: auto; padding: 0 6px; height: 18px; flex-shrink: 0; border-radius: 99px; background: rgba(251, 191, 36, .14); color: #fcd34d; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; white-space: nowrap; }
-/* the badge next to a long name ("Achievements") needs the button's room */
-.nav:has(> .nav-sparks:not(.hidden)) { gap: 10px; padding-right: 8px; }
+/* the balance and the way to the shop at the top of every view: in the title bar, left of the window's buttons
+   (the overlay on Windows and Linux says where they start; on macOS they are on the left, so the corner is free) */
+.top-sparks {
+  position: fixed; top: 5px; z-index: 2; -webkit-app-region: no-drag;
+  right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 8px)) + 8px);
+  height: 26px; padding: 0 3px 0 10px; gap: 6px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
+  background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .28); color: #fcd34d;
+}
+.top-sparks:hover:not(:disabled) { background: rgba(251, 191, 36, .18); border-color: rgba(251, 191, 36, .45); }
+.top-sparks-shop { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 9px; border-radius: 99px; background: rgba(255, 255, 255, .08); color: var(--text-primary); font-size: 11.5px; font-weight: 600; }
+.top-sparks:hover .top-sparks-shop { background: rgba(255, 255, 255, .14); }
+/* the balance just changed (earned or spent): a short golden glow */
+.top-sparks.changed { animation: top-sparks-glow 1.4s ease-out; }
+@keyframes top-sparks-glow { 0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, .7); background: rgba(251, 191, 36, .35); } 100% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); } }
+.shop-sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); align-items: start; gap: 10px; margin-top: 4px; }
+.shop-sets .set-head button.set-wear { height: 30px; padding: 0 12px; font-size: 12.5px; }
 .ach-top { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
 .ach-top .ach-tabs { margin-left: auto; align-self: flex-end; }
 .spark-card { padding: 12px 16px; display: flex; gap: 14px; align-items: center; min-width: 260px; border-color: rgba(251, 191, 36, .3); }
