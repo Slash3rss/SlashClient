@@ -182,6 +182,10 @@ export const TAILS: TailItem[] = [
   { id: 'dragontail', slot: 'tail', name: 'Smoczy ogon', droop: -0.95, curl: 0.14, chains: [{ segments: dragon }] },
   { id: 'wolftail', slot: 'tail', name: 'Wilczy ogon', droop: -1.15, curl: 0.08, chains: [{ segments: [{ size: [2.4, 2.4, 3] }, { size: [3, 3, 3.2] }, { size: [3, 3, 3.2] }, { size: [2.4, 2.4, 2.6] }] }] },
   { id: 'squirreltail', slot: 'tail', name: 'Wiewiórczy ogon', droop: -0.4, curl: 0.42, chains: [{ segments: ([[2, 2], [3.2, 2.6], [4.2, 3], [4.6, 3], [4.6, 3], [4, 2.6], [3, 2]] as [number, number][]).map(([w, len]) => ({ size: [w, w * 0.95, len] as [number, number, number] })) }] },
+  // a round white pompom: one piece with a bar across, one up and down and a cap behind, so it is round from every side
+  { id: 'bunnytail', slot: 'tail', name: 'Puszysty ogonek', droop: -0.15, curl: 0, chains: [{ segments: [{ size: [3, 3, 2.4], extras: [
+    { from: [-1.9, -1, -0.1], size: [3.8, 2, 2] }, { from: [-1, -1.9, -0.1], size: [2, 3.8, 2] }, { from: [-1, -1, 1.9], size: [2, 2, 0.6] },
+  ] }] }] },
 ];
 
 export const GEAR: GearItem[] = [...BACK_ITEMS, ...TAILS];

@@ -252,6 +252,7 @@ export const ITEMS: Item[] = [
   { id: 'mittens', slot: 'hands', name: 'Rękawiczki zimowe', since: '0.9.20' },
   { id: 'goldring', slot: 'hands', name: 'Złoty pierścień', since: '0.9.20' },
   { id: 'smartband', slot: 'hands', name: 'Opaska sportowa', since: '0.9.20' },
+  { id: 'catpaws', slot: 'hands', name: 'Kocie łapki', since: '0.9.70', price: 300 },
   // on the face (glasses stay on under a helmet, masks hide) and on top of the head (ears twitch): boxes like the clothing's
   { id: 'sunglasses', slot: 'face', name: 'Okulary przeciwsłoneczne', since: '0.9.20' },
   { id: 'aviators', slot: 'face', name: 'Pilotki', since: '0.9.20' },
@@ -271,6 +272,9 @@ export const ITEMS: Item[] = [
   { id: 'antlers', slot: 'ears', name: 'Poroże', since: '0.9.20' },
   { id: 'unicorn', slot: 'ears', name: 'Róg jednorożca', since: '0.9.20' },
   { id: 'earmuffs', slot: 'ears', name: 'Nauszniki', since: '0.9.29' },
+  { id: 'dragonhorns', slot: 'ears', name: 'Smocze rogi', since: '0.9.70', price: 500 },
+  { id: 'wolfears', slot: 'ears', name: 'Wilcze uszy', since: '0.9.70', price: 300 },
+  { id: 'pandaears', slot: 'ears', name: 'Uszy pandy', since: '0.9.70', price: 300 },
   // on the back (in the cape's and the wings' place) and tails, boxes like the clothing (src/shared/gear.ts)
   { id: 'backpack', slot: 'back', name: 'Plecak', since: '0.9.20' },
   { id: 'quiver', slot: 'back', name: 'Kołczan', since: '0.9.20' },
@@ -287,6 +291,7 @@ export const ITEMS: Item[] = [
   { id: 'dragontail', slot: 'tail', name: 'Smoczy ogon', since: '0.9.20' },
   { id: 'wolftail', slot: 'tail', name: 'Wilczy ogon', since: '0.9.20' },
   { id: 'squirreltail', slot: 'tail', name: 'Wiewiórczy ogon', since: '0.9.20' },
+  { id: 'bunnytail', slot: 'tail', name: 'Puszysty ogonek', since: '0.9.70', price: 300 },
   // rings: a flat, slowly turning picture on the ground under the feet (textures/ring, some animated)
   { id: 'ring_runes', slot: 'ring', name: 'Krąg run', since: '0.9.20' },
   { id: 'ring_flame', slot: 'ring', name: 'Ognisty krąg', since: '0.9.20' },

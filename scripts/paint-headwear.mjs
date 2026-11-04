@@ -253,5 +253,41 @@ export function headwearPaint({ hex, shade, grain, isSide, K }) {
       }
       return fur;
     },
+    dragonhorns({ box, face, x, y, px, py }) {
+      const [n] = step(box, 5);
+      // the dragon's green, in scales near the head, turning to gold towards the tip
+      const toGold = Math.max(0, Math.min(1, (n - 1.5) / 2.5));
+      const mixed = (a, b) => a.map((c, i) => Math.round(c + (b[i] - c) * toGold));
+      const base = mixed(hex('#3f7d3a'), hex('#e3bf4f'));
+      const f = 0.86 + grain(65, px * 5 + x, py * 5 + y) * 0.2;
+      if (n === 4) return shade(hex('#f6e7ae'), f);
+      if (face === 'up') return shade(mixed(hex('#d9c98a'), hex('#c49a2c')), f);
+      // rings across the horn, and the scales' arcs on the green part
+      const along = face === 'down' ? y : face === 'east' || face === 'west' ? x : y;
+      if (along % 4 === 0) return shade(mixed(hex('#2c5a29'), hex('#a8801f')), f);
+      if (n < 2 && (x + (Math.floor(y / 3) % 2) * 1.5) % 3 < 0.8) return shade(hex('#2c5a29'), f);
+      return shade(base, f);
+    },
+    wolfears({ box, face, x, y, w, px, py }) {
+      const [n] = step(box, 4);
+      // the wolf's tail's greys: a dark tip, pale fur inside, a darker back
+      if (n === 3) return shade(hex('#3b3d42'), 0.9 + grain(66, x, y) * 0.2);
+      const f = 0.86 + grain(67, px * 5 + x, py * 5 + Math.floor(y / 2)) * 0.22;
+      if (face === 'north' && n < 3 && x >= (n === 2 ? 2 : 3) && x < w - (n === 2 ? 2 : 3)) return shade(hex('#d6d8dc'), 0.94 + grain(68, x, y) * 0.1);
+      if (face === 'south') return shade(hex('#5c5f66'), f);
+      return shade(hex('#8a8d93'), f);
+    },
+    pandaears({ box, face, x, y, px, py }) {
+      const [n, side] = step(box, 2);
+      const black = shade(hex('#1d1d22'), 0.88 + grain(69, px * 5 + x, py * 5 + y) * 0.24);
+      // a softer grey round the middle of the front, as on the panda suit's ears
+      if (face === 'north') {
+        // (where the box starts, in the head's space: the left ear's as given, the right one's mirrored)
+        const mx = [[1.75, -4.75], [2.25, -4.25]][n][side] + (x + 0.5) / K;
+        const my = (n === 0 ? -10.5 : -11) + (y + 0.5) / K;
+        if (Math.hypot(mx - (side === 0 ? 3.25 : -3.25), my + 9.6) < 0.85) return shade(hex('#3a3a42'), 0.95 + grain(70, x, y) * 0.1);
+      }
+      return black;
+    },
   };
 }

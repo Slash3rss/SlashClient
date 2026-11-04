@@ -752,6 +752,24 @@ describe('social server', () => {
     }
     assert.ok(!(await askAs('launcher/0.9.28')).items.some((i) => ids.includes(i.id)));
   });
+
+  it('sells the dragon horns, wolf and panda ears, cat paws and bunny tail from 0.9.70 on, each only in its own slot', async () => {
+    const { ITEMS } = await import('../src/cosmetics.ts');
+    const ids = ['catpaws', 'dragonhorns', 'wolfears', 'pandaears', 'bunnytail'];
+    const items = ids.map((id) => ITEMS.find((i) => i.id === id)!);
+    assert.deepEqual(items.map((i) => [i.slot, i.price, i.since]),
+      [['hands', 300, '0.9.70'], ['ears', 500, '0.9.70'], ['ears', 300, '0.9.70'], ['ears', 300, '0.9.70'], ['tail', 300, '0.9.70']]);
+    const ida = await login('IdaSets');
+    // not bought: not wearable
+    assert.equal((await call('POST', '/v1/me', ida.token, { loadout: { ears: 'wolfears' } })).body.error, 'bad_item');
+    const askAs = async (client: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ida.token}`, 'X-SlashClient': client } })).json()) as { items: { id: string; price?: number; available: boolean }[] };
+    for (const client of ['launcher/0.9.70', 'mod/0.9.70']) {
+      const got = (await askAs(client)).items.filter((i) => ids.includes(i.id));
+      assert.deepEqual(got.map((i) => [i.id, i.price, i.available]),
+        [['catpaws', 300, false], ['dragonhorns', 500, false], ['wolfears', 300, false], ['pandaears', 300, false], ['bunnytail', 300, false]], client);
+    }
+    assert.ok(!(await askAs('launcher/0.9.69')).items.some((i) => ids.includes(i.id)));
+  });
 });
 
 describe('LAN worlds through the relay', () => {

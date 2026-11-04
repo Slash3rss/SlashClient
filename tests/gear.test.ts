@@ -37,10 +37,10 @@ describe('back items and tails', () => {
     for (const item of GEAR) assert.ok(existsSync(`${assets}/textures/gear/${item.id}.png`) && existsSync(`${assets}/textures/gear/icon/${item.id}.png`), item.id);
   });
 
-  it('is in the server catalog, in the same slots and with the same names, for 0.9.20 on', () => {
+  it('is in the server catalog, in the same slots and with the same names, for 0.9.20 on (the bunny tail 0.9.70)', () => {
     const server = ITEMS.filter((i) => i.slot === 'back' || i.slot === 'tail');
     assert.deepEqual(server.map((i) => [i.id, i.slot, i.name]), GEAR.map((i) => [i.id, i.slot, i.name]));
-    assert.ok(server.every((i) => i.since === '0.9.20'));
+    assert.ok(server.every((i) => i.since === (i.id === 'bunnytail' ? '0.9.70' : '0.9.20')));
     // ids are one name space for every slot
     assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
   });

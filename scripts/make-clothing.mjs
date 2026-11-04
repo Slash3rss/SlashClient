@@ -444,6 +444,30 @@ const LIMB_PAINT = {
     }
     return shade(hex('#2c3646'), 0.9 + grain(36, px, py) * 0.2);
   },
+  catpaws({ box, face, x, y, w, h, px, py }) {
+    // the cuff: a ring of soft pale fur in tufts
+    if (box % 2 === 1) {
+      if (face === 'up') return shade(hex('#45454d'), 0.9);
+      const tuft = grain(37, Math.floor(x / 2) + px * 7, py);
+      return shade(hex('#ecebef'), 0.84 + tuft * 0.18);
+    }
+    const pink = shade(hex('#f0a3b9'), 0.95 + grain(38, x, y) * 0.08);
+    // the grey of the cat's tail, with its dark stripes across the back of the paw
+    const grey = shade(hex('#85858e'), 0.88 + grain(39, px * 5 + x, py * 5 + Math.floor(y / 2)) * 0.18);
+    if (face === 'up') return shade(hex('#45454d'), 0.9);
+    // the paw seen from below and from the front: a big pad and three toe beans over it
+    if (face === 'down' || face === 'north') {
+      const top = face === 'north';
+      const beanY = top ? h * 0.52 : h * 0.3, padY = top ? h * 0.8 : h * 0.68;
+      for (const bx of [w * 0.22, w * 0.5, w * 0.78]) if (Math.hypot(x + 0.5 - bx, (y + 0.5 - beanY) * 1.15) < w * 0.11) return pink;
+      if (Math.hypot((x + 0.5 - w / 2) / (w * 0.27), (y + 0.5 - padY) / (h * (top ? 0.16 : 0.2))) < 1) return pink;
+      // the toes' gaps, above the beans on the front
+      if (top && y < beanY - 1 && y > h * 0.18 && (Math.abs(x + 0.5 - w * 0.36) < 0.6 || Math.abs(x + 0.5 - w * 0.64) < 0.6)) return shade(hex('#45454d'), 0.95);
+      return face === 'up' ? shade(grey, 0.92) : grey;
+    }
+    if (face === 'south' && Math.floor(y / 3) % 2 === 1) return shade(hex('#4c4c55'), 0.92 + grain(40, px, py) * 0.1);
+    return grey;
+  },
 };
 Object.assign(PAINT, LIMB_PAINT);
 
