@@ -816,6 +816,7 @@ public final class Catalog {
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
 			new Toggle("slashclient-hud.assist.toolBlocks", () -> cfg.autoToolBlocks, v -> cfg.autoToolBlocks = v),
+			new Toggle("slashclient-hud.assist.toolFight", () -> cfg.autoToolFight, v -> cfg.autoToolFight = v),
 			// blocks more than one kind of tool digs: which one
 			new Choice("slashclient-hud.assist.toolLeaves", HudConfig.AUTO_TOOL_LEAVES, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolLeaves, v -> cfg.autoToolLeaves = v),
 			new Choice("slashclient-hud.assist.toolCobweb", HudConfig.AUTO_TOOL_COBWEB, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolCobweb, v -> cfg.autoToolCobweb = v),

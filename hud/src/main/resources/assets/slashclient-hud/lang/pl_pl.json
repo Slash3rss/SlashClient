@@ -919,6 +919,7 @@
 	"slashclient-hud.assist.right": "Prawy przycisk",
 	"slashclient-hud.assist.autoTool": "Auto tool",
 	"slashclient-hud.assist.toolBlocks": "Narzędzie do kopania bloków",
+	"slashclient-hud.assist.toolFight": "W walce broń zostaje w ręce (pudło w blok nie zmienia na kilof)",
 	"slashclient-hud.assist.toolWeapons": "Najmocniejsza broń przy uderzeniu moba",
 	"slashclient-hud.assist.toolWeapon": "Preferowana broń",
 	"slashclient-hud.assist.toolWeapon.strongest": "Najmocniejsza",

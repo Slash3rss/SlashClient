@@ -92,6 +92,48 @@ public class GameInventoryTools implements FabricClientGameTest {
 			if (tried != 1 || fallback != 2) throw new AssertionError("Auto tool after a refused move (tried, then): " + tried + " " + fallback);
 			if (!stayed.startsWith("1 ") || !stayed.contains("iron_pickaxe")) throw new AssertionError("Auto tool after digging (slot in hand, item on slot 1): " + stayed);
 			if (again != 1) throw new AssertionError("Auto tool took slot " + again + " (expected the iron pickaxe on 1)");
+			// harvesting a field with a hoe: a ripe crop breaks at once with anything, so the hoe stays
+			// (the sword is faster on plants, and auto tool used to swap to it for every crop)
+			world.getServer().runCommand("gamemode survival @a");
+			world.getServer().runCommand("kill @e[type=!player]");
+			world.getServer().runCommand("clear @a");
+			world.getServer().runCommand("item replace entity @a hotbar.0 with iron_hoe");
+			world.getServer().runCommand("item replace entity @a hotbar.1 with diamond_sword");
+			world.getServer().runCommand("item replace entity @a hotbar.2 with wooden_pickaxe");
+			world.getServer().runCommand("execute at @a run setblock ~ ~ ~2 farmland");
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 wheat[age=7]");
+			context.waitTicks(5);
+			context.runOnClient(mc -> { TestHooks.lookSouth(); TestHooks.selectSlot(0); TestHooks.autoToolHit(false); TestHooks.autoToolRefused(false); TestHooks.holdButtons(true, false); });
+			context.waitTicks(4);
+			int hoe = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
+			// in a fight a missed hit lands on the stone behind the mob: the sword stays; dug on for a while,
+			// the pickaxe comes after all
+			world.getServer().runCommand("execute at @a run setblock ~ ~ ~2 stone");
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 stone");
+			context.waitTicks(5);
+			context.runOnClient(mc -> { TestHooks.lookSouth(); TestHooks.selectSlot(1); TestHooks.autoToolHit(true); TestHooks.holdButtons(true, false); });
+			context.waitTicks(3);
+			int missed = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.waitTicks(20);
+			int dug = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
+			// the same click outside a fight takes the pickaxe at once
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 stone");
+			context.waitTicks(5);
+			context.runOnClient(mc -> { TestHooks.selectSlot(1); TestHooks.autoToolHit(false); TestHooks.holdButtons(true, false); });
+			context.waitTicks(3);
+			int calm = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.runOnClient(mc -> { TestHooks.holdButtons(false, false); dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = false; });
+			world.getServer().runCommand("gamemode creative @a");
+			world.getServer().runCommand("clear @a");
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 air");
+			world.getServer().runCommand("execute at @a run setblock ~ ~ ~2 air");
+			// the cleared inventory reaches the client before the next checks read it
+			context.waitTicks(5);
+			if (hoe != 0) throw new AssertionError("Auto tool on a ripe crop took slot " + hoe + " (expected the hoe on 0 to stay)");
+			if (missed != 1 || dug != 2) throw new AssertionError("Auto tool in a fight (a missed hit, then digging on): " + missed + " " + dug);
+			if (calm != 2) throw new AssertionError("Auto tool outside a fight took slot " + calm + " (expected the pickaxe on 2)");
 			// leaves: the shears are the fastest, a hoe when hoes are preferred for leaves; stone is not leaves
 			String preferred = context.computeOnClient(mc -> {
 				var inv = mc.player.getInventory();

@@ -919,6 +919,7 @@
 	"slashclient-hud.assist.right": "Right button",
 	"slashclient-hud.assist.autoTool": "Auto tool",
 	"slashclient-hud.assist.toolBlocks": "Tool for digging blocks",
+	"slashclient-hud.assist.toolFight": "Keep the weapon in a fight (a missed hit on a block keeps it)",
 	"slashclient-hud.assist.toolWeapons": "Hardest-hitting weapon on a mob",
 	"slashclient-hud.assist.toolWeapon": "Preferred weapon",
 	"slashclient-hud.assist.toolWeapon.strongest": "Strongest",

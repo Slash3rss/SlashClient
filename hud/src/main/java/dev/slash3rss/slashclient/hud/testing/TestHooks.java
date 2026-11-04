@@ -1133,6 +1133,11 @@ public final class TestHooks {
 		return Assist.bestSlot(inv, state);
 	}
 
+	/** For the test: a mob was just hit (the fight auto tool keeps the weapon for), or long ago. */
+	public static void autoToolHit(boolean now) {
+		Assist.hitForTest(now);
+	}
+
 	/** Auto tool on for blocks, its moves from the backpack refused or not (as a server that puts the slots back). */
 	public static void autoToolRefused(boolean refused) {
 		HudConfig c = SlashHud.config;

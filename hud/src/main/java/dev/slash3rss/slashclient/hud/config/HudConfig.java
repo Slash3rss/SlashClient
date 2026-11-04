@@ -509,6 +509,11 @@ public final class HudConfig {
 	/** What a mooshroom gives: "any" (a bowl or a bucket, whichever is found first), its "stew" or its "milk". */
 	public String autoToolMooshroom = "any";
 	public static final String[] AUTO_TOOL_MOOSHROOM = { "any", "stew", "milk" };
+	/**
+	 * In a fight (a mob or a player hit a moment ago, or a hostile mob close by) a block clicked by a miss
+	 * does not take the weapon out of the hand: only a block dug on for a while does.
+	 */
+	public boolean autoToolFight = true;
 	public boolean autoToolBlocks = true, autoToolWeapons = true, autoToolShears = true, autoToolMilk = true, autoToolFish = true, autoToolBrush = true, autoToolFeed = false;
 	public boolean autoRefill = false;
 	/** The hand refilled from another hotbar slot too, when the backpack has none of it. */
@@ -1099,6 +1104,7 @@ public final class HudConfig {
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
 		autoToolBlocks = other.autoToolBlocks;
+		autoToolFight = other.autoToolFight;
 		autoToolWeapons = other.autoToolWeapons;
 		autoToolWeapon = oneOf(other.autoToolWeapon, AUTO_TOOL_WEAPONS);
 		autoToolLeaves = oneOf(other.autoToolLeaves, AUTO_TOOL_LEAVES);

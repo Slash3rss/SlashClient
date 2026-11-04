@@ -82,6 +82,15 @@ public final class Assist {
 	/** When auto tool last took a weapon for a hit (ms): between hits the fight goes on, so the hand does not go back yet. */
 	private static long weaponAt;
 	private static final long FIGHT_MS = 1500;
+	/** When a mob or a player was last hit (ms), whatever auto tool did: the fight, for blocks clicked by a miss. */
+	private static long hitAt;
+	/** In a fight this long after the last hit; and a block has to be dug on this long before the tool comes. */
+	private static final long FIGHT_HIT_MS = 4000, FIGHT_DIG_MS = 400;
+	/** A hostile mob this close (blocks) makes a fight too, before the first hit. */
+	private static final double FIGHT_RANGE = 6;
+	/** The block dug on in a fight, and since when (ms). */
+	private static net.minecraft.core.BlockPos fightDigPos;
+	private static long fightDigAt;
 	/** What was in the hand last tick, to see a stack run out. */
 	private static ItemStack lastHand = ItemStack.EMPTY;
 	private static int lastSlot = -1;
@@ -403,6 +412,7 @@ public final class Assist {
 		// under a screen the key stays up while the held button digs (holdOverScreen)
 		boolean digging = cfg().autoToolBlocks && (mc.options.keyAttack.isDown() || dugOverScreen) && mc.hitResult instanceof BlockHitResult b && b.getType() == HitResult.Type.BLOCK;
 		if (!digging) {
+			fightDigPos = null;
 			// in a fight: the weapon stays in the hand between hits
 			if (System.currentTimeMillis() - weaponAt < FIGHT_MS) return;
 			// the tool stays in the hand after digging (the next block takes what it needs); a moment later
@@ -411,8 +421,21 @@ public final class Assist {
 			return;
 		}
 		idleTicks = 0;
-		BlockState state = mc.level.getBlockState(((BlockHitResult) mc.hitResult).getBlockPos());
+		net.minecraft.core.BlockPos pos = ((BlockHitResult) mc.hitResult).getBlockPos();
+		BlockState state = mc.level.getBlockState(pos);
 		if (state.isAir()) return;
+		// a block any hand breaks at once (crops, grass, flowers) needs no tool: what is held stays, so
+		// a field is harvested with the hoe instead of it swapping to a sword for every crop
+		if (state.getDestroySpeed(mc.level, pos) == 0f) return;
+		// a miss in a fight clicks the block behind the mob: the weapon stays, unless the block is dug on for a while
+		if (cfg().autoToolFight && fighting(mc, player)) {
+			long now = System.currentTimeMillis();
+			if (!pos.equals(fightDigPos)) {
+				fightDigPos = pos;
+				fightDigAt = now;
+			}
+			if (now - fightDigAt < FIGHT_DIG_MS) return;
+		}
 		take(mc, player, bestSlot(inv, state));
 	}
 
@@ -422,11 +445,25 @@ public final class Assist {
 	 * item before the hit).
 	 */
 	public static void beforeAttack(Minecraft mc) {
+		if (mc.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof LivingEntity) hitAt = System.currentTimeMillis();
 		if (!cfg().autoTool || !cfg().autoToolWeapons || mc.player == null || !(mc.hitResult instanceof EntityHitResult hit) || !(hit.getEntity() instanceof LivingEntity)) return;
 		Player player = mc.player;
 		weaponAt = System.currentTimeMillis();
 		idleTicks = 0;
 		take(mc, player, bestWeapon(player.getInventory()));
+	}
+
+	/** For the test: a hit just now, or none for a long time. */
+	public static void hitForTest(boolean now) {
+		hitAt = now ? System.currentTimeMillis() : 0;
+	}
+
+	/** A fight goes on: a mob or a player was hit a moment ago, or a hostile mob is close by. */
+	static boolean fighting(Minecraft mc, Player player) {
+		if (System.currentTimeMillis() - hitAt < FIGHT_HIT_MS) return true;
+		var box = player.getBoundingBox().inflate(FIGHT_RANGE);
+		return !mc.level.getEntitiesOfClass(LivingEntity.class, box,
+			e -> e instanceof net.minecraft.world.entity.monster.Enemy && e.isAlive() && e != player).isEmpty();
 	}
 
 	/**
