@@ -35,13 +35,15 @@
       <div class="brand-name">Slash<span>Client</span></div>
     </div>
     <nav>
+      <!-- in the order of a play session: play, set up the game (profiles, mods, servers), then the
+           social part (friends, the account's skin and cosmetics, achievements), then help and settings -->
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
-      <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
-      <button class="nav" data-view="discover"><i class="fa-solid fa-compass"></i>Odkrywaj</button>
-      <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
-      <button class="nav" data-view="achievements"><i class="fa-solid fa-trophy"></i>Osiągnięcia</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
+      <button class="nav" data-view="discover"><i class="fa-solid fa-compass"></i>Mody</button>
+      <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
+      <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
+      <button class="nav" data-view="achievements"><i class="fa-solid fa-trophy"></i>Osiągnięcia</button>
       <button class="nav" data-view="wiki"><i class="fa-solid fa-book-open"></i>Wiki</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
     </nav>
@@ -153,7 +155,7 @@
     <!-- Odkrywaj: mods, resource packs, shaders and modpacks (Modrinth, CurseForge) for any profile;
          the browser itself is the one from a profile's "Mody i zasoby", moved here while this page is open -->
     <section class="view" id="view-discover">
-      <header class="view-head"><h2 class="gradient-title">Odkrywaj</h2></header>
+      <header class="view-head"><h2 class="gradient-title">Mody</h2></header>
       <!-- the profile everything installs into: a tile like the ones in Profiles, moved under the browser's
            "instalowane do tego profilu" while this page is open -->
       <div class="discover-target" id="discover-target"><select id="discover-profile" hidden></select></div>

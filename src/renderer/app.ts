@@ -2113,9 +2113,12 @@ const achievements = createAchievements($('#achievements-root'), {
   slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),
 });
 document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
-/** The Shop view: not in the menu (no entry is lit), opened from the balance at the top or the cosmetics menu. */
+/**
+ * The Shop view: not in the menu itself, opened from the balance at the top or the cosmetics menu; "Konta"
+ * stays lit, as that is where the cosmetics bought here are worn (and the way back to them).
+ */
 function openShop(which: 'shop' | 'sets' = 'shop') {
-  document.querySelectorAll('.nav').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll<HTMLElement>('.nav').forEach((b) => b.classList.toggle('active', b.dataset.view === 'accounts'));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-shop'));
   updateSkinRendering();
   achievements.showShop(which);
