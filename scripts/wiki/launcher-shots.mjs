@@ -375,6 +375,20 @@ async function shoot(name, selector, debugOnly = false) {
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n; (n = walk.nextNode());) { const v = fix(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; }
     document.querySelectorAll('input, textarea').forEach((i) => { const v = fix(i.value); if (v !== i.value) i.value = v; });
+    // the window's own buttons (minimise, maximise, close) are drawn by Windows over the page and never get
+    // into a page screenshot: drawn here the same way, so the top right does not look empty
+    if (!document.getElementById('__shot-controls')) {
+      const bar = document.createElement('div');
+      bar.id = '__shot-controls';
+      bar.style.cssText = 'position:fixed;top:0;right:0;height:36px;display:flex;z-index:2147483647;pointer-events:none;color:#c7cbe0;font:10px "Segoe Fluent Icons","Segoe MDL2 Assets"';
+      for (const glyph of ['\\uE921', '\\uE922', '\\uE8BB']) {
+        const b = document.createElement('span');
+        b.style.cssText = 'width:46px;display:grid;place-items:center';
+        b.textContent = glyph;
+        bar.append(b);
+      }
+      document.body.append(bar);
+    }
     await __w.sleep(300);`);
   let clip;
   if (selector) {
