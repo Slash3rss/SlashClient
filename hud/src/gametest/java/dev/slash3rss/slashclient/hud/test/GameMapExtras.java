@@ -74,6 +74,20 @@ public class GameMapExtras implements FabricClientGameTest {
 			if (trail < 6) throw new AssertionError("The trail has " + trail + " points after a walk");
 			context.waitTicks(40);
 			context.takeScreenshot("map-trail-minimap");
+			// it fades away: still there after 2 of its 5 minutes, gone after 6
+			context.runOnClient(mc -> MapSortTestHooks.trailPass(5, 120));
+			int lately = context.computeOnClient(mc -> MapSortTestHooks.trail());
+			if (lately != trail) throw new AssertionError("The trail lost points within its length: " + lately + " of " + trail);
+			context.runOnClient(mc -> MapSortTestHooks.trailPass(5, 240));
+			int old = context.computeOnClient(mc -> MapSortTestHooks.trail());
+			if (old != 0) throw new AssertionError("The trail is still there after its length: " + old + " points");
+			// walked again: a new trail
+			for (int i = 1; i <= 10; i++) {
+				server.runCommand(String.format("tp @a %d %d %d 180 40", -i * 2, y + 1, i * 2));
+				context.waitTicks(3);
+			}
+			trail = context.computeOnClient(mc -> MapSortTestHooks.trail());
+			if (trail < 6) throw new AssertionError("No new trail after the old one faded: " + trail);
 
 			// the biome under the player is known
 			String biome = context.computeOnClient(mc -> MapSortTestHooks.exploredBiome(0, 0));

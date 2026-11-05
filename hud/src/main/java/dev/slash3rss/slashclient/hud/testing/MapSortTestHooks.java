@@ -236,6 +236,12 @@ public final class MapSortTestHooks {
 		return MinimapTerrain.caves();
 	}
 
+	/** The trail as if `seconds` had passed, with `minutes` as its length. */
+	public static void trailPass(int minutes, int seconds) {
+		SlashHud.config.mapTrailMinutes = minutes;
+		dev.slash3rss.slashclient.hud.map.MapTrail.passForTest(seconds);
+	}
+
 	public static int trail() {
 		return dev.slash3rss.slashclient.hud.map.MapTrail.shown(Minecraft.getInstance()).size();
 	}

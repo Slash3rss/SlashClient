@@ -34,7 +34,7 @@ The **Minimap** card also has look options, shared with the world map:
 | Caves | **Underground** – below ground the map shows the caves by itself; **Always**; **Off** |
 | Shading | **Relief** (slopes lighter and darker, so hills stand out) or **Like the game's map** |
 | Darker at night | the map gets darker at night |
-| Trail walked | dots where you walked; older ones are fainter |
+| Trail walked | dots where you walked in the last minutes; they fade and go away after the **Trail length** option (5 minutes by default, 1 to 30) |
 
 ![The minimap with "Like the game's map" shading](hud-minimapa-klasyczna.webp)
 
@@ -74,11 +74,11 @@ The buttons on the map's top bar switch on:
 
 ### Keeping the map
 
-With **Keep the map on disk** (the World map card, on by default) everything the map has seen – ground, biomes, caves and the trail – is still there the next time you join the same server or world. Maps live in `.minecraft/slashclient/maps`, apart for every world and dimension. They are written in the background every few minutes, when you leave the world and when the game closes. A file that cannot be read is put aside (`.bad`), never deleted.
+With **Keep the map on disk** (the World map card, on by default) everything the map has seen – ground, biomes and caves – is still there the next time you join the same server or world. Maps live in `.minecraft/slashclient/maps`, apart for every world and dimension. They are written in the background every few minutes, when you leave the world and when the game closes. A file that cannot be read is put aside (`.bad`), never deleted.
 
 The top shows the dimension, how many chunks are known and the scale. On the map are your waypoints, points from friends, the death point, players and mobs nearby, and friends sharing their position.
 
-**Settings** (the **World map** card in World): the M key on or off, **Starting zoom**, **Keep the map on disk**, **Caves**, **Grid**, **Biomes**, **Trail walked** and who to show. On the partner servers, inside a dungeon M opens the dungeon map instead.
+**Settings** (the **World map** card in World): the M key on or off, **Starting zoom**, **Keep the map on disk**, **Caves**, **Grid**, **Biomes**, **Trail walked**, **Trail length** and who to show. On the partner servers, inside a dungeon M opens the dungeon map instead.
 
 ## Waypoints
 

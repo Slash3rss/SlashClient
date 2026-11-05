@@ -1259,6 +1259,7 @@
 	"slashclient-hud.map.shading.classic": "Jak mapa w grze",
 	"slashclient-hud.map.night": "Ciemniej w nocy",
 	"slashclient-hud.map.trail": "Ślad przejścia",
+	"slashclient-hud.map.trailMinutes": "Długość śladu",
 	"slashclient-hud.map.save": "Zapamiętuj mapę na dysku",
 	"slashclient-hud.worldMap.grid": "Siatka",
 	"slashclient-hud.worldMap.biomes": "Biomy",

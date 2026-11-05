@@ -250,12 +250,11 @@ public class WorldMapScreen extends Screen {
 	/** The trail walked, as dots (bigger when zoomed in). */
 	private void drawTrail(GuiGraphicsExtractor g, Minecraft mc) {
 		List<int[]> points = MapTrail.shown(mc);
-		int size = zoom >= 2 ? 3 : zoom >= 0.5f ? 2 : 1, n = points.size();
-		for (int i = 0; i < n; i++) {
-			int[] p = points.get(i);
+		int size = zoom >= 2 ? 3 : zoom >= 0.5f ? 2 : 1;
+		for (int[] p : points) {
 			float x = sx(p[0] + 0.5), y = sy(p[1] + 0.5);
 			if (x < ox || y < oy || x > ox + aw || y > oy + ah) continue;
-			MapTrail.dot(g, x, y, size, i, n);
+			MapTrail.dot(g, x, y, size, p);
 		}
 	}
 

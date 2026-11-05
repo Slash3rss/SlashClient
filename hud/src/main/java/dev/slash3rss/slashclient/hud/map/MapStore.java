@@ -120,7 +120,6 @@ public final class MapStore {
 				for (int i = 0; i < b.length; i++) b[i] = b[i] > 0 && b[i] < to.length ? to[b[i]] : 0;
 			}
 			if (!l.chunks().isEmpty()) MinimapTerrain.merge(e.getKey(), l.chunks());
-			if (!l.trail().isEmpty()) MapTrail.merge(e.getKey(), l.trail());
 		}
 	}
 
@@ -133,8 +132,8 @@ public final class MapStore {
 			var chunks = MinimapTerrain.explored.get(layer);
 			List<Map.Entry<Long, MinimapTerrain.Chunk>> copy = new ArrayList<>();
 			if (chunks != null) for (var e : chunks.entrySet()) copy.add(Map.entry(e.getKey(), new MinimapTerrain.Chunk(e.getValue().cols().clone(), e.getValue().biomes().clone())));
-			List<int[]> trail = layer.contains("#") ? List.of() : new ArrayList<>(MapTrail.of(layer));
-			out.add(new Snapshot(layer, copy, biomes, trail));
+			// the trail is only the last few minutes, so it is no longer kept: an empty one, still read by older mods
+			out.add(new Snapshot(layer, copy, biomes, List.of()));
 		}
 		dirty.clear();
 		Path folder = folder(world);
@@ -206,7 +205,7 @@ public final class MapStore {
 						for (int j = 0; j < 16; j++) b[j] = in.readShort();
 						chunks.put(k, new MinimapTerrain.Chunk(cols, b));
 					}
-					int nt = Math.min(in.readInt(), MapTrail.MAX);
+					int nt = Math.min(in.readInt(), 4000);
 					List<int[]> trail = new ArrayList<>();
 					for (int i = 0; i < nt; i++) trail.add(new int[] { in.readInt(), in.readInt() });
 					out.put(layer, new Loaded(chunks, biomes, trail));
@@ -228,7 +227,6 @@ public final class MapStore {
 		flush();
 		String key = world;
 		MinimapTerrain.explored.clear();
-		MapTrail.clear();
 		MinimapTerrain.merge(MinimapTerrain.layer(Minecraft.getInstance()), new LinkedHashMap<>());
 		enter(key);
 		finishLoading(true);

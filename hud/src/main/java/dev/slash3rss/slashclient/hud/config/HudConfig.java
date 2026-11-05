@@ -244,6 +244,8 @@ public final class HudConfig {
 	 */
 	public String mapCave = "auto", mapShading = "relief";
 	public boolean mapNight = true, mapTrail = true, mapSave = true;
+	/** How many minutes the trail walked stays on the maps before it fades away. */
+	public int mapTrailMinutes = 5;
 	/** The full map's chunk grid and biome view. */
 	public boolean worldMapGrid = false, worldMapBiomes = false;
 	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
@@ -940,6 +942,7 @@ public final class HudConfig {
 		mapShading = oneOf(other.mapShading, dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS);
 		mapNight = other.mapNight;
 		mapTrail = other.mapTrail;
+		mapTrailMinutes = Math.max(dev.slash3rss.slashclient.hud.map.MapTrail.MIN_MINUTES, Math.min(dev.slash3rss.slashclient.hud.map.MapTrail.MAX_MINUTES, other.mapTrailMinutes));
 		mapSave = other.mapSave;
 		worldMapGrid = other.worldMapGrid;
 		worldMapBiomes = other.worldMapBiomes;

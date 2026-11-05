@@ -274,14 +274,12 @@ public final class Minimap implements HudModule {
 		List<int[]> points = MapTrail.shown(mc);
 		float reach = r - 2;
 		double far = reach * 1.42 / scale;
-		int n = points.size();
-		for (int i = 0; i < n; i++) {
-			int[] p = points.get(i);
+		for (int[] p : points) {
 			double dx = p[0] + 0.5 - at[0], dz = p[1] + 0.5 - at[1];
 			if (dx * dx + dz * dz > far * far) continue;
 			float[] s = toScreen(dx, dz, scale, cos, sin);
 			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
-			if (inside) MapTrail.dot(g, cx + s[0], cy + s[1], 1, i, n);
+			if (inside) MapTrail.dot(g, cx + s[0], cy + s[1], 1, p);
 		}
 	}
 

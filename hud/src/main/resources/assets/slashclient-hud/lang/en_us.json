@@ -1259,6 +1259,7 @@
 	"slashclient-hud.map.shading.classic": "Like the game's map",
 	"slashclient-hud.map.night": "Darker at night",
 	"slashclient-hud.map.trail": "Trail walked",
+	"slashclient-hud.map.trailMinutes": "Trail length",
 	"slashclient-hud.map.save": "Keep the map on disk",
 	"slashclient-hud.worldMap.grid": "Grid",
 	"slashclient-hud.worldMap.biomes": "Biomes",

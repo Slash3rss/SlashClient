@@ -342,6 +342,7 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.map.shading", dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS, "slashclient-hud.map.shading.", () -> cfg.mapShading, v -> cfg.mapShading = v));
 					settings.add(new Toggle("slashclient-hud.map.night", () -> cfg.mapNight, v -> cfg.mapNight = v));
 					settings.add(new Toggle("slashclient-hud.map.trail", () -> cfg.mapTrail, v -> cfg.mapTrail = v));
+					settings.add(new Slider("slashclient-hud.map.trailMinutes", dev.slash3rss.slashclient.hud.map.MapTrail.MIN_MINUTES, dev.slash3rss.slashclient.hud.map.MapTrail.MAX_MINUTES, 1f, "%.0f min", () -> (float) cfg.mapTrailMinutes, v -> cfg.mapTrailMinutes = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.map.players", () -> cfg.mapPlayers, v -> cfg.mapPlayers = v));
 					settings.add(new Toggle("slashclient-hud.map.hostile", () -> cfg.mapHostile, v -> cfg.mapHostile = v));
 					settings.add(new Toggle("slashclient-hud.map.passive", () -> cfg.mapPassive, v -> cfg.mapPassive = v));
@@ -681,6 +682,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.worldMap.grid", () -> cfg.worldMapGrid, v -> cfg.worldMapGrid = v),
 			new Toggle("slashclient-hud.worldMap.biomes", () -> cfg.worldMapBiomes, v -> cfg.worldMapBiomes = v),
 			new Toggle("slashclient-hud.map.trail", () -> cfg.mapTrail, v -> cfg.mapTrail = v),
+			new Slider("slashclient-hud.map.trailMinutes", dev.slash3rss.slashclient.hud.map.MapTrail.MIN_MINUTES, dev.slash3rss.slashclient.hud.map.MapTrail.MAX_MINUTES, 1f, "%.0f min", () -> (float) cfg.mapTrailMinutes, v -> cfg.mapTrailMinutes = Math.round(v)),
 			new Toggle("slashclient-hud.map.players", () -> cfg.mapPlayers, v -> cfg.mapPlayers = v),
 			new Toggle("slashclient-hud.map.hostile", () -> cfg.mapHostile, v -> cfg.mapHostile = v),
 			new Toggle("slashclient-hud.map.passive", () -> cfg.mapPassive, v -> cfg.mapPassive = v)), null));

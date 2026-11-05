@@ -34,7 +34,7 @@ Karta **Minimapa** ma też opcje wyglądu, wspólne z mapą świata:
 | Jaskinie | **Pod ziemią** – pod ziemią mapa sama pokazuje jaskinie; **Zawsze**; **Wyłączone** |
 | Cieniowanie | **Rzeźba terenu** (zbocza jaśniejsze i ciemniejsze, widać wzniesienia) albo **Jak mapa w grze** |
 | Ciemniej w nocy | w nocy mapa jest ciemniejsza |
-| Ślad przejścia | kropki tam, gdzie szedłeś; starsze są bledsze |
+| Ślad przejścia | kropki tam, gdzie szedłeś w ostatnich minutach; bledną z czasem i znikają po czasie z opcji **Długość śladu** (domyślnie 5 minut, od 1 do 30) |
 
 ![Minimapa z cieniowaniem „Jak mapa w grze”](hud-minimapa-klasyczna.webp)
 
@@ -74,11 +74,11 @@ Przyciski na górnym pasku mapy włączają:
 
 ### Zapamiętywanie mapy
 
-Z opcją **Zapamiętuj mapę na dysku** (karta Mapa świata, domyślnie włączona) wszystko, co mapa widziała – teren, biomy, jaskinie i ślad – zostaje do następnego wejścia na ten sam serwer lub świat. Mapy leżą w folderze `.minecraft/slashclient/maps`, osobno dla każdego świata i wymiaru. Zapis idzie w tle co kilka minut, przy wyjściu ze świata i przy zamknięciu gry. Plik, którego nie da się odczytać, jest odkładany na bok (`.bad`), nigdy usuwany.
+Z opcją **Zapamiętuj mapę na dysku** (karta Mapa świata, domyślnie włączona) wszystko, co mapa widziała – teren, biomy i jaskinie – zostaje do następnego wejścia na ten sam serwer lub świat. Mapy leżą w folderze `.minecraft/slashclient/maps`, osobno dla każdego świata i wymiaru. Zapis idzie w tle co kilka minut, przy wyjściu ze świata i przy zamknięciu gry. Plik, którego nie da się odczytać, jest odkładany na bok (`.bad`), nigdy usuwany.
 
 Na górze widać wymiar, liczbę znanych chunków i skalę. Na mapie są Twoje waypointy, punkty od znajomych, punkt śmierci, gracze i moby w pobliżu oraz znajomi, którzy udostępniają pozycję.
 
-**Ustawienia** (karta **Mapa świata** w kategorii Świat): włączenie klawisza M, **Przybliżenie na start**, **Zapamiętuj mapę na dysku**, **Jaskinie**, **Siatka**, **Biomy**, **Ślad przejścia** i to, kogo pokazywać. Na serwerach partnerskich w dungeonie M otwiera mapę dungeonu zamiast mapy świata.
+**Ustawienia** (karta **Mapa świata** w kategorii Świat): włączenie klawisza M, **Przybliżenie na start**, **Zapamiętuj mapę na dysku**, **Jaskinie**, **Siatka**, **Biomy**, **Ślad przejścia**, **Długość śladu** i to, kogo pokazywać. Na serwerach partnerskich w dungeonie M otwiera mapę dungeonu zamiast mapy świata.
 
 ## Waypointy
 
