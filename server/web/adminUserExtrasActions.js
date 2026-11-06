@@ -5,5 +5,5 @@ export const USER_EXTRAS_ACTIONS = {
   friend_remove: 'usunął(ęła) znajomego graczowi', friend_request_remove: 'usunął(ęła) zaproszenie do znajomych gracza', mute_clear: 'zdjął(ęła) wyciszenie znajomego gracza',
   user_community_remove: 'wyrzucił(a) ze społeczności', user_group_remove: 'wyrzucił(a) z grupy', referral_detach: 'odłączył(a) kod zaproszenia gracza',
   share_remove: 'usunął(ęła) udostępniony profil gracza', cloud_remove: 'usunął(ęła) profil w chmurze gracza', chat_image_remove: 'usunął(ęła) obrazek z czatu gracza',
-  media_remove: 'usunął(ęła) zrzut lub klip',
+  media_remove: 'usunął(ęła) zrzut lub klip', offline_skin_remove: 'usunął(ęła) skin offline gracza',
 };
