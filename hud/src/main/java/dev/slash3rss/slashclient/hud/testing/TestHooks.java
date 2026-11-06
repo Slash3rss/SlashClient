@@ -2440,6 +2440,68 @@ public final class TestHooks {
 		}
 	}
 
+	/**
+	 * As if SlashClient's server had answered a lookup about this player (an offline account): the skin from the
+	 * test mod's textures/<path>.png (put where fetched skins are kept, as if downloaded before) and, when given,
+	 * a cape. Null path: no skin in the answer. Returns the skin's hash.
+	 */
+	public static String offlineSkinAnswer(java.util.UUID id, String path, boolean slim, String cape) throws Exception {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		String hash = null;
+		if (path != null) {
+			var res = mc.getResourceManager().getResource(net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/" + path + ".png")).orElseThrow();
+			try (var in = res.open()) {
+				hash = dev.slash3rss.slashclient.hud.players.OfflineSkins.cacheForTest(in.readAllBytes());
+			}
+		}
+		var o = new com.google.gson.JsonObject();
+		var active = new com.google.gson.JsonArray();
+		active.add(id.toString());
+		o.add("active", active);
+		if (hash != null) {
+			var skin = new com.google.gson.JsonObject();
+			skin.addProperty("hash", hash);
+			skin.addProperty("slim", slim);
+			var skins = new com.google.gson.JsonObject();
+			skins.add(id.toString(), skin);
+			o.add("skins", skins);
+		}
+		var worn = new com.google.gson.JsonObject();
+		var set = new com.google.gson.JsonObject();
+		if (cape != null) set.addProperty("cape", cape);
+		worn.add(id.toString(), set);
+		o.add("cosmetics", worn);
+		dev.slash3rss.slashclient.hud.players.Badges.answer(java.util.List.of(id), System.currentTimeMillis(), o.toString());
+		return hash;
+	}
+
+	/** The picture our own player is drawn with now, and whether the arms are slim: "<texture>|slim" or "<texture>|wide". */
+	public static String ownSkin() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		//#if MC >= 1.20.2
+		boolean slim = String.valueOf(mc.player.getSkin().model()).toLowerCase(java.util.Locale.ROOT).contains("slim");
+		//#else
+		//$ boolean slim = "slim".equals(mc.player.getModelName());
+		//#endif
+		return Compat.skinTexture(mc.player) + "|" + (slim ? "slim" : "wide");
+	}
+
+	/** The picture an offline account's skin is drawn with for this player, or "none" (none named, off, or not loaded yet). */
+	public static String offlineSkinOf(java.util.UUID id) {
+		var t = dev.slash3rss.slashclient.hud.players.OfflineSkins.body(id);
+		if (t == null) return "none";
+		//#if MC >= 1.21.9
+		return t.texturePath().toString();
+		//#else
+		//$ return t.toString();
+		//#endif
+	}
+
+	/** The setting "Skiny graczy offline". */
+	public static void offlineSkins(boolean on) {
+		SlashHud.config.offlineSkins = on;
+	}
+
 	/** Our own player wears this skin (a texture of the test mod: textures/skin/<name>, or textures/<path> for a path), for screenshots. */
 	public static void testSkin(String texture) {
 		String path = texture.contains("/") ? texture : "skin/" + texture;

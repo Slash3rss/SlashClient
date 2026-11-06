@@ -271,65 +271,73 @@ public final class Badges {
 		// who is live on Twitch or Kick (the server's "live" map, 0.9.24+)
 		known.add("live");
 		body.add("knownRanks", known);
+		// the server we play on, as typed in the server list ('' in singleplayer or LAN): with it the server
+		// sends the skins players with offline accounts set in the launcher (newer servers; older ones ignore it)
+		body.addProperty("server", mc.getCurrentServer() != null && !mc.hasSingleplayerServer() ? mc.getCurrentServer().ip : "");
 		busy = true;
-		post("/v1/mc/lookup", GSON.toJson(body), response -> {
-			JsonObject o = GSON.fromJson(response, JsonObject.class);
-			Set<UUID> active = ConcurrentHashMap.newKeySet();
-			o.getAsJsonArray("active").forEach(e -> active.add(UUID.fromString(e.getAsString())));
-			JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
-			JsonObject wornBy = o.has("cosmetics") && o.get("cosmetics").isJsonObject() ? o.getAsJsonObject("cosmetics") : new JsonObject();
-			JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
-			// clan tags (servers before clans send none)
-			JsonObject clanOf = o.has("clans") && o.get("clans").isJsonObject() ? o.getAsJsonObject("clans") : new JsonObject();
-			// supporters' tier colours (servers before 0.9.23 send none)
-			JsonObject tierColorOf = o.has("supporterColors") && o.get("supporterColors").isJsonObject() ? o.getAsJsonObject("supporterColors") : new JsonObject();
-			// the shown rank's colour (servers before 0.9.23 send none)
-			JsonObject badgeColorOf = o.has("badgeColors") && o.get("badgeColors").isJsonObject() ? o.getAsJsonObject("badgeColors") : new JsonObject();
-			// players live now (servers before 0.9.24 send none)
-			JsonObject liveOf = o.has("live") && o.get("live").isJsonObject() ? o.getAsJsonObject("live") : new JsonObject();
-			for (UUID id : ask) {
-				if (active.contains(id)) {
-					slash.add(id);
-					notOnce.remove(id);
-					settled.remove(id);
-				} else {
-					slash.remove(id);
-					if (!notOnce.add(id)) settled.add(id);
-				}
-				// the server answers with the uuid as it was asked
-				var items = wornBy.get(id.toString());
-				// a live change that came while this answer was on its way is newer: it stays
-				boolean newer = Cosmetics.changedSince(id, now);
-				if (newer) SlashHud.LOG.debug("SlashClient: kept the live cosmetics of {}", id);
-				else if (items != null && items.isJsonObject()) {
-					Map<String, String> all = new java.util.HashMap<>();
-					items.getAsJsonObject().entrySet().forEach(e -> { if (e.getValue().isJsonPrimitive()) all.put(e.getKey(), e.getValue().getAsString()); });
-					Cosmetics.setAll(id, all);
-				} else {
-					// an older server: only the cape
-					var cape = capes.get(id.toString());
-					Cosmetics.setAll(id, cape != null && cape.isJsonPrimitive() ? Map.of("cape", cape.getAsString()) : Map.of());
-				}
-				var rank = rankOf.get(id.toString());
-				var badgeColor = badgeColorOf.get(id.toString());
-				boolean colored = badgeColor != null && badgeColor.isJsonPrimitive() && badgeColor.getAsString().matches("#[0-9a-fA-F]{6}");
-				if (colored) colorBadges.put(id, badge(Integer.parseInt(badgeColor.getAsString().substring(1), 16)));
-				else colorBadges.remove(id);
-				// a rank with its colour may be any (one made in the admin panel); without one, only those drawn here
-				if (rank != null && rank.isJsonPrimitive() && (colored || RANK_BADGES.containsKey(rank.getAsString()))) ranks.put(id, rank.getAsString());
-				else ranks.remove(id);
-				var tierColor = tierColorOf.get(id.toString());
-				if (tierColor != null && tierColor.isJsonPrimitive() && tierColor.getAsString().matches("#[0-9a-fA-F]{6}")) tierBadges.put(id, badge(Integer.parseInt(tierColor.getAsString().substring(1), 16)));
-				else tierBadges.remove(id);
-				var tag = clanOf.get(id.toString());
-				if (tag != null && tag.isJsonPrimitive() && tag.getAsString().matches("[A-Za-z0-9]{2,5}")) clans.put(id, tag.getAsString());
-				else clans.remove(id);
-				var stream = liveOf.get(id.toString());
-				String platform = stream != null && stream.isJsonObject() && stream.getAsJsonObject().has("platform") ? stream.getAsJsonObject().get("platform").getAsString() : "";
-				if ("twitch".equals(platform) || "kick".equals(platform)) live.put(id, platform);
-				else live.remove(id);
+		post("/v1/mc/lookup", GSON.toJson(body), response -> answer(ask, now, response));
+	}
+
+	/** The server's answer about the players asked about (`now`: when it was asked; also fed by the in-game test). */
+	public static void answer(List<UUID> ask, long now, String response) {
+		JsonObject o = GSON.fromJson(response, JsonObject.class);
+		Set<UUID> active = ConcurrentHashMap.newKeySet();
+		o.getAsJsonArray("active").forEach(e -> active.add(UUID.fromString(e.getAsString())));
+		JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
+		JsonObject wornBy = o.has("cosmetics") && o.get("cosmetics").isJsonObject() ? o.getAsJsonObject("cosmetics") : new JsonObject();
+		JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
+		// clan tags (servers before clans send none)
+		JsonObject clanOf = o.has("clans") && o.get("clans").isJsonObject() ? o.getAsJsonObject("clans") : new JsonObject();
+		// supporters' tier colours (servers before 0.9.23 send none)
+		JsonObject tierColorOf = o.has("supporterColors") && o.get("supporterColors").isJsonObject() ? o.getAsJsonObject("supporterColors") : new JsonObject();
+		// the shown rank's colour (servers before 0.9.23 send none)
+		JsonObject badgeColorOf = o.has("badgeColors") && o.get("badgeColors").isJsonObject() ? o.getAsJsonObject("badgeColors") : new JsonObject();
+		// players live now (servers before 0.9.24 send none)
+		JsonObject liveOf = o.has("live") && o.get("live").isJsonObject() ? o.getAsJsonObject("live") : new JsonObject();
+		for (UUID id : ask) {
+			if (active.contains(id)) {
+				slash.add(id);
+				notOnce.remove(id);
+				settled.remove(id);
+			} else {
+				slash.remove(id);
+				if (!notOnce.add(id)) settled.add(id);
 			}
-		});
+			// the server answers with the uuid as it was asked
+			var items = wornBy.get(id.toString());
+			// a live change that came while this answer was on its way is newer: it stays
+			boolean newer = Cosmetics.changedSince(id, now);
+			if (newer) SlashHud.LOG.debug("SlashClient: kept the live cosmetics of {}", id);
+			else if (items != null && items.isJsonObject()) {
+				Map<String, String> all = new java.util.HashMap<>();
+				items.getAsJsonObject().entrySet().forEach(e -> { if (e.getValue().isJsonPrimitive()) all.put(e.getKey(), e.getValue().getAsString()); });
+				Cosmetics.setAll(id, all);
+			} else {
+				// an older server: only the cape
+				var cape = capes.get(id.toString());
+				Cosmetics.setAll(id, cape != null && cape.isJsonPrimitive() ? Map.of("cape", cape.getAsString()) : Map.of());
+			}
+			var rank = rankOf.get(id.toString());
+			var badgeColor = badgeColorOf.get(id.toString());
+			boolean colored = badgeColor != null && badgeColor.isJsonPrimitive() && badgeColor.getAsString().matches("#[0-9a-fA-F]{6}");
+			if (colored) colorBadges.put(id, badge(Integer.parseInt(badgeColor.getAsString().substring(1), 16)));
+			else colorBadges.remove(id);
+			// a rank with its colour may be any (one made in the admin panel); without one, only those drawn here
+			if (rank != null && rank.isJsonPrimitive() && (colored || RANK_BADGES.containsKey(rank.getAsString()))) ranks.put(id, rank.getAsString());
+			else ranks.remove(id);
+			var tierColor = tierColorOf.get(id.toString());
+			if (tierColor != null && tierColor.isJsonPrimitive() && tierColor.getAsString().matches("#[0-9a-fA-F]{6}")) tierBadges.put(id, badge(Integer.parseInt(tierColor.getAsString().substring(1), 16)));
+			else tierBadges.remove(id);
+			var tag = clanOf.get(id.toString());
+			if (tag != null && tag.isJsonPrimitive() && tag.getAsString().matches("[A-Za-z0-9]{2,5}")) clans.put(id, tag.getAsString());
+			else clans.remove(id);
+			var stream = liveOf.get(id.toString());
+			String platform = stream != null && stream.isJsonObject() && stream.getAsJsonObject().has("platform") ? stream.getAsJsonObject().get("platform").getAsString() : "";
+			if ("twitch".equals(platform) || "kick".equals(platform)) live.put(id, platform);
+			else live.remove(id);
+		}
+		// skins of offline accounts (servers with offline skins, when asked with `server`)
+		OfflineSkins.fromLookup(ask, o.has("skins") && o.get("skins").isJsonObject() ? o.getAsJsonObject("skins") : new JsonObject());
 	}
 
 	/** How long an answer about this player is trusted. */
@@ -466,5 +474,6 @@ public final class Badges {
 		var user = Minecraft.getInstance().getUser();
 		UUID self = user == null ? null : user.getProfileId();
 		for (Map<UUID, ?> m : List.of(ranks, clans, live, tierBadges, colorBadges)) m.keySet().removeIf(id -> !id.equals(self));
+		OfflineSkins.reset();
 	}
 }

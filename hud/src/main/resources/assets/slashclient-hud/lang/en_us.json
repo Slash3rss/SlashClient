@@ -308,6 +308,7 @@
 	"slashclient-hud.set.badges.clansOthers": "Other players' clan tags",
 	"slashclient-hud.set.killEffects": "Kill effects",
 	"slashclient-hud.set.cosmeticsOthers": "Other players' cosmetics",
+	"slashclient-hud.set.cosmeticsOthers.offlineSkins": "Skins of offline players",
 	"slashclient-hud.set.killEffects.others": "Other players' effects",
 	"slashclient-hud.set.heldSkins": "Shield and weapon skins",
 	"slashclient-hud.set.heldSkins.others": "Other players' skins (fair PvP: off)",

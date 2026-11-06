@@ -40,5 +40,19 @@ abstract class CapeMixin {
 	//$ private boolean slashclient$elytraLoaded(boolean loaded) {
 	//$ 	return loaded || Cosmetics.elytraFor(((AbstractClientPlayer) (Object) this).getUUID(), null) != null;
 	//$ }
+	//$
+	//$ // the skin an offline account set in the launcher (in later versions it comes with getSkin)
+	//$ @ModifyReturnValue(method = "getSkinTextureLocation", at = @At("RETURN"))
+	//$ private net.minecraft.resources.ResourceLocation slashclient$offlineSkin(net.minecraft.resources.ResourceLocation own) {
+	//$ 	var offline = dev.slash3rss.slashclient.hud.players.OfflineSkins.body(((AbstractClientPlayer) (Object) this).getUUID());
+	//$ 	return offline == null ? own : offline;
+	//$ }
+	//$
+	//$ @ModifyReturnValue(method = "getModelName", at = @At("RETURN"))
+	//$ private String slashclient$offlineModel(String own) {
+	//$ 	java.util.UUID id = ((AbstractClientPlayer) (Object) this).getUUID();
+	//$ 	if (dev.slash3rss.slashclient.hud.players.OfflineSkins.body(id) == null) return own;
+	//$ 	return dev.slash3rss.slashclient.hud.players.OfflineSkins.slim(id) ? "slim" : "default";
+	//$ }
 	//#endif
 }

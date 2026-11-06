@@ -395,6 +395,8 @@ public final class HudConfig {
 	public boolean clanTagsOthers = true;
 	/** Other players' SlashClient cosmetics at all (capes, wings, clothes, pets, effects, emotes); ours always show. */
 	public boolean cosmeticsOthers = true;
+	/** Skins that players with offline accounts set in the launcher (OfflineSkins); off: the game's own skin. */
+	public boolean offlineSkins = true;
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
@@ -1055,6 +1057,7 @@ public final class HudConfig {
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
 		cosmeticsOthers = other.cosmeticsOthers;
+		offlineSkins = other.offlineSkins;
 		heldSkinsOthers = other.heldSkinsOthers;
 		ringEffects = other.ringEffects;
 		ringEffectsOthers = other.ringEffectsOthers;
