@@ -209,14 +209,25 @@ public final class Cosmetics {
 	public static boolean testSkinSlim;
 
 	//#if MC >= 1.20.2
+	/**
+	 * The skin a player is drawn in: the skin an offline account set in the launcher (OfflineSkins), or for the
+	 * screenshots the test skin; otherwise the game's own.
+	 */
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
-		if (testSkin == null || !id.equals(testSkinFor)) return skin;
-		//#if MC >= 1.21.9
-		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), testSkinSlim ? net.minecraft.world.entity.player.PlayerModelType.SLIM : net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
-		//#else
-		//$ return new PlayerSkin(testSkin, null, skin.capeTexture(), skin.elytraTexture(), testSkinSlim ? PlayerSkin.Model.SLIM : PlayerSkin.Model.WIDE, skin.secure());
-		//#endif
+		if (testSkin != null && id.equals(testSkinFor)) return withBody(skin, testSkin, testSkinSlim);
+		var offline = dev.slash3rss.slashclient.hud.players.OfflineSkins.body(id);
+		return offline == null ? skin : withBody(skin, offline, dev.slash3rss.slashclient.hud.players.OfflineSkins.slim(id));
 	}
+
+	//#if MC >= 1.21.9
+	private static PlayerSkin withBody(PlayerSkin skin, ClientAsset.Texture body, boolean slim) {
+		return new PlayerSkin(body, skin.cape(), skin.elytra(), slim ? net.minecraft.world.entity.player.PlayerModelType.SLIM : net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+	}
+	//#else
+	//$ private static PlayerSkin withBody(PlayerSkin skin, Identifier body, boolean slim) {
+	//$ 	return new PlayerSkin(body, null, skin.capeTexture(), skin.elytraTexture(), slim ? PlayerSkin.Model.SLIM : PlayerSkin.Model.WIDE, skin.secure());
+	//$ }
+	//#endif
 
 	/** The skin with our cape in place of the player's own, when they picked one. */
 	public static PlayerSkin withCape(UUID id, PlayerSkin skin, boolean wearsElytra) {

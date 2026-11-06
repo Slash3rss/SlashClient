@@ -642,7 +642,9 @@ public final class Catalog {
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
 			new Toggle("slashclient-hud.set.badges.clansOthers", () -> cfg.clanTagsOthers, v -> cfg.clanTagsOthers = v)), null));
 		// other players' cosmetics: all of them off at once (ours always show)
-		out.add(new Entry("cosmeticsOthers", "slashclient-hud.set.cosmeticsOthers", "extras", "m-appearance", () -> cfg.cosmeticsOthers, v -> cfg.cosmeticsOthers = v, List.of(), null));
+		out.add(new Entry("cosmeticsOthers", "slashclient-hud.set.cosmeticsOthers", "extras", "m-appearance", () -> cfg.cosmeticsOthers, v -> cfg.cosmeticsOthers = v, List.of(
+			// skins players with offline accounts set in the launcher: a skin, not a cosmetic, so its own switch
+			new Toggle("slashclient-hud.set.cosmeticsOthers.offlineSkins", () -> cfg.offlineSkins, v -> cfg.offlineSkins = v)), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
 			new Toggle("slashclient-hud.set.killEffects.others", () -> cfg.killEffectsOthers, v -> cfg.killEffectsOthers = v)), null));
 		// your own shield and weapon skins always show; other players' only when asked for (fair PvP)
