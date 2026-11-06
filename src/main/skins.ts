@@ -11,6 +11,8 @@ export interface SkinData {
   /** data:image/png;base64,… of the cape, if the player has one. */
   cape?: string;
   capeSource?: 'Mojang' | 'OptiFine';
+  /** An offline account's skin set in the launcher for SlashClient players (not Mojang's). */
+  slashSkin?: boolean;
 }
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
@@ -54,11 +56,63 @@ async function withCape(data: Omit<SkinData, 'capeSource'>, name: string): Promi
   return cape ? { ...data, cape, capeSource: 'OptiFine' } : data;
 }
 
+// ---------- the skin an offline account shows to SlashClient players (server's offlineSkins) ----------
+
+/** A skin the player put on an offline nick, as the SlashClient server keeps it. */
+export interface OfflineSkin { name: string; hash: string; slim: boolean }
+
+/** Nicks the server takes a skin for: what a vanilla server lets an offline player use. */
+export const OFFLINE_SKIN_NAME = /^[A-Za-z0-9_]{1,16}$/;
+/** The server's own limit for one skin file. */
+export const OFFLINE_SKIN_MAX_BYTES = 64 * 1024;
+
+/** The skin uploaded for this nick (nicks are matched without case, as the game does). */
+export function offlineSkinOf(list: readonly OfflineSkin[], name: string): OfflineSkin | undefined {
+  const lower = name.toLowerCase();
+  return list.find((s) => s.name.toLowerCase() === lower);
+}
+
+/** The PUT body for /v1/me/offline-skins/:name, checked here so the player gets a clear message, not a server code. */
+export function offlineSkinUpload(name: string, png: Buffer, slim: boolean): { png: string; slim: boolean } {
+  if (!OFFLINE_SKIN_NAME.test(name)) throw new Error(t('Skin dla graczy SlashClient można ustawić tylko dla nicku z liter, cyfr i _ (najwyżej 16 znaków).'));
+  readSkinFile(png);
+  if (png.length > OFFLINE_SKIN_MAX_BYTES) throw new Error(t('Plik skina jest za duży (najwyżej 64 KB).'));
+  return { png: png.toString('base64'), slim: !!slim };
+}
+
+/** The server's refusal of an offline skin in plain words; undefined = a general error, said as usual. */
+export function offlineSkinError(code: string, status?: number): string | undefined {
+  if (code === 'bad_name') return t('Skin dla graczy SlashClient można ustawić tylko dla nicku z liter, cyfr i _ (najwyżej 16 znaków).');
+  if (code === 'bad_skin') return t('Serwer nie przyjął pliku: skin musi być obrazkiem PNG 64×64 albo 64×32.');
+  if (code === 'too_large' || status === 413) return t('Plik skina jest za duży (najwyżej 64 KB).');
+  if (code === 'too_many') return t('Masz już najwięcej skinów dla kont offline. Usuń skin z innego konta offline, żeby dodać nowy.');
+  if (code === 'feature_disabled') return t('Skiny kont offline są chwilowo wyłączone przez administratora.');
+  if (status === 429 || code === 'rate_limited' || code.startsWith('slow_down')) return t('Za dużo zmian skina naraz. Odczekaj minutę.');
+  return undefined;
+}
+
 /**
- * Skin for an account. Offline accounts have no skin of their own, so this
- * shows the premium player with the same nick, or the default skin.
+ * What the launcher tells the server while a game runs, so SlashClient players around see who it is:
+ * a Microsoft account by its uuid (as before), an offline one with its nick, marked offline (the server
+ * checks the uuid against the nick and shows its skin and cosmetics only on the same server).
  */
-export async function skinFor(account: Account): Promise<SkinData> {
+export function mcLinkBody(account: Pick<Account, 'type' | 'uuid' | 'name'>): { uuid: string; name?: string; offline?: true } {
+  return account.type === 'msa' ? { uuid: account.uuid } : { uuid: account.uuid, name: account.name, offline: true };
+}
+
+/**
+ * Skin for an account. Offline accounts have no skin of their own, so this shows the skin
+ * uploaded for SlashClient players (`uploaded`, its address and arm model), else the premium
+ * player with the same nick, or the default skin.
+ */
+export async function skinFor(account: Account, uploaded?: { url: string; slim: boolean }): Promise<SkinData> {
+  try {
+    if (account.type !== 'msa' && uploaded) {
+      return withCape({ dataUrl: await toDataUrl(uploaded.url), model: uploaded.slim ? 'slim' : 'default', isDefault: false, slashSkin: true }, account.name);
+    }
+  } catch {
+    // the server could not be reached: the premium or default skin below, as without one
+  }
   try {
     if (account.type === 'msa') {
       const s = await premiumSkin(account.uuid);

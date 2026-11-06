@@ -34,6 +34,7 @@ import { JAVA_EN } from './i18nJava';
 import { ERRORS_EN } from './i18nErrors';
 import { PI_EN } from './i18nPi';
 import { SETS_EN } from './i18nSets';
+import { OFFLINE_SKINS_EN } from './i18nOfflineSkins';
 
 export type Lang = 'pl' | 'en';
 
@@ -51,6 +52,8 @@ const EN: Record<string, string> = {
   ...SPARKS_EN,
   // the cosmetic sets (own file)
   ...SETS_EN,
+  // an offline account's skin for SlashClient players (own file)
+  ...OFFLINE_SKINS_EN,
   // inviting friends (own file)
   ...REFERRALS_EN,
   // the Installed list's dependencies, leftover libraries and multi-select (own file)
