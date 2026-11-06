@@ -9,6 +9,15 @@ export interface Picture { width: number; height: number; rgba: Buffer }
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
+/**
+ * A PNG's size from its header, without reading the picture (any colour type: skins saved by editors
+ * may have a palette, which the game reads fine). Undefined for what is no PNG.
+ */
+export function pngSize(data: Buffer): { width: number; height: number } | undefined {
+  if (data.length < 33 || !data.subarray(0, 8).equals(SIGNATURE) || data.toString('latin1', 12, 16) !== 'IHDR') return undefined;
+  return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+}
+
 export function decodePng(data: Buffer): Picture {
   if (!data.subarray(0, 8).equals(SIGNATURE)) throw new Error('not_png');
   let width = 0, height = 0, type = 0, depth = 0, interlace = 0;

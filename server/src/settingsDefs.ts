@@ -18,6 +18,7 @@ import { PUSH_SETTING_DEFS } from './push.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
 import { MEDIA_LIMITS } from './media.ts';
+import { OFFLINE_SKIN_SETTING_DEFS } from './offlineSkins.ts';
 import { MAX_PER_DAY as REFUNDS_PER_DAY, REFUND_WINDOW_DAYS } from './payments/refunds.ts';
 import { CLOUD_LIMITS } from './profileCloud.ts';
 import { DEFAULT_PRIVACY, VISIBILITIES } from './profiles.ts';
@@ -61,6 +62,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'fishAtlas', label: 'Atlas ryb', labelEn: 'Fish atlas' },
   { id: 'push', label: 'Powiadomienia na telefon', labelEn: 'Phone notifications' },
   { id: 'wiki', label: 'Wiki', labelEn: 'Wiki' },
+  { id: 'skins', label: 'Skiny kont offline', labelEn: 'Offline account skins' },
 ];
 
 const MB = 1024 * 1024;
@@ -76,6 +78,7 @@ export const SETTING_DEFS: SettingDef[] = [
   ...FEATURE_DEFS,
   ...RANK_SETTING_DEFS,
   ...BANNER_DEFS,
+  ...OFFLINE_SKIN_SETTING_DEFS,
 
   ...group('chat', [
     { key: 'chat.burstMessages', label: 'Wiadomości pod rząd', labelEn: 'Messages in a row', description: 'Najwięcej wiadomości (i zdjęć) w jednej rozmowie w oknie poniżej; kolejna dostaje „zwolnij”.', type: 'int', default: BURST_LIMITS.messages, min: 1, max: 100 },

@@ -10,6 +10,7 @@ import type { profileShareRoutes } from './profileShares.ts';
 import type { profileCloudRoutes } from './profileCloud.ts';
 import type { mediaRoutes } from './media.ts';
 import type { chatImageRoutes } from './chatImages.ts';
+import type { OfflineSkinStore } from './offlineSkins.ts';
 import type { SupportStore } from './payments/store.ts';
 import { RefundStore } from './payments/refunds.ts';
 import { capeSetting, item, priceOf } from './cosmetics.ts';
@@ -58,6 +59,8 @@ export interface UserExtrasContext {
   cloud: Pick<ReturnType<typeof profileCloudRoutes>, 'list' | 'remove'>;
   media: Pick<ReturnType<typeof mediaRoutes>, 'ofOwner'>;
   images: Pick<ReturnType<typeof chatImageRoutes>, 'ofOwner' | 'takeDownOne'>;
+  /** Skins set for offline nicks (offlineSkins.ts; deleting one: DELETE /v1/admin/users/<id>/offline-skins/<nick>). */
+  offlineSkins?: { store: Pick<OfflineSkinStore, 'list'> };
   now?: () => number;
 }
 
@@ -282,6 +285,7 @@ export function adminUserExtrasRoutes(ctx: UserExtrasContext): [string, RegExp, 
         id: i.id, size: i.size, at: i.at, sent: i.message !== null, removedAt: i.removedAt,
         to: i.recipient.startsWith('g:') ? { group: groupName(i.recipient.slice(2)) } : { ...person(i.recipient) },
       })),
+      offlineSkins: ctx.offlineSkins?.store.list(uuid) ?? [],
     };
   }
 

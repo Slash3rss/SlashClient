@@ -11,6 +11,7 @@
 .ux-row .grow { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .ux-row .grow > span { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .ux-row .icon-btn { width: 30px; height: 30px; flex: none; }
+.ux-skin { width: 48px; height: auto; flex: none; image-rendering: pixelated; background: rgba(255, 255, 255, .06); border-radius: 4px; }
 .ux-num { width: 90px; }
 .ux-note { color: var(--gold); }
 .ux-days { display: flex; gap: 3px; }

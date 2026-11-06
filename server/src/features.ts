@@ -28,6 +28,7 @@ export const FEATURES = [
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
   { id: 'betaUpdates', label: 'Kanał beta aktualizacji', labelEn: 'Beta update channel', description: 'Launchery z wybranym kanałem beta dostają bety (wydania z tagiem v…-beta.N). Wyłączony: wszyscy dostają tylko zwykłe wydania, a wybór kanału znika z ustawień launchera.' },
   { id: 'wiki', label: 'Wiki SlashClient', labelEn: 'SlashClient wiki', description: 'Strony /wiki i /en/wiki, ich obrazki i zakładka „SlashClient” w widoku Wiki launchera. Edytor w panelu admina działa zawsze.' },
+  { id: 'offlineSkins', label: 'Skiny i kosmetyki kont offline', labelEn: 'Offline accounts\' skins and cosmetics', description: 'Gracz z kontem offline wgrywa w launcherze skin dla swojego nicku, a gracze SlashClient na tym samym serwerze widzą go razem z kosmetykami jego konta. Wyłączone: nowych skinów nie da się wgrać, a gra ich nie dostaje (wgrane zostają, gracz może je usunąć).' },
   { id: 'seasonal', label: 'Wygląd sezonowy', labelEn: 'Seasonal look', description: 'Halloweenowy wygląd launchera i moda od 25 października do 2 listopada, biało-czerwony na Święto Niepodległości od 8 do 12 listopada (gracze mogą go też wyłączyć sami w Ustawieniach).' },
 ] as const;
 export type FeatureId = (typeof FEATURES)[number]['id'];
@@ -93,6 +94,8 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
   if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) out.push('cloud');
   if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) out.push('profiles');
   if (method === 'POST' && path === '/v1/mc/spray') out.push('sprays');
+  // a new offline skin (the list, deleting and the pictures already handed out keep working)
+  if (method === 'PUT' && /^\/v1\/me\/offline-skins\/[^/]+$/.test(path)) out.push('offlineSkins');
   // the wiki's pages, pictures, sitemap and the launcher's API (its editor is in the admin panel, never switched off)
   if (/^\/(en\/)?wiki(\/|$)/.test(path) || /^\/v1\/wiki(\/|$)/.test(path) || path === '/sitemap-wiki.xml') out.push('wiki');
   // linking a Twitch or Kick channel (the platforms' webhooks and the admin panel are never switched off)

@@ -394,7 +394,17 @@ function contentSection(u, ctx) {
         x.removedAt ? '' : xButton('Usuń obrazek', off, () => remove({ title: 'Usunąć ten obrazek z czatu?', text: 'Plik zniknie, w rozmowie zostanie znak, że obrazek usunięto. Treści wiadomości to nie dotyczy.' },
           'DELETE', `/v1/admin/users/${id}/extras/chat-images/${x.id}`, 'Obrazek usunięty.'), 'fa-solid fa-trash-can')));
     }
-    const count = res.shares.length + res.cloud.length + res.media.length + res.logs.length + res.bugs.length + res.chatImages.length;
+    // skins set for offline nicks in the launcher (servers before them send none)
+    const offlineSkins = res.offlineSkins ?? [];
+    nodes.push(sub(`Skiny offline (${offlineSkins.length})`));
+    for (const x of offlineSkins) {
+      nodes.push(el('div', { class: 'ux-row' },
+        el('img', { class: 'ux-skin', src: `/v1/skin/${x.hash}.png`, alt: '', loading: 'lazy' }),
+        el('div', { class: 'grow' }, el('b', { textContent: x.name }), el('small', { class: 'muted', textContent: `${x.slim ? 'smukły' : 'klasyczny'} · ${fmtDate(x.updatedAt)}` })),
+        xButton('Usuń', off, () => remove({ title: `Usunąć skin nicku ${x.name}?`, text: 'Gracze SlashClient przestaną go widzieć; gracz może wgrać skin ponownie w launcherze.' },
+          'DELETE', `/v1/admin/users/${id}/offline-skins/${encodeURIComponent(x.name)}`, 'Skin usunięty.', false), 'fa-solid fa-trash-can')));
+    }
+    const count = res.shares.length + res.cloud.length + res.media.length + res.logs.length + res.bugs.length + res.chatImages.length + offlineSkins.length;
     return { nodes, count };
   });
   return s.box;

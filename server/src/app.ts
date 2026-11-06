@@ -63,6 +63,7 @@ import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
 import { popularRoutes } from './friendsPopular.ts';
 import { fishAtlasRoutes } from './fishAtlas.ts';
+import { OFFLINE_NAME, offlineSkinRoutes } from './offlineSkins.ts';
 import { createPush } from './push.ts';
 
 /**
@@ -386,6 +387,13 @@ export function createApp(cfg: Config) {
   /** Minecraft uuid (lower case) → the SlashClient account playing as it, from the launcher. */
   /** uuid in game → the SlashClient account and which of its Minecraft accounts (no dashes) plays. */
   const linked = new Map<string, { user: string; at: number; character?: string }>();
+  /**
+   * Offline accounts in a game, from the launcher (/v1/mc/link with `offline`): server key + '|' + the offline
+   * uuid (dashed) → the SlashClient account playing as that nick there, and the address its launcher spoke
+   * from. Per server, as one nick may be played by different people on different servers; never in `linked`.
+   * A HUD sees the account's skin and set only while the game on that address reports this uuid itself.
+   */
+  const offlineLinked = new Map<string, { user: string; at: number; name: string; ip: string }>();
   const limitGame = limiter('security.gamePerMinute');
   const limitEmotes = limiter('security.emotesPerMinute');
   /** Sprays: one every 3 seconds, 20 a minute, per account (the admin panel's settings). */
@@ -560,6 +568,22 @@ export function createApp(cfg: Config) {
     return out;
   }
 
+  /** A uuid as games write it (lower case, with dashes). */
+  const dashedUuid = (uuid: string) => {
+    const hex = uuid.toLowerCase().replace(/-/g, '');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  };
+  /**
+   * An offline link still fresh, and the game on the launcher's address reporting that uuid itself (its
+   * heartbeat): the same computer plays as that nick. Anyone may claim any nick, but not from someone else's home.
+   */
+  function offlineProven(l: { at: number; ip: string }, uuid: string, now: number): boolean {
+    if (now - l.at >= IN_GAME_TTL_MS) return false;
+    const seen = gameReporters.get(l.ip);
+    const at = seen?.get(uuid) ?? seen?.get(uuid.replace(/-/g, ''));
+    return at !== undefined && now - at < IN_GAME_TTL_MS;
+  }
+
   function pushCosmetics(userId: string) {
     const owner = db.user(userId);
     if (!owner) return;
@@ -570,6 +594,13 @@ export function createApp(cfg: Config) {
       if (l.user !== userId || now - l.at >= IN_GAME_TTL_MS) continue;
       const hex = uuid.replace(/-/g, '');
       cosmetics[`${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`] = owner.banned ? {} : wornBy(owner, l.character);
+    }
+    // offline accounts played now, proven as the lookup proves them (the account's own set: no character)
+    if (settings.bool(featureKey('offlineSkins'))) {
+      for (const [key, l] of offlineLinked) {
+        const uuid = key.slice(key.indexOf('|') + 1);
+        if (l.user === userId && offlineProven(l, uuid, now) && !cosmetics[uuid]) cosmetics[uuid] = owner.banned ? {} : wornBy(owner, undefined);
+      }
     }
     const uuids = Object.keys(cosmetics);
     if (!uuids.length) return;
@@ -905,6 +936,15 @@ export function createApp(cfg: Config) {
     sql: db.sql, authed, admin, body,
     settings: () => ({ enabled: settings.bool('fishAtlas.enabled'), maxCatches: settings.num('fishAtlas.maxCatches'), keepPerSpecies: settings.num('fishAtlas.keepPerSpecies') }),
     limitUploads: limiter('fishAtlas.uploadsPerMinute'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // offline accounts' skins, set in the launcher for a nick (offlineSkins.ts)
+  const offlineSkins = offlineSkinRoutes({
+    db, authed, admin, body, configAdmins, cosmeticsChanged,
+    perUser: () => settings.num('skins.offlinePerUser'), limitUploads: limiter('skins.uploadsPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1520,7 +1560,7 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
       limitGame(clientIp(req));
-      const { uuids, knownRanks } = await body(req);
+      const { uuids, knownRanks, server } = await body(req);
       // the pink friend came in 0.9.12, the supporter and any rank in its colour ('colors') in 0.9.23: older HUDs get what they know (ranks.ts)
       const known = Array.isArray(knownRanks) ? knownRanks.filter((k): k is string => typeof k === 'string') : [];
       if (!Array.isArray(uuids) || uuids.length > settings.num('security.lookupUuids')) throw new HttpError(400, 'bad_request');
@@ -1544,9 +1584,24 @@ export function createApp(cfg: Config) {
       // the players' accounts first (each one's badge and set kept a while, lookupEntry), then their clans in one query
       const found: [string, string][] = [];
       const settingsNow = lazyCosmeticSettings();
+      // offline accounts' skins (HUDs that send the server they are on; older ones never get any)
+      const skins: Record<string, { hash: string; slim: boolean }> = {};
+      const serverKey = typeof server === 'string' && server.length <= 300 && settings.bool(featureKey('offlineSkins')) ? serverKeyOf(server) : undefined;
       for (const u of active) {
-        const link = linked.get(u.toLowerCase());
-        const entry = link && now - link.at < IN_GAME_TTL_MS ? lookupEntry(u, link, known, settingsNow) : undefined;
+        let link: { user: string; at: number; character?: string } | undefined = linked.get(u.toLowerCase());
+        if (!link || now - link.at >= IN_GAME_TTL_MS) link = undefined;
+        // an offline account played on this server from the computer whose game reports this uuid: as a proven
+        // Microsoft account (its account's set and badge), and its skin for that nick
+        if (serverKey !== undefined) {
+          const uuid = dashedUuid(u);
+          const offline = offlineLinked.get(`${serverKey}|${uuid}`);
+          if (offline && offlineProven(offline, uuid, now)) {
+            link ??= { user: offline.user, at: offline.at };
+            const skin = offlineSkins.store.get(offline.user, offline.name);
+            if (skin && !db.user(offline.user)?.banned) skins[u] = { hash: skin.hash, slim: skin.slim };
+          }
+        }
+        const entry = link ? lookupEntry(u, link, known, settingsNow) : undefined;
         if (!entry) continue;
         const { badge, worn } = entry;
         if (badge) rankOf[u] = badge.rank;
@@ -1566,14 +1621,28 @@ export function createApp(cfg: Config) {
       }
       // HUDs that know ranks' colours (0.9.23+) read the cape from `cosmetics`: `capes` is only for older ones
       return { active, ...(known.includes('colors') ? {} : { capes }), ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
-        ...(Object.keys(badgeColors).length ? { badgeColors } : {}), ...(Object.keys(live).length ? { live } : {}) };
+        ...(Object.keys(badgeColors).length ? { badgeColors } : {}), ...(Object.keys(live).length ? { live } : {}), ...(Object.keys(skins).length ? { skins } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
       const me = authed(req);
       limitGame(clientIp(req));
-      const { uuid } = await body(req);
+      const { uuid, name: offlineName, offline } = await body(req);
       if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
+      if (offline === true) {
+        // an offline account (launchers from 0.9.71): any nick, but only its own uuid, and only where this launcher's game is
+        if (typeof offlineName !== 'string' || !OFFLINE_NAME.test(offlineName) || dashedUuid(uuid) !== offlineUuid(offlineName)) throw new HttpError(400, 'bad_request');
+        if (!settings.bool(featureKey('offlineSkins'))) throw new HttpError(503, 'feature_disabled');
+        const where = presences.get(me)?.activity;
+        const key = `${where?.kind === 'server' ? serverKeyOf(where.server) : ''}|${dashedUuid(uuid)}`;
+        const now = Date.now();
+        const ip = clientIp(req);
+        const before = offlineLinked.get(key);
+        offlineLinked.set(key, { user: me, at: now, name: offlineName, ip });
+        // a new game, or another player or computer on that nick: HUDs around ask again
+        if (!before || before.user !== me || before.name !== offlineName || before.ip !== ip || now - before.at >= IN_GAME_TTL_MS) cosmeticsChanged(me);
+        return { ok: true, ttl: IN_GAME_TTL_MS };
+      }
       const key = uuid.toLowerCase();
       // only a Minecraft account proven to be ours, or anyone could wear their cape as someone else
       if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
@@ -1782,6 +1851,7 @@ export function createApp(cfg: Config) {
     ...suggestions.routes,
     ...popular.routes,
     ...fishAtlas.routes,
+    ...offlineSkins.routes,
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
@@ -1846,7 +1916,7 @@ export function createApp(cfg: Config) {
         throw new HttpError(status, code);
       },
     }),
-    ...adminUserExtrasRoutes({ db, admin, body, push, configAdmins, cosmeticsChanged, wallet, achievements, challenges, referrals, communities, groups, mutes, support, shares, cloud, media, images, fail: (status, code) => { throw new HttpError(status, code); } }),
+    ...adminUserExtrasRoutes({ db, admin, body, push, configAdmins, cosmeticsChanged, wallet, achievements, challenges, referrals, communities, groups, mutes, support, shares, cloud, media, images, offlineSkins, fail: (status, code) => { throw new HttpError(status, code); } }),
     ...accounts.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged, supporterLevel: (id) => support.cosmeticsLevel(id), badge: wearOf,
@@ -1940,6 +2010,20 @@ export function createApp(cfg: Config) {
       res.writeHead(404, ERROR_PAGE_HEADERS);
       res.end(notFoundPage(siteLang(req, url.pathname)));
       req.resume();
+      return;
+    }
+
+    // an offline account's skin (/v1/me/offline-skins): named by its contents, so kept for good
+    const offlineSkin = /^\/v1\/skin\/([0-9a-f]{32})\.png$/.exec(url.pathname);
+    if ((req.method === 'GET' || req.method === 'HEAD') && offlineSkin) {
+      const data = offlineSkins.store.picture(offlineSkin[1]);
+      if (!data) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*' });
+      res.end(req.method === 'HEAD' ? undefined : data);
       return;
     }
 
@@ -2600,6 +2684,7 @@ export function createApp(cfg: Config) {
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [ip, seen] of gameReporters) if ([...seen.values()].every((at) => Date.now() - at > IN_GAME_TTL_MS)) gameReporters.delete(ip);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
+    for (const [key, l] of offlineLinked) if (Date.now() - l.at > IN_GAME_TTL_MS) offlineLinked.delete(key);
     const now = live();
     activity.sample(now.online, now.inGame);
   }, 30_000);
@@ -2720,6 +2805,8 @@ export function createApp(cfg: Config) {
     popular,
     /** For tests: the shared fish atlas. */
     fishAtlas,
+    /** For tests: offline accounts' skins. */
+    offlineSkins,
     /** For tests: linked channels, the live state and the reconcile. */
     streams,
     /** For tests: the phones' notifications. */
