@@ -101,6 +101,12 @@ const api = {
   uploadSkin: (accountId: string, variant: string) => invoke('skin:upload', accountId, variant),
   resetSkin: (accountId: string) => invoke('skin:reset', accountId),
   setCape: (accountId: string, capeId: string | null) => invoke('skin:setCape', accountId, capeId),
+  dropPendingSkin: () => invoke('skin:dropPending'),
+  // the skin of an offline account for SlashClient players on the same server
+  offlineSkin: (accountId: string) => invoke('offlineSkin:get', accountId),
+  offlineSkinFromPreset: (presetId: string) => invoke('offlineSkin:fromPreset', presetId),
+  saveOfflineSkin: (accountId: string, slim: boolean) => invoke('offlineSkin:save', accountId, slim),
+  removeOfflineSkin: (accountId: string) => invoke('offlineSkin:remove', accountId),
   blockTextures: () => invoke('blocks:textures'),
   cosmeticTextures: () => invoke('cosmetics:textures'),
   getStats: (days: number) => invoke('stats:get', days),

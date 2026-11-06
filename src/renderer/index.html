@@ -509,6 +509,31 @@
               <button id="skin-cancel">Anuluj</button>
             </div>
           </div>
+          <!-- an offline account's skin for SlashClient players on the same server (server's offlineSkins) -->
+          <div class="skin-edit offline-skin hidden" id="offline-skin">
+            <div class="row offline-skin-head">
+              <span class="capes-title"><i class="fa-solid fa-user-group"></i> Skin dla graczy SlashClient</span>
+              <small class="muted" id="offline-skin-state"></small>
+            </div>
+            <small class="muted">Gracze z SlashClient na tym samym serwerze widzą ten skin i Twoje kosmetyki.</small>
+            <div class="row hidden" id="offline-skin-login">
+              <small class="muted">Zaloguj się do konta SlashClient, żeby ustawić skin.</small>
+              <button id="offline-skin-signin"><i class="fa-solid fa-right-to-bracket"></i> Zaloguj się</button>
+            </div>
+            <div class="row hidden" id="offline-skin-actions">
+              <button id="offline-skin-file"><i class="fa-solid fa-file-image"></i> Wybierz plik PNG</button>
+              <button id="offline-skin-lib"><i class="fa-solid fa-shirt"></i> Z biblioteki skinów</button>
+              <button class="danger hidden" id="offline-skin-remove"><i class="fa-solid fa-trash"></i> Usuń skin</button>
+            </div>
+            <div class="row hidden" id="offline-skin-model">
+              <div class="segmented" id="offline-skin-variant">
+                <button class="active" data-variant="classic">Klasyczny</button>
+                <button data-variant="slim">Smukły</button>
+              </div>
+              <button class="primary hidden" id="offline-skin-save"><i class="fa-solid fa-check"></i> Zapisz skin</button>
+              <button class="hidden" id="offline-skin-cancel">Anuluj</button>
+            </div>
+          </div>
           <!-- capes: SlashClient's and the Minecraft account's, one at a time so the column stays short -->
           <div class="capes-box">
             <div class="row capes-head">

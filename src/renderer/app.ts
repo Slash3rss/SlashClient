@@ -28,7 +28,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
-import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, onFeatures } from './features';
+import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, offlineSkinsOffered, onFeatures } from './features';
 import { initSeason } from './season';
 import { isPerfPreset, partOn, PERF_PARTS, suggestedPreset, type PerfPart, type PerfPreset } from '../shared/perfPresets';
 import { checkLegalNotices, createLegalCard } from './legal';
@@ -4340,6 +4340,7 @@ async function renderSkin() {
   skinVariant = skin.model === 'slim' ? 'slim' : 'classic';
   document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === skinVariant));
   loadSkinEditor(account);
+  void renderOfflineSkin(account);
   $('#skin-stage').classList.remove('loading');
   stopCapeAnimation();
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
@@ -4353,6 +4354,8 @@ async function renderSkin() {
   const note = $('#skin-note');
   note.dataset.base = t(account.type === 'msa'
     ? 'Skin Twojego konta Minecraft.'
+    : skin.slashSkin
+      ? 'Konto offline: skin ustawiony dla graczy SlashClient. Gracze bez SlashClient zobaczą domyślny skin.'
     : skin.isDefault
       ? 'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.'
       : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.');
@@ -4951,6 +4954,145 @@ $('#skin-reset').addEventListener('click', async () => {
   });
 });
 
+// ---------- the skin of an offline account for SlashClient players (server's offlineSkins) ----------
+
+interface OfflineSkin { name: string; hash: string; slim: boolean }
+/** The skin saved for the shown offline account's nick; undefined = none (or not read yet). */
+let offlineCurrent: OfflineSkin | undefined;
+let offlineVariant: 'classic' | 'slim' = 'classic';
+/** A skin picked (file or library) and shown on the model, waiting for "Save skin". */
+let offlinePending: string | undefined;
+let offlineSignedIn = false;
+/** Whether the section can save for the shown account: offline, signed in, a server that keeps such skins. */
+const offlineSkinUsable = (account: { type: string } | undefined) => account?.type === 'offline' && offlineSkinsOffered() && offlineSignedIn;
+
+/**
+ * The section under an offline account's skin: only when the server has offlineSkins (an older
+ * server or a switched-off feature: nothing, as before), with a sign-in button when signed out.
+ */
+async function renderOfflineSkin(account: { id: string; type: string; name: string }) {
+  offlinePending = undefined;
+  offlineCurrent = undefined;
+  const box = $('#offline-skin');
+  const shown = account.type === 'offline' && featuresKnown() && offlineSkinsOffered();
+  box.classList.toggle('hidden', !shown);
+  if (!shown) return;
+  const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
+  offlineSignedIn = !!state?.user;
+  $('#offline-skin-login').classList.toggle('hidden', offlineSignedIn);
+  $('#offline-skin-actions').classList.toggle('hidden', !offlineSignedIn);
+  $('#offline-skin-model').classList.add('hidden');
+  $('#offline-skin-remove').classList.add('hidden');
+  $('#offline-skin-state').textContent = '';
+  renderLibrary();
+  if (!offlineSignedIn) return;
+  const current: OfflineSkin | null | undefined = await api.offlineSkin(account.id).catch(() => undefined);
+  if (skinAccountId !== account.id) return;
+  offlineCurrent = current ?? undefined;
+  offlineVariant = offlineCurrent?.slim ? 'slim' : 'classic';
+  showOfflineSkinState();
+}
+
+function showOfflineSkinState() {
+  document.querySelectorAll<HTMLButtonElement>('#offline-skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === offlineVariant));
+  $('#offline-skin-remove').classList.toggle('hidden', !offlineCurrent || !!offlinePending);
+  $('#offline-skin-save').classList.toggle('hidden', !offlinePending);
+  $('#offline-skin-cancel').classList.toggle('hidden', !offlinePending);
+  // the arm model of a saved skin changes at once; with nothing saved or picked there is nothing to change
+  $('#offline-skin-model').classList.toggle('hidden', !offlinePending && !offlineCurrent);
+  $('#offline-skin-state').textContent = offlinePending ? t('Podgląd – jeszcze nie zapisany') : offlineCurrent ? t('Ustawiony') : t('Brak skina');
+}
+
+/** A picked skin on the model, waiting for "Save skin". */
+async function previewOfflineSkin(preview: string, variant: 'classic' | 'slim') {
+  if (!skinViewer) return;
+  offlinePending = preview;
+  offlineVariant = variant;
+  await skinViewer.loadSkin(preview, { model: variant === 'slim' ? 'slim' : 'default' });
+  skinViewer.playerObject.userData.pending = preview;  $('#skin-note').textContent = t('Podgląd nowego skina. Zapisz, żeby gracze SlashClient go zobaczyli.');
+  showOfflineSkinState();
+}
+
+/** Saves for the shown offline account: the picked skin, or the saved one with another arm model. */
+function saveOfflineSkin(button: HTMLButtonElement) {
+  const accountId = skinAccountId;
+  if (!accountId) return;
+  return busy(button, async () => {
+    try {
+      offlineCurrent = await api.saveOfflineSkin(accountId, offlineVariant === 'slim');
+      offlinePending = undefined;
+      toast(t('Skin zapisany. Gracze z SlashClient zobaczą go na tym samym serwerze.'));
+      refreshSkinCaches(accountId);
+      renderSkin();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+}
+
+$('#offline-skin-signin').addEventListener('click', () => showView('friends'));
+$('#offline-skin-file').addEventListener('click', async () => {
+  const preview: string | undefined = await guard(() => api.pickSkinFile());
+  if (preview) await previewOfflineSkin(preview, offlineVariant);
+});
+$('#offline-skin-lib').addEventListener('click', async () => {
+  presets = (await guard(() => api.listSkinPresets())) ?? presets;
+  if (!presets.length) {
+    toast(t('Biblioteka skinów jest pusta. Dodaj do niej skiny poniżej albo wybierz plik PNG.'));
+    return;
+  }
+  const grid = el('div', { className: 'lib-grid' }, ...presets.map((p) => {
+    const b = el('button', { type: 'button', className: 'lib-choice', title: p.name }, skinFront(p.dataUrl, p.variant === 'slim'), el('span', { textContent: p.name }));
+    b.addEventListener('click', async () => {
+      close();
+      const picked: { preview: string; variant: 'classic' | 'slim' } | undefined = await guard(() => api.offlineSkinFromPreset(p.id));
+      if (picked) await previewOfflineSkin(picked.preview, picked.variant);
+    });
+    return b;
+  }));
+  const close = modalWindow(t('Z biblioteki skinów'), [grid], [], undefined, 'offline-skin-modal');
+});
+document.querySelectorAll<HTMLButtonElement>('#offline-skin-variant button').forEach((b) =>
+  b.addEventListener('click', () => {
+    const variant = b.dataset.variant as 'classic' | 'slim';
+    if (variant === offlineVariant) return;
+    offlineVariant = variant;
+    showOfflineSkinState();
+    if (offlinePending) void skinViewer?.loadSkin(offlinePending, { model: variant === 'slim' ? 'slim' : 'default' });
+    else if (offlineCurrent) void saveOfflineSkin(b);
+  }));
+$('#offline-skin-save').addEventListener('click', () => void saveOfflineSkin($<HTMLButtonElement>('#offline-skin-save')));
+$('#offline-skin-cancel').addEventListener('click', () => {
+  void api.dropPendingSkin().catch(() => undefined);
+  const accountId = skinAccountId;
+  if (accountId) refreshSkinCaches(accountId);
+  renderSkin();
+});
+$('#offline-skin-remove').addEventListener('click', async () => {
+  const accountId = skinAccountId;
+  if (!accountId || !(await ask(t('Usunąć skin dla graczy SlashClient?'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
+  busy($<HTMLButtonElement>('#offline-skin-remove'), async () => {
+    try {
+      await api.removeOfflineSkin(accountId);
+      offlineCurrent = undefined;
+      toast(t('Usunięto skin dla graczy SlashClient.'));
+      refreshSkinCaches(accountId);
+      renderSkin();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+});
+/** The feature switched on or off, or the player signed in or out: the section drawn again. */
+function redrawOfflineSkin() {
+  const account = store?.accounts?.find((a) => a.id === skinAccountId);
+  if (account && !offlinePending) void renderOfflineSkin(account);
+}
+onFeatures(redrawOfflineSkin);
+api.on('social:event', (e: { type?: string }) => {
+  if (e?.type === 'state') redrawOfflineSkin();
+});
+
 // ---------- skin library ----------
 
 interface SkinPreset { id: string; name: string; variant: 'classic' | 'slim'; capeId?: string | null; dataUrl: string }
@@ -5019,7 +5161,8 @@ function renderLibrary() {
   $('#lib-cape').textContent = p.capeId === undefined ? '' : p.capeId === null ? t('Bez peleryny') : t('Peleryna: {0}', cape?.alias ?? t('z innego konta'));
   const account = store.accounts.find((a) => a.id === skinAccountId);
   const apply = $<HTMLButtonElement>('#lib-apply');
-  apply.disabled = account?.type !== 'msa';
+  // an offline account puts it on as its skin for SlashClient players
+  apply.disabled = account?.type !== 'msa' && !offlineSkinUsable(account);
   apply.title = apply.disabled ? t('Skin i pelerynę można zmienić tylko na koncie Microsoft.') : '';
 }
 
@@ -5098,10 +5241,18 @@ $('#lib-apply').addEventListener('click', () => {
   const accountId = skinAccountId;
   const p = presets.find((x) => x.id === chosenPreset);
   if (!accountId || !p) return;
+  const offline = store.accounts.find((a) => a.id === accountId)?.type === 'offline';
   busy($<HTMLButtonElement>('#lib-apply'), async () => {
     try {
-      await api.applySkinPreset(accountId, p.id);
-      toast(t('Ustawiono skin „{0}”. W grze zobaczysz go od następnego wejścia.', p.name));
+      if (offline) {
+        // an offline account wears it for SlashClient players on the same server
+        await api.offlineSkinFromPreset(p.id);
+        await api.saveOfflineSkin(accountId, p.variant === 'slim');
+        toast(t('Skin zapisany. Gracze z SlashClient zobaczą go na tym samym serwerze.'));
+      } else {
+        await api.applySkinPreset(accountId, p.id);
+        toast(t('Ustawiono skin „{0}”. W grze zobaczysz go od następnego wejścia.', p.name));
+      }
       chosenPreset = undefined;
       refreshSkinCaches(accountId);
       renderSkin();

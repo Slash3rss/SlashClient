@@ -824,6 +824,10 @@ a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32p
 .skin-edit .cape-choice { height: 72px; padding: 5px; }
 .cape-choice.selected { border-color: var(--accent); background: rgba(var(--accent-rgb), .15); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .15); }
 .cape-choice.active::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+/* an offline account's skin for SlashClient players: the title with what is set now on its right */
+.offline-skin { gap: 8px; }
+.offline-skin-head { justify-content: space-between; }
+.offline-skin-modal .lib-grid { max-height: 50vh; overflow-y: auto; }
 .cape-actions { min-height: 34px; }
 .cape-actions span { flex: 1; font-size: 13px; }
 

@@ -11,7 +11,7 @@ import { el } from './dialog';
  * element with data-feature="<id>" gets the body class feature-off-<id> rules (style.css).
  */
 
-export type FeatureId = 'shop' | 'support' | 'communities' | 'clans' | 'groups' | 'media' | 'cloud' | 'profiles' | 'sprays' | 'chatImages' | 'registration' | 'streams' | 'betaUpdates' | 'seasonal' | 'wiki';
+export type FeatureId = 'shop' | 'support' | 'communities' | 'clans' | 'groups' | 'media' | 'cloud' | 'profiles' | 'sprays' | 'chatImages' | 'registration' | 'streams' | 'betaUpdates' | 'seasonal' | 'wiki' | 'offlineSkins';
 export interface Banner { id: string; text: string; textEn: string; level: 'info' | 'warning'; link: string; start: number; end: number }
 export interface FeatureState { features: Partial<Record<FeatureId, boolean>>; banner: Banner | null }
 
@@ -26,6 +26,9 @@ export const featureOn = (id: FeatureId) => state.features[id] !== false;
 
 /** The server has a beta update channel and it is on (an older server says nothing of it: none). */
 export const betaUpdatesOffered = () => state.features.betaUpdates === true;
+
+/** The server keeps skins of offline accounts for SlashClient players (an older server says nothing of it: none). */
+export const offlineSkinsOffered = () => state.features.offlineSkins === true;
 
 /** Called whenever the switches or the banner change (the friends list draws its sections again). */
 export function onFeatures(fn: (s: FeatureState) => void) {

@@ -59,7 +59,7 @@ import {
 } from './profileShare';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
-import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
+import { mcLinkBody, offlineSkinError, offlineSkinOf, offlineSkinUpload, ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin, type OfflineSkin } from './skins';
 import { GameBridge } from './bridge';
 import { CoverCache, NowPlayingReader } from './nowPlaying';
 import { skyupGameArticle, skyupIndex, skyupSearch } from './skyupWiki';
@@ -1671,11 +1671,17 @@ const forgetSkins = () => {
   skinCache.clear();
   skinChangedAt = Date.now();
 };
+/** An account's skin; an offline one wears the skin set for SlashClient players, when there is one. */
+async function accountSkin(account: Parameters<typeof skinFor>[0]) {
+  const uploaded = account.type === 'msa' ? undefined : offlineSkinOf(await offlineSkinList(), account.name);
+  return skinFor(account, uploaded && { url: offlineSkinUrl(uploaded.hash), slim: uploaded.slim });
+}
 async function cachedSkin(account: Parameters<typeof skinFor>[0]) {
-  const key = `${account.id}|${account.type}|${account.uuid}|${account.name}`;
+  const uploaded = account.type === 'msa' ? undefined : offlineSkinOf(await offlineSkinList(), account.name);
+  const key = `${account.id}|${account.type}|${account.uuid}|${account.name}|${uploaded?.hash ?? ''}|${uploaded?.slim ?? ''}`;
   const kept = skinCache.get(key);
   if (kept && Date.now() - kept.at < SKIN_CACHE_MS) return kept.data;
-  const data = await skinFor(account);
+  const data = await skinFor(account, uploaded && { url: offlineSkinUrl(uploaded.hash), slim: uploaded.slim });
   if (!data.isDefault && Date.now() - skinChangedAt > 2 * 60_000) skinCache.set(key, { at: Date.now(), data });
   return data;
 }
@@ -1687,7 +1693,7 @@ handle('skin:get', (accountId: string) => {
 handle('skin:save', async (accountId: string) => {
   const account = store.accounts.find((a) => a.id === accountId);
   if (!account) return;
-  const { dataUrl } = await skinFor(account);
+  const { dataUrl } = await accountSkin(account);
   const { canceled, filePath } = await dialog.showSaveDialog(win!, { defaultPath: `${account.name}.png`, filters: [{ name: 'PNG', extensions: ['png'] }] });
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
@@ -1804,6 +1810,90 @@ handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => 
 handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken).finally(forgetSkins));
 handle('skin:setCape', async (accountId: string, capeId: string | null) => setCape((await freshMsa(accountId)).accessToken, capeId).finally(forgetSkins));
 
+// ---------- the skin of an offline account for SlashClient players (server's offlineSkins) ----------
+
+/**
+ * The skins this SlashClient account set for offline nicks, read once a minute at most and again after
+ * a change. Signed out, or an older server without them: none, and offline accounts look as before.
+ */
+let offlineSkinsKept: { user: string; at: number; list: OfflineSkin[] } | undefined;
+async function offlineSkinList(fresh = false): Promise<OfflineSkin[]> {
+  const user = social.state().user?.id;
+  if (!user) return [];
+  if (!fresh && offlineSkinsKept?.user === user && Date.now() - offlineSkinsKept.at < 60_000) return offlineSkinsKept.list;
+  try {
+    const res = await social.call<{ skins?: OfflineSkin[] }>('GET', '/v1/me/offline-skins');
+    const list = Array.isArray(res.skins) ? res.skins.filter((s) => typeof s?.name === 'string' && /^[0-9a-f]{8,64}$/.test(String(s.hash))) : [];
+    offlineSkinsKept = { user, at: Date.now(), list };
+    return list;
+  } catch {
+    // an older server (404) or no connection: what was read before, else none
+    return offlineSkinsKept?.user === user ? offlineSkinsKept.list : [];
+  }
+}
+const offlineSkinUrl = (hash: string) => `${store.settings.socialUrl.replace(/\/$/, '')}/v1/skin/${hash}.png`;
+function offlineAccount(accountId: string) {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (account?.type !== 'offline') throw new Error('Nie znaleziono konta.');
+  return account;
+}
+function offlineSkinsChanged() {
+  offlineSkinsKept = undefined;
+  forgetSkins();
+}
+/** A change of the offline skin; the server's refusals (bad file, limit, switched off) in plain words. */
+async function offlineSkinCall<T>(method: string, apiPath: string, body?: unknown): Promise<T> {
+  try {
+    return await social.call<T>(method, apiPath, body);
+  } catch (err) {
+    const plain = err instanceof SocialError ? offlineSkinError(err.code, err.httpStatus) : undefined;
+    if (plain) throw new Error(plain);
+    if (err instanceof SocialError) throw new Error(`social:${err.code}`);
+    throw err;
+  } finally {
+    offlineSkinsChanged();
+  }
+}
+
+/** The skin set for this offline account's nick, or null. */
+handle('offlineSkin:get', async (accountId: string) => {
+  const account = offlineAccount(accountId);
+  return offlineSkinOf(await offlineSkinList(true), account.name) ?? null;
+});
+/** A library preset picked for the offline account: waits for "Save" like a picked file. */
+handle('offlineSkin:fromPreset', async (id: string) => {
+  const { preset, png } = await readPreset(id);
+  const preview = readSkinFile(png);
+  pendingSkin = png;
+  return { preview, variant: preset.variant };
+});
+/**
+ * Saves the picked skin (or, with none picked, the current one with another arm model) for the
+ * offline account's nick; SlashClient players on the same server see it from the next link.
+ */
+handle('offlineSkin:save', async (accountId: string, slim: boolean) => {
+  const account = offlineAccount(accountId);
+  let png = pendingSkin;
+  if (!png) {
+    const current = offlineSkinOf(await offlineSkinList(true), account.name);
+    if (!current) throw new Error(t('Najpierw wybierz plik skina.'));
+    const res = await netFetch(offlineSkinUrl(current.hash));
+    if (!res.ok) throw new Error(httpMessage(res.status, offlineSkinUrl(current.hash)));
+    png = Buffer.from(await res.arrayBuffer());
+  }
+  const saved = await offlineSkinCall<OfflineSkin>('PUT', `/v1/me/offline-skins/${encodeURIComponent(account.name)}`, offlineSkinUpload(account.name, png, slim));
+  pendingSkin = undefined;
+  return saved;
+});
+handle('offlineSkin:remove', async (accountId: string) => {
+  const account = offlineAccount(accountId);
+  await offlineSkinCall('DELETE', `/v1/me/offline-skins/${encodeURIComponent(account.name)}`);
+});
+/** "Cancel" after picking: the picked file is forgotten. */
+handle('skin:dropPending', () => {
+  pendingSkin = undefined;
+});
+
 // ---------- skin library ----------
 
 handle('skinlib:list', () => listPresets());
@@ -1811,7 +1901,7 @@ handle('skinlib:list', () => listPresets());
 handle('skinlib:saveCurrent', async (accountId: string, name: string, capeId?: string | null) => {
   const account = store.accounts.find((a) => a.id === accountId);
   if (!account) throw new Error('Nie znaleziono konta.');
-  const skin = await skinFor(account);
+  const skin = await accountSkin(account);
   const png = Buffer.from(skin.dataUrl.split(',')[1], 'base64');
   return addPreset(png, { name: name || account.name, variant: skin.model === 'slim' ? 'slim' : 'classic', capeId: account.type === 'msa' ? capeId : undefined });
 });
@@ -1996,7 +2086,9 @@ async function startGame(profileId: string, accountId: string, server: string | 
   }).catch(failed);
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
-    if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', { uuid: account.uuid }).catch(() => {});
+    // an offline account says its nick too: its skin and cosmetics show to SlashClient players on the same server
+    // (an older server reads only the uuid, as before)
+    if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', mcLinkBody(account)).catch(() => {});
   };
   const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence, link: linkPlayer };
   games.set(profile.id, running);
