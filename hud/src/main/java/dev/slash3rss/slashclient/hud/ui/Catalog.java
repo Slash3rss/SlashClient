@@ -592,7 +592,10 @@ public final class Catalog {
 			new Colors("slashclient-hud.hitMarker.killColor", COLORS, () -> cfg.hitMarkerKillColor, v -> cfg.hitMarkerKillColor = v),
 			new Toggle("slashclient-hud.hitMarker.projectiles", () -> cfg.hitMarkerProjectiles, v -> cfg.hitMarkerProjectiles = v),
 			new Toggle("slashclient-hud.hitMarker.sound", () -> cfg.hitMarkerSound, v -> cfg.hitMarkerSound = v),
-			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.gamehud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> cfg.hitMarkerSoundKind = v),
+			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.gamehud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> {
+				cfg.hitMarkerSoundKind = v;
+				dev.slash3rss.slashclient.hud.gamehud.HitMarker.preview();
+			}),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.hitMarkerVolume, v -> cfg.hitMarkerVolume = Math.round(v))), null));
 		// our own armour off our own player, piece by piece (the elytra on its own: off, it shows gliding)
 		out.add(new Entry("hideOwnArmor", "slashclient-hud.hideArmor", "extras", "m-armor", () -> cfg.hideOwnArmor, v -> cfg.hideOwnArmor = v, List.of(
@@ -723,7 +726,10 @@ public final class Catalog {
 		out.add(new Entry("potionEnd", "slashclient-hud.potionEnd", "combat", "m-effects", () -> cfg.potionEnd, v -> cfg.potionEnd = v, List.of(
 			new Choice("slashclient-hud.potionEnd.place", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES, "slashclient-hud.potionEnd.place.", () -> cfg.potionEndPlace, v -> cfg.potionEndPlace = v),
 			new Slider("slashclient-hud.potionEnd.warn", 0f, 30f, 5f, "%.0f s", () -> (float) cfg.potionEndWarn, v -> cfg.potionEndWarn = Math.round(v)),
-			new Choice("slashclient-hud.potionEnd.sound", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS, "slashclient-hud.potionEnd.sound.", () -> cfg.potionEndSound, v -> cfg.potionEndSound = v),
+			new Choice("slashclient-hud.potionEnd.sound", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS, "slashclient-hud.potionEnd.sound.", () -> cfg.potionEndSound, v -> {
+				cfg.potionEndSound = v;
+				dev.slash3rss.slashclient.hud.gamehud.PotionEnd.preview();
+			}),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.potionEndVolume, v -> cfg.potionEndVolume = Math.round(v))), null));
 		// SlashClient's notifications: which kinds come, and quiet while the launcher says "Nie przeszkadzać"
 		out.add(new Entry("notifications", "slashclient-hud.notifications", "extras", "m-toasts", () -> cfg.toasts, v -> cfg.toasts = v, List.of(
@@ -736,7 +742,12 @@ public final class Catalog {
 			new Toggle("slashclient-hud.notifications.achievements", () -> cfg.toastAchievements, v -> cfg.toastAchievements = v),
 			new Toggle("slashclient-hud.notifications.errors", () -> cfg.toastErrors, v -> cfg.toastErrors = v),
 			new Toggle("slashclient-hud.notifications.other", () -> cfg.toastOther, v -> cfg.toastOther = v),
-			new Toggle("slashclient-hud.notifications.dnd", () -> cfg.toastDnd, v -> cfg.toastDnd = v)), null));
+			new Toggle("slashclient-hud.notifications.dnd", () -> cfg.toastDnd, v -> cfg.toastDnd = v),
+			new Choice("slashclient-hud.notifications.sound", dev.slash3rss.slashclient.hud.Sounds.NOTICE, "slashclient-hud.chat.sound.", () -> cfg.toastSound, v -> {
+				cfg.toastSound = v;
+				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), v, cfg.toastVolume);
+			}),
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.toastVolume, v -> cfg.toastVolume = Math.round(v))), null));
 		out.add(new Entry("serverFriends", "slashclient-hud.serverFriends.setting", "extras", "m-friends", () -> cfg.serverFriends, v -> cfg.serverFriends = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
@@ -850,6 +861,10 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.holdUseFast", () -> cfg.holdUseFast, v -> cfg.holdUseFast = v)), null));
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v)),
+			new Choice("slashclient-hud.assist.toolWarningSound", dev.slash3rss.slashclient.hud.Sounds.NOTICE, "slashclient-hud.chat.sound.", () -> cfg.toolWarningSound, v -> {
+				cfg.toolWarningSound = v;
+				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), v, cfg.toolWarningVolume);
+			}),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.toolWarningVolume, v -> cfg.toolWarningVolume = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
 		out.add(new Entry("craftFit", "slashclient-hud.craftFit", "extras", "m-mousetweaks", () -> cfg.craftFit, v -> cfg.craftFit = v, List.of(), null));

@@ -22,7 +22,7 @@ public final class HitMarker {
 	private HitMarker() {}
 
 	public static final String[] STYLES = { "x", "bold", "plus" };
-	public static final String[] SOUNDS = { "ding", "click", "orb" };
+	public static final String[] SOUNDS = dev.slash3rss.slashclient.hud.Sounds.with("ding", "click", "orb");
 	/** Arm length in GUI pixels; the arms start {@link #GAP} pixels from the middle, inside the crosshair's grid. */
 	public static final int MIN_SIZE = 2, MAX_SIZE = 7;
 	private static final int GAP = 2;
@@ -96,12 +96,25 @@ public final class HitMarker {
 
 	private static void sound(float pitch) {
 		HudConfig c = SlashHud.config;
-		if (!c.hitMarkerSound || c.hitMarkerVolume <= 0) return;
+		if (!c.hitMarkerSound) return;
+		ring(c, pitch);
+	}
+
+	/** The chosen sound once, heard when it is picked in the settings (also with the sound switched off). */
+	public static void preview() {
+		if (SlashHud.config != null) ring(SlashHud.config, 1f);
+	}
+
+	private static void ring(HudConfig c, float pitch) {
+		if (c.hitMarkerVolume <= 0) return;
+		// its own first three keep their names; the shared ones ring at the kill's higher pitch too
 		SoundEvent s = switch (c.hitMarkerSoundKind) {
 			case "click" -> SoundEvents.NOTE_BLOCK_HAT.value();
 			case "orb" -> SoundEvents.EXPERIENCE_ORB_PICKUP;
-			default -> SoundEvents.ARROW_HIT_PLAYER;
+			case "ding" -> SoundEvents.ARROW_HIT_PLAYER;
+			default -> dev.slash3rss.slashclient.hud.Sounds.event(c.hitMarkerSoundKind);
 		};
+		if (s == null) s = SoundEvents.ARROW_HIT_PLAYER;
 		dev.slash3rss.slashclient.hud.Sounds.play(s, pitch, c.hitMarkerVolume);
 	}
 

@@ -199,8 +199,8 @@ public final class ChatTabs {
 	/** The last mention sound chosen (for the test). */
 	public static String lastSound;
 
-	/** The sounds a tab's mention can have, in the order the setting cycles through them ("" = the usual bell). */
-	public static final String[] SOUNDS = { "", "none", "pling", "chime", "harp", "orb", "amethyst", "hat" };
+	/** The sounds a tab's mention can have, in the order the setting cycles through them ("" = the usual bell), then the shared ones. */
+	public static final String[] SOUNDS = dev.slash3rss.slashclient.hud.Sounds.with("", "none", "pling", "chime", "harp", "orb", "amethyst", "hat");
 
 	/** A mention's sound, also as a preview when the setting is changed, at the mentions' volume. */
 	public static void playSound(Minecraft mc, String sound) {
@@ -211,24 +211,9 @@ public final class ChatTabs {
 	public static void playSound(Minecraft mc, String sound, int volume) {
 		lastSound = sound;
 		if ("none".equals(sound)) return;
-		net.minecraft.sounds.SoundEvent event;
-		float pitch = 1.4f;
-		switch (sound) {
-			case "pling" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_PLING.value();
-			case "chime" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_CHIME.value();
-			case "harp" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HARP.value();
-			case "orb" -> {
-				event = net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP;
-				pitch = 1.0f;
-			}
-			case "amethyst" -> {
-				event = net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME;
-				pitch = 1.0f;
-			}
-			case "hat" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT.value();
-			default -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value();
-		}
-		dev.slash3rss.slashclient.hud.Sounds.play(event, pitch, volume);
+		// "chime" is the note block's here (older than the shared list); "" and anything unknown, the usual bell
+		if ("chime".equals(sound)) dev.slash3rss.slashclient.hud.Sounds.play(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_CHIME.value(), 1.4f, volume);
+		else dev.slash3rss.slashclient.hud.Sounds.play(dev.slash3rss.slashclient.hud.Sounds.event(sound) == null ? "bell" : sound, volume);
 	}
 
 	/** A new line in chat: tabs that catch it and are not open count it; a line with our nick chimes. */

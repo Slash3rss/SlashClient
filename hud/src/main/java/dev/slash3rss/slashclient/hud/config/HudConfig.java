@@ -531,6 +531,8 @@ public final class HudConfig {
 	public boolean holdUseFast = false;
 	public boolean toolWarning = true;
 	public int toolWarningPercent = 10;
+	/** The tool warning's sound (Sounds.NOTICE; "pling" as it always rang). */
+	public String toolWarningSound = "pling";
 	/** Health above 10 hearts in one row, each 10 hearts more in another colour. */
 	public boolean compactHearts = true;
 	/** Food held: what eating it gives, on the food bar (FoodPreview). */
@@ -701,6 +703,9 @@ public final class HudConfig {
 	 */
 	public boolean toasts = true, toastMessages = true, toastOnline = true, toastPlaying = true, toastLive = true, toastInvites = true,
 		toastCommunities = true, toastAchievements = true, toastErrors = true, toastOther = true, toastDnd = true;
+	/** A sound with SlashClient's notifications (Sounds.NOTICE; none, as before) and how loud (%). */
+	public String toastSound = "none";
+	public int toastVolume = 70;
 	/** Faces of friends playing on a server next to it in the server list (ServerFriends). */
 	public boolean serverFriends = true;
 	/** "● NA ŻYWO" above SlashClient players live on Twitch or Kick with Minecraft (Badges.liveLabel). */
@@ -1137,6 +1142,7 @@ public final class HudConfig {
 		holdUseFast = other.holdUseFast;
 		toolWarning = other.toolWarning;
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
+		toolWarningSound = oneOf(other.toolWarningSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
 		compactHearts = other.compactHearts;
 		foodPreview = other.foodPreview;
 		foodTooltip = other.foodTooltip;
@@ -1290,6 +1296,8 @@ public final class HudConfig {
 		toastAchievements = other.toastAchievements;
 		toastErrors = other.toastErrors;
 		toastOther = other.toastOther;
+		toastSound = oneOf(other.toastSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
+		toastVolume = Math.max(0, Math.min(100, other.toastVolume));
 		toastDnd = other.toastDnd;
 		serverFriends = other.serverFriends;
 		liveNametags = other.liveNametags;

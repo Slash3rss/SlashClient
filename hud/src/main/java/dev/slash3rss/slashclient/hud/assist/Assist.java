@@ -724,7 +724,9 @@ public final class Assist {
 		warnedLevel = level;
 		warning = Component.translatable("slashclient-hud.assist.toolWarning.left", hand.getHoverName(), left).withStyle(s -> s.withColor(level == 2 ? 0xFF5555 : 0xFFAA00));
 		warnedAt = System.currentTimeMillis();
-		dev.slash3rss.slashclient.hud.Sounds.play(SoundEvents.NOTE_BLOCK_PLING.value(), level == 2 ? 0.6f : 0.9f, cfg().toolWarningVolume);
+		// the pling as it always rang, lower right before the end; another sound as chosen
+		if ("pling".equals(cfg().toolWarningSound)) dev.slash3rss.slashclient.hud.Sounds.play(SoundEvents.NOTE_BLOCK_PLING.value(), level == 2 ? 0.6f : 0.9f, cfg().toolWarningVolume);
+		else dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(mc, cfg().toolWarningSound, cfg().toolWarningVolume);
 	}
 
 	private static Component warning;

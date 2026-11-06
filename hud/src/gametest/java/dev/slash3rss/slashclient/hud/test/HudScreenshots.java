@@ -572,6 +572,18 @@ public class HudScreenshots implements FabricClientGameTest {
 				dev.slash3rss.slashclient.hud.SlashHud.config.soundVolume = 100;
 			});
 			if (Math.abs(half - 0.25f) > 0.001f || silent != -1f) throw new AssertionError("Mention volume: " + half + " / " + silent);
+			// every sound a notice can pick is one the game has (on this version too)
+			String missing = context.computeOnClient(mc -> {
+				StringBuilder out = new StringBuilder();
+				for (String s : dev.slash3rss.slashclient.hud.Sounds.NOTICE) {
+					dev.slash3rss.slashclient.hud.Sounds.lastVolume = -1;
+					dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(mc, s, 50);
+					if (!"none".equals(s) && dev.slash3rss.slashclient.hud.Sounds.lastVolume <= 0) out.append(s).append(' ');
+				}
+				for (String s : dev.slash3rss.slashclient.hud.Sounds.MORE) if (dev.slash3rss.slashclient.hud.Sounds.event(s) == null) out.append(s).append(' ');
+				return out.toString();
+			});
+			if (!missing.isEmpty()) throw new AssertionError("Sounds that do not ring: " + missing);
 			// the sliders: all of SlashClient's sounds at once, and a module's own
 			context.setScreen(() -> new HudEditScreen("sounds"));
 			context.waitTicks(10);
@@ -579,6 +591,9 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.setScreen(() -> new HudEditScreen("chatMentions"));
 			context.waitTicks(10);
 			context.takeScreenshot("mentions-volume");
+			context.setScreen(() -> new HudEditScreen("notifications"));
+			context.waitTicks(10);
+			context.takeScreenshot("notifications-sound");
 		} finally {
 			context.runOnClient(mc -> TestHooks.captureOutgoing(false));
 			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, ""));

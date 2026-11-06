@@ -24,7 +24,7 @@ import net.minecraft.world.item.Items;
  */
 public final class PotionEnd {
 	public static final String[] PLACES = { "toast", "banner", "actionbar", "chat" };
-	public static final String[] SOUNDS = { "none", "pling", "bell", "chime", "bottle", "orb" };
+	public static final String[] SOUNDS = dev.slash3rss.slashclient.hud.Sounds.with("none", "pling", "bell", "chime", "bottle", "orb");
 	/** How long after drinking an effect still counts as the potion's (the server's word on it comes a little later). */
 	private static final int DRANK_TICKS = 40;
 	/** An effect longer by more than this than a tick ago was given again (a small jump is the server's correction). */
@@ -118,15 +118,25 @@ public final class PotionEnd {
 		//#endif
 	}
 
+	/** The chosen sound once, heard when it is picked in the settings. */
+	public static void preview() {
+		if (SlashHud.config != null) sound(SlashHud.config);
+	}
+
 	private static void sound(HudConfig c) {
 		if (c.potionEndVolume <= 0) return;
+		// its own first ones as they always rang ("chime" is the amethyst here), then the shared ones at their pitch
 		SoundEvent s = switch (c.potionEndSound) {
 			case "none" -> null;
 			case "bell" -> SoundEvents.NOTE_BLOCK_BELL.value();
 			case "chime" -> SoundEvents.AMETHYST_BLOCK_CHIME;
 			case "bottle" -> SoundEvents.BOTTLE_EMPTY;
 			case "orb" -> SoundEvents.EXPERIENCE_ORB_PICKUP;
-			default -> SoundEvents.NOTE_BLOCK_PLING.value();
+			case "pling" -> SoundEvents.NOTE_BLOCK_PLING.value();
+			default -> {
+				dev.slash3rss.slashclient.hud.Sounds.play(c.potionEndSound, c.potionEndVolume);
+				yield null;
+			}
 		};
 		if (s != null) dev.slash3rss.slashclient.hud.Sounds.play(s, 1f, c.potionEndVolume);
 	}

@@ -783,6 +783,13 @@ public final class Social {
 		myStatus = status;
 	}
 
+	/** The notifications' sound, when one is set (none by default), at their volume. */
+	private static void ring(Minecraft mc) {
+		var c = dev.slash3rss.slashclient.hud.SlashHud.config;
+		if (c == null || "none".equals(c.toastSound)) return;
+		mc.execute(() -> dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(mc, c.toastSound, c.toastVolume));
+	}
+
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
 	public static void toast(String title, String text, String icon) {
 		toast(title, text, icon, null);
@@ -799,6 +806,7 @@ public final class Social {
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(f.name(), text, null, null, f.id(), kind)));
+		ring(mc);
 	}
 
 	/** Not from a friend's face, in a kind's colour (a request from someone not a friend yet). */
@@ -807,6 +815,7 @@ public final class Social {
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, null, null, null, kind)));
+		ring(mc);
 	}
 
 	/** With a third line in gold for Sparks paid (null: none). */
@@ -815,6 +824,7 @@ public final class Social {
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon, sparks)));
+		ring(mc);
 	}
 
 	// ---------- actions from the screens (off the render thread) ----------
