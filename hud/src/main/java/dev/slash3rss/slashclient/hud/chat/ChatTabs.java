@@ -202,8 +202,13 @@ public final class ChatTabs {
 	/** The sounds a tab's mention can have, in the order the setting cycles through them ("" = the usual bell). */
 	public static final String[] SOUNDS = { "", "none", "pling", "chime", "harp", "orb", "amethyst", "hat" };
 
-	/** A mention's sound, also as a preview when the setting is changed. */
+	/** A mention's sound, also as a preview when the setting is changed, at the mentions' volume. */
 	public static void playSound(Minecraft mc, String sound) {
+		playSound(mc, sound, SlashHud.config == null ? 70 : SlashHud.config.chatMentionVolume);
+	}
+
+	/** One of these sounds at `volume` (0–100): SkyUp's reminders pick them too, each at its own volume. */
+	public static void playSound(Minecraft mc, String sound, int volume) {
 		lastSound = sound;
 		if ("none".equals(sound)) return;
 		net.minecraft.sounds.SoundEvent event;
@@ -223,7 +228,7 @@ public final class ChatTabs {
 			case "hat" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT.value();
 			default -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value();
 		}
-		mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(event, pitch, 0.7f));
+		dev.slash3rss.slashclient.hud.Sounds.play(event, pitch, volume);
 	}
 
 	/** A new line in chat: tabs that catch it and are not open count it; a line with our nick chimes. */

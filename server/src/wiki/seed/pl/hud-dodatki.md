@@ -106,3 +106,9 @@ Dwa klawisze (domyślnie nieprzypisane) przełączają trzymanie lewego lub praw
 ## Ukrywanie nicku
 
 Twój nick na czacie i nad głową zamienia się na „Ty”, „Gracz”, „Ukryty” albo „*****” – przydatne na nagraniach. Zmienia się tylko u Ciebie.
+
+## Dźwięki SlashClient
+
+Karta **Dźwięki SlashClient** ma suwak **Głośność wszystkich dźwięków**, który ścisza naraz wszystkie dźwięki moda: oznaczenia w czacie, znacznik trafienia, koniec mikstury, ostrzeżenie o zniszczeniu narzędzia i przypomnienia SkyUp. Każdy z tych modułów ma też w swoich ustawieniach własny suwak **Głośność**.
+
+W grze 1.21.6 i nowszych na te dźwięki działa też suwak **Interfejs** w ustawieniach dźwięku Minecrafta. Starsze wersje go nie mają, więc tam głośność moda ustawisz tylko tymi suwakami.

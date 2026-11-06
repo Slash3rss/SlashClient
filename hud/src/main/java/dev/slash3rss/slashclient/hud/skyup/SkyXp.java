@@ -4,7 +4,6 @@ package dev.slash3rss.slashclient.hud.skyup;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import dev.slash3rss.slashclient.hud.modules.HudModule;
@@ -95,8 +94,10 @@ public final class SkyXp {
 
 	private static void sound(boolean done) {
 		if (SlashHud.config == null || SlashHud.config.skyXpMuted) return;
-		Minecraft.getInstance().getSoundManager().play(done ? SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1f)
-			: SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.4f, 0.5f));
+		// the level-up as the game's quiet UI sounds (a quarter), a bottle's ring at half, both at the module's volume
+		int v = SlashHud.config.skyXpVolume;
+		if (done) dev.slash3rss.slashclient.hud.Sounds.play(SoundEvents.PLAYER_LEVELUP, 1f, 25f * v / 100f);
+		else dev.slash3rss.slashclient.hud.Sounds.play(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.4f, 50f * v / 100f);
 	}
 
 	/** Under way, paused part way, or just done. */

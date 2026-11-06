@@ -5,7 +5,6 @@ import dev.slash3rss.slashclient.hud.SlashHud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
@@ -103,7 +102,7 @@ public final class HitMarker {
 			case "orb" -> SoundEvents.EXPERIENCE_ORB_PICKUP;
 			default -> SoundEvents.ARROW_HIT_PLAYER;
 		};
-		Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(s, pitch, c.hitMarkerVolume / 100f));
+		dev.slash3rss.slashclient.hud.Sounds.play(s, pitch, c.hitMarkerVolume);
 	}
 
 	/** What shows now, for the test: "hit" or "kill" while the marker is on, "" when not. */

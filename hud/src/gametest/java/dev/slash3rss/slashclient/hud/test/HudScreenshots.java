@@ -555,6 +555,30 @@ public class HudScreenshots implements FabricClientGameTest {
 			String muted = context.computeOnClient(mc -> TestHooks.mentionSoundFor("[MSG] Steve -> me: cisza " + me));
 			context.runOnClient(mc -> TestHooks.chatTabSound("PM", ""));
 			if (!"pling".equals(pm) || !"".equals(plain) || !"none".equals(muted)) throw new AssertionError("Mention sounds per tab: " + pm + " / " + plain + " / " + muted);
+			// how loud: the mentions' own slider times the all-sounds one; either at 0 keeps it silent
+			float half = context.computeOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.chatMentionVolume = 50;
+				dev.slash3rss.slashclient.hud.SlashHud.config.soundVolume = 50;
+				TestHooks.mentionSoundFor("<Alex> glosnosc " + me);
+				return dev.slash3rss.slashclient.hud.Sounds.lastVolume;
+			});
+			float silent = context.computeOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.soundVolume = 0;
+				TestHooks.mentionSoundFor("<Alex> cicho " + me);
+				return dev.slash3rss.slashclient.hud.Sounds.lastVolume;
+			});
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.chatMentionVolume = 70;
+				dev.slash3rss.slashclient.hud.SlashHud.config.soundVolume = 100;
+			});
+			if (Math.abs(half - 0.25f) > 0.001f || silent != -1f) throw new AssertionError("Mention volume: " + half + " / " + silent);
+			// the sliders: all of SlashClient's sounds at once, and a module's own
+			context.setScreen(() -> new HudEditScreen("sounds"));
+			context.waitTicks(10);
+			context.takeScreenshot("sounds-settings");
+			context.setScreen(() -> new HudEditScreen("chatMentions"));
+			context.waitTicks(10);
+			context.takeScreenshot("mentions-volume");
 		} finally {
 			context.runOnClient(mc -> TestHooks.captureOutgoing(false));
 			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, ""));

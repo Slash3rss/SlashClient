@@ -370,8 +370,9 @@ public final class Catalog {
 					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 					settings.add(new Choice("slashclient-hud.skyTasks.dailySound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyDailySound, v -> {
 						cfg.skyDailySound = v;
-						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
+						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyDailyVolume);
 					}));
+					settings.add(new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyDailyVolume, v -> cfg.skyDailyVolume = Math.round(v)));
 					settings.add(new Slider("slashclient-hud.skyTasks.bonusRemind", 0f, 240f, 15f, "%.0f min", () -> (float) cfg.skyBonusEvery, v -> cfg.skyBonusEvery = Math.round(v)));
 				}
 				case "skyfish" -> {
@@ -392,9 +393,12 @@ public final class Catalog {
 					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 					settings.add(new Choice("slashclient-hud.skyPlan.sound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyPlanSound, v -> {
 						cfg.skyPlanSound = v;
-						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
+						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyPlanVolume);
 					}));
+					settings.add(new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyPlanVolume, v -> cfg.skyPlanVolume = Math.round(v)));
 				}
+				// the bottling countdown's rings
+				case "skyxp" -> settings.add(new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyXpVolume, v -> cfg.skyXpVolume = Math.round(v)));
 				case "skycase" -> {
 					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",
 						() -> cfg.skyCaseLayout, v -> cfg.skyCaseLayout = v));
@@ -597,6 +601,10 @@ public final class Catalog {
 			new Toggle("slashclient-hud.hideArmor.leggings", () -> cfg.hideOwnLeggings, v -> cfg.hideOwnLeggings = v),
 			new Toggle("slashclient-hud.hideArmor.boots", () -> cfg.hideOwnBoots, v -> cfg.hideOwnBoots = v),
 			new Toggle("slashclient-hud.hideArmor.elytra", () -> cfg.hideOwnElytra, v -> cfg.hideOwnElytra = v)), null));
+		// all of SlashClient's sounds at once (each module has its own slider too)
+		out.add(new Entry("sounds", "slashclient-hud.sounds", "extras", "m-sounds", null, null, List.of(
+			new Slider("slashclient-hud.sounds.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.soundVolume, v -> cfg.soundVolume = Math.round(v)),
+			new Note("slashclient-hud.sounds.note", () -> new Object[0])), null));
 		out.add(new Entry("appearance", "slashclient-hud.set.appearance", "extras", "m-appearance", null, null, List.of(
 			// SlashClient's windows' accent: one of these, or any colour typed as #RRGGBB
 			new Colors("slashclient-hud.set.accent", ACCENTS, () -> cfg.accentColor | 0xFF000000, v -> cfg.accentColor = v),
@@ -773,7 +781,8 @@ public final class Catalog {
 			new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", dev.slash3rss.slashclient.hud.chat.ChatLook::opacity, dev.slash3rss.slashclient.hud.chat.ChatLook::setOpacity),
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.chat.ChatLook::shownScale, dev.slash3rss.slashclient.hud.chat.ChatLook::setScale)), null));
 		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));
-		out.add(new Entry("chatMentions", "slashclient-hud.chat.mentions", "chat", "m-mentions", () -> cfg.chatMentions, v -> cfg.chatMentions = v, List.of(), null));
+		out.add(new Entry("chatMentions", "slashclient-hud.chat.mentions", "chat", "m-mentions", () -> cfg.chatMentions, v -> cfg.chatMentions = v, List.of(
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.chatMentionVolume, v -> cfg.chatMentionVolume = Math.round(v))), null));
 		out.add(new Entry("chatTimestamps", "slashclient-hud.chatTimestamps", "chat", "m-chattimestamps", () -> cfg.chatTimestamps, v -> cfg.chatTimestamps = v, List.of(), null));
 		// in a world it starts a run, in the menu it shows the last one
 		out.add(new Entry("benchmark", "slashclient-hud.benchmark", "extras", "m-benchmark", null, null, List.of(), () -> {
@@ -840,7 +849,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.holdScreens", () -> cfg.holdInScreens, v -> cfg.holdInScreens = v),
 			new Toggle("slashclient-hud.assist.holdUseFast", () -> cfg.holdUseFast, v -> cfg.holdUseFast = v)), null));
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
-			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
+			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v)),
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.toolWarningVolume, v -> cfg.toolWarningVolume = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
 		out.add(new Entry("craftFit", "slashclient-hud.craftFit", "extras", "m-mousetweaks", () -> cfg.craftFit, v -> cfg.craftFit = v, List.of(), null));
 		out.add(new Entry("quickCraft", "slashclient-hud.quickCraft", "extras", "m-mousetweaks", () -> cfg.quickCraft, v -> cfg.quickCraft = v, List.of(

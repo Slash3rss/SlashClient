@@ -9,7 +9,6 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -129,7 +128,7 @@ public final class PotionEnd {
 			case "orb" -> SoundEvents.EXPERIENCE_ORB_PICKUP;
 			default -> SoundEvents.NOTE_BLOCK_PLING.value();
 		};
-		if (s != null) Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(s, 1f, c.potionEndVolume / 100f));
+		if (s != null) dev.slash3rss.slashclient.hud.Sounds.play(s, 1f, c.potionEndVolume);
 	}
 
 	// ---------- the banner at the top: slides down, a dark card in the potions' purple, slides back up ----------

@@ -106,3 +106,9 @@ Two keys (unbound by default) toggle holding the left or the right mouse button 
 ## Nick hider
 
 Your name in the chat and above your head becomes "You", "Player", "Hidden" or "*****" – useful in recordings. Only you see the change.
+
+## SlashClient sounds
+
+The **SlashClient sounds** card has a **Volume of all sounds** slider that turns down all of the mod's sounds at once: chat mentions, the hit marker, a potion running out, the tool break warning and SkyUp reminders. Each of these modules also has its own **Volume** slider in its settings.
+
+In 1.21.6 and newer, Minecraft's **Interface** sound slider affects these sounds too. Older versions don't have it, so there the mod's volume is set only with these sliders.

@@ -376,7 +376,7 @@ public final class SkyPlan {
 			if (!kind.reminded(c) || !reminded.add(n.at().toLocalDateTime() + " " + n.slot().name())) continue;
 			SkyReminder.show(kind.look, SkyLang.tr(n.slot().name()),
 				Component.translatable("slashclient-hud.skyPlan.starts", Math.max(1, minutes + 1), hour(n.at())).getString(), kind.icon());
-			mc.execute(() -> ChatTabs.playSound(mc, sound()));
+			mc.execute(() -> ChatTabs.playSound(mc, sound(), c.skyPlanVolume));
 			return n;
 		}
 		return null;

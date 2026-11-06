@@ -352,6 +352,11 @@ public final class HudConfig {
 	public boolean chatTimestamps = false;
 	/** A chime when someone writes your nick, and the "@" badge over the closed chat. */
 	public boolean chatMentions = true;
+	/**
+	 * How loud (%) SlashClient's sounds are (Sounds): all of them at once, then each module's own — a mention in chat,
+	 * the warning before a tool breaks, SkyUp's bottling countdown, daily task and plan reminders.
+	 */
+	public int soundVolume = 100, chatMentionVolume = 70, toolWarningVolume = 80, skyXpVolume = 100, skyDailyVolume = 70, skyPlanVolume = 70;
 	/** What a pulled-out chat tab catches shows only in its window, not also in "All". */
 	public boolean chatWindowsOnly = false;
 	/** "vanilla", one of Crosshair.PRESETS, or "custom" for the painted crosshairPattern. */
@@ -1013,6 +1018,12 @@ public final class HudConfig {
 		heldItemZ = other.heldItemZ;
 		chatTimestamps = other.chatTimestamps;
 		chatMentions = other.chatMentions;
+		soundVolume = Math.max(0, Math.min(100, other.soundVolume));
+		chatMentionVolume = Math.max(0, Math.min(100, other.chatMentionVolume));
+		toolWarningVolume = Math.max(0, Math.min(100, other.toolWarningVolume));
+		skyXpVolume = Math.max(0, Math.min(100, other.skyXpVolume));
+		skyDailyVolume = Math.max(0, Math.min(100, other.skyDailyVolume));
+		skyPlanVolume = Math.max(0, Math.min(100, other.skyPlanVolume));
 		chatWindowsOnly = other.chatWindowsOnly;
 		crosshair = other.crosshair;
 		crosshairColor = other.crosshairColor;

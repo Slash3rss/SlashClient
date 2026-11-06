@@ -360,7 +360,7 @@ public final class SkyTasks {
 		if (!bonusDue()) return;
 		SkyReminder.show(SkyReminder.Look.BONUS, Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
 			Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), new ItemStack(net.minecraft.world.item.Items.CHEST));
-		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
+		mc.execute(() -> ChatTabs.playSound(mc, dailySound(), SlashHud.config.skyDailyVolume));
 	}
 
 	// ---------- the daily task's reminder ----------
@@ -383,7 +383,7 @@ public final class SkyTasks {
 		// a banner of SkyUp's own in the middle of the screen, not a toast in the corner
 		SkyReminder.show(SkyReminder.Look.DAILY, Component.translatable("slashclient-hud.skyTasks.dailyTitle").getString(), what.getString(), new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK));
 		// with a sound of its own, as set (the chat tabs' sounds)
-		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
+		mc.execute(() -> ChatTabs.playSound(mc, dailySound(), SlashHud.config.skyDailyVolume));
 	}
 
 	/** SkyUp's daily task ("Zadanie codzienne"). */
