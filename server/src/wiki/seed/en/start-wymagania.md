@@ -28,7 +28,7 @@ So on a computer with 8 GB of RAM the game gets about 4 GB, and with 16 GB it ge
 
 ## Java
 
-You do not need to install Java. The launcher downloads the version the chosen game version needs (Java 17 for 1.20.1, 21 for 1.21.x, 25 for 26.x). In the profile's settings you can pick another Java or your own path, and compare which one runs faster in the benchmark.
+You do not need to install Java. The launcher downloads the version the chosen game version needs (Java 17 for 1.20.1–1.20.4, 21 for 1.20.5–1.21.x, 25 for 26.x). In the profile's settings you can pick another Java or your own path, and compare which one runs faster in the benchmark.
 
 ## Graphics card
 

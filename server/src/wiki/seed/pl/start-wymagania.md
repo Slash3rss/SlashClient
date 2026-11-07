@@ -28,7 +28,7 @@ Na komputerze z 8 GB RAM gra dostanie więc około 4 GB, a z 16 GB – tyle, ile
 
 ## Java
 
-Nie musisz instalować Javy. Launcher pobiera sam taką wersję, jakiej potrzebuje wybrana wersja gry (Java 17 dla 1.20.1, 21 dla 1.21.x, 25 dla 26.x). W ustawieniach profilu możesz wybrać inną Javę albo własną ścieżkę, a w benchmarku porównać, która działa szybciej.
+Nie musisz instalować Javy. Launcher pobiera sam taką wersję, jakiej potrzebuje wybrana wersja gry (Java 17 dla 1.20.1–1.20.4, 21 dla 1.20.5–1.21.x, 25 dla 26.x). W ustawieniach profilu możesz wybrać inną Javę albo własną ścieżkę, a w benchmarku porównać, która działa szybciej.
 
 ## Karta graficzna
 

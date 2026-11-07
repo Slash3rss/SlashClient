@@ -30,7 +30,7 @@ The boss's health bar (or the server's messages) at the top. **Size** 0.5× to 1
 
 ## Action bar
 
-The text above the hotbar. **Size** and **SlashClient messages' colour** – the colour the mod's own messages there use (like "Fullbright on"). On Minecraft 1.20.1 the action bar has no box in the editor.
+The text above the hotbar. **Size** and **SlashClient messages' colour** – the colour the mod's own messages there use (like "Fullbright on"). On Minecraft 1.20.1–1.20.4 the action bar has no box in the editor.
 
 ## Titles
 

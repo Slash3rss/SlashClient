@@ -16,6 +16,8 @@ Launcher uruchomi każdą wersję Minecrafta, także starsze, snapshoty i wersje
 | 1.21.5 | 21 |
 | 1.21.4 | 21 |
 | 1.21, 1.21.1 | 21 |
+| 1.20.5, 1.20.6 | 21 |
+| 1.20.3, 1.20.4 | 17 |
 | 1.20.1 | 17 |
 
 Javę launcher pobiera sam, nie musisz jej instalować.

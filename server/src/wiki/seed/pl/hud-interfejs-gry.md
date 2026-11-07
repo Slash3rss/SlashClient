@@ -30,7 +30,7 @@ Pasek zdrowia bossa (albo komunikatów serwera) u góry. **Rozmiar** od 0,5× do
 
 ## Pasek akcji
 
-Napis nad paskiem szybkiego wyboru. **Rozmiar** i **Kolor komunikatów SlashClient** – kolor, w jakim mod wyświetla tam swoje komunikaty (np. „Fullbright włączony”). W Minecrafcie 1.20.1 pasek akcji nie ma ramki w edytorze.
+Napis nad paskiem szybkiego wyboru. **Rozmiar** i **Kolor komunikatów SlashClient** – kolor, w jakim mod wyświetla tam swoje komunikaty (np. „Fullbright włączony”). W Minecrafcie 1.20.1–1.20.4 pasek akcji nie ma ramki w edytorze.
 
 ## Tytuły na ekranie
 

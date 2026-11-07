@@ -48,7 +48,8 @@ The mod is built separately for every supported Minecraft version (Fabric). The 
 | 26.3 | everything, including the SkyUp.pl modules and the mouse over VNC |
 | 26.2, 26.1–26.1.2 | everything except the 26.3-only features |
 | 1.21.11, 1.21.9–1.21.10, 1.21.6–1.21.8, 1.21.5, 1.21.4 | the full HUD, maps, chat, friends |
-| 1.21–1.21.1 | no wings, pets and some of the cosmetics drawn on the player model |
+| 1.21–1.21.1, 1.20.5–1.20.6 | no wings, pets and some of the cosmetics drawn on the player model |
+| 1.20.3–1.20.4 | as 1.20.5–1.20.6, and no action bar box in the editor |
 | 1.20.1 | the oldest supported version; no action bar box in the editor |
 
 Only on 26.3:

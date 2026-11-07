@@ -48,7 +48,8 @@ Mod jest budowany osobno na każdą wspieraną wersję Minecrafta (Fabric). Laun
 | 26.3 | wszystkie funkcje, w tym moduły SkyUp.pl i myszka przez VNC |
 | 26.2, 26.1–26.1.2 | wszystko poza funkcjami tylko dla 26.3 |
 | 1.21.11, 1.21.9–1.21.10, 1.21.6–1.21.8, 1.21.5, 1.21.4 | pełny HUD, mapy, czat, znajomi |
-| 1.21–1.21.1 | bez skrzydeł, pupili i części kosmetyków rysowanych na modelu gracza |
+| 1.21–1.21.1, 1.20.5–1.20.6 | bez skrzydeł, pupili i części kosmetyków rysowanych na modelu gracza |
+| 1.20.3–1.20.4 | jak 1.20.5–1.20.6, a do tego bez paska akcji w edytorze |
 | 1.20.1 | najstarsza wspierana wersja; bez paska akcji w edytorze |
 
 Funkcje tylko dla 26.3:
