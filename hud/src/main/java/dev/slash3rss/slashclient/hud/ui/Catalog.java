@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note, Key, Order {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note, Key, Order, Action {
 		String labelKey();
 	}
 
@@ -55,6 +55,20 @@ public final class Catalog {
 
 	/** A note in the settings (how to link an account, …): `text` gives its translation key, asked each time it is drawn. */
 	public record Info(String labelKey, Supplier<String> text) implements Setting {}
+	/** A button on its row (`buttonKey` its text): opens a folder, a window… */
+	public record Action(String labelKey, String buttonKey, Runnable run) implements Setting {}
+
+	/** A folder in the system's file manager. */
+	static void openFolder(java.nio.file.Path dir) {
+		//#if MC >= 26.3
+		com.mojang.blaze3d.Blaze3D.openUri(dir.toUri());
+		//#elif MC >= 1.21.11
+		//$ net.minecraft.util.Util.getPlatform().openUri(dir.toUri());
+		//#else
+		//$ net.minecraft.Util.getPlatform().openUri(dir.toUri());
+		//#endif
+	}
+
 	/** A line (or a few) of explanation without controls; `args` fill the %s in its text. */
 	public record Note(String labelKey, Supplier<Object[]> args) implements Setting {}
 	/**
@@ -367,7 +381,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
 					settings.add(new Slider("slashclient-hud.skyTasks.dailyRemind", 0f, 120f, 5f, "%.0f min", () -> (float) cfg.skyDailyRemind, v -> cfg.skyDailyRemind = Math.round(v)));
 					// the chat tabs' sounds ("default" the bell), heard when picked
-					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS)).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 					settings.add(new Choice("slashclient-hud.skyTasks.dailySound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyDailySound, v -> {
 						cfg.skyDailySound = v;
 						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyDailyVolume);
@@ -390,7 +404,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyPlan.events", () -> cfg.skyPlanEvents, v -> cfg.skyPlanEvents = v));
 					settings.add(new Toggle("slashclient-hud.skyPlan.fishing", () -> cfg.skyPlanFishing, v -> cfg.skyPlanFishing = v));
 					settings.add(new Toggle("slashclient-hud.skyPlan.boss", () -> cfg.skyPlanBoss, v -> cfg.skyPlanBoss = v));
-					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS)).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 					settings.add(new Choice("slashclient-hud.skyPlan.sound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyPlanSound, v -> {
 						cfg.skyPlanSound = v;
 						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyPlanVolume);
@@ -592,7 +606,7 @@ public final class Catalog {
 			new Colors("slashclient-hud.hitMarker.killColor", COLORS, () -> cfg.hitMarkerKillColor, v -> cfg.hitMarkerKillColor = v),
 			new Toggle("slashclient-hud.hitMarker.projectiles", () -> cfg.hitMarkerProjectiles, v -> cfg.hitMarkerProjectiles = v),
 			new Toggle("slashclient-hud.hitMarker.sound", () -> cfg.hitMarkerSound, v -> cfg.hitMarkerSound = v),
-			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.gamehud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> {
+			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.gamehud.HitMarker.SOUNDS), "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> {
 				cfg.hitMarkerSoundKind = v;
 				dev.slash3rss.slashclient.hud.gamehud.HitMarker.preview();
 			}),
@@ -607,6 +621,9 @@ public final class Catalog {
 		// all of SlashClient's sounds at once (each module has its own slider too)
 		out.add(new Entry("sounds", "slashclient-hud.sounds", "extras", "m-sounds", null, null, List.of(
 			new Slider("slashclient-hud.sounds.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.soundVolume, v -> cfg.soundVolume = Math.round(v)),
+			// the player's own files: put in this folder, picked in every list of sounds
+			new Action("slashclient-hud.sounds.files", "slashclient-hud.sounds.openFolder", () -> openFolder(dev.slash3rss.slashclient.hud.SoundFiles.folderMade())),
+			new Note("slashclient-hud.sounds.filesNote", () -> new Object[] { dev.slash3rss.slashclient.hud.SoundFiles.offered().size() }),
 			new Note("slashclient-hud.sounds.note", () -> new Object[0])), null));
 		out.add(new Entry("appearance", "slashclient-hud.set.appearance", "extras", "m-appearance", null, null, List.of(
 			// SlashClient's windows' accent: one of these, or any colour typed as #RRGGBB
@@ -728,7 +745,7 @@ public final class Catalog {
 		out.add(new Entry("potionEnd", "slashclient-hud.potionEnd", "combat", "m-effects", () -> cfg.potionEnd, v -> cfg.potionEnd = v, List.of(
 			new Choice("slashclient-hud.potionEnd.place", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES, "slashclient-hud.potionEnd.place.", () -> cfg.potionEndPlace, v -> cfg.potionEndPlace = v),
 			new Slider("slashclient-hud.potionEnd.warn", 0f, 30f, 5f, "%.0f s", () -> (float) cfg.potionEndWarn, v -> cfg.potionEndWarn = Math.round(v)),
-			new Choice("slashclient-hud.potionEnd.sound", dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS, "slashclient-hud.potionEnd.sound.", () -> cfg.potionEndSound, v -> {
+			new Choice("slashclient-hud.potionEnd.sound", dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS), "slashclient-hud.potionEnd.sound.", () -> cfg.potionEndSound, v -> {
 				cfg.potionEndSound = v;
 				dev.slash3rss.slashclient.hud.gamehud.PotionEnd.preview();
 			}),
@@ -745,7 +762,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.notifications.errors", () -> cfg.toastErrors, v -> cfg.toastErrors = v),
 			new Toggle("slashclient-hud.notifications.other", () -> cfg.toastOther, v -> cfg.toastOther = v),
 			new Toggle("slashclient-hud.notifications.dnd", () -> cfg.toastDnd, v -> cfg.toastDnd = v),
-			new Choice("slashclient-hud.notifications.sound", dev.slash3rss.slashclient.hud.Sounds.NOTICE, "slashclient-hud.chat.sound.", () -> cfg.toastSound, v -> {
+			new Choice("slashclient-hud.notifications.sound", dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.Sounds.NOTICE), "slashclient-hud.chat.sound.", () -> cfg.toastSound, v -> {
 				cfg.toastSound = v;
 				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), v, cfg.toastVolume);
 			}),
@@ -863,7 +880,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.holdUseFast", () -> cfg.holdUseFast, v -> cfg.holdUseFast = v)), null));
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v)),
-			new Choice("slashclient-hud.assist.toolWarningSound", dev.slash3rss.slashclient.hud.Sounds.NOTICE, "slashclient-hud.chat.sound.", () -> cfg.toolWarningSound, v -> {
+			new Choice("slashclient-hud.assist.toolWarningSound", dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.Sounds.NOTICE), "slashclient-hud.chat.sound.", () -> cfg.toolWarningSound, v -> {
 				cfg.toolWarningSound = v;
 				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), v, cfg.toolWarningVolume);
 			}),

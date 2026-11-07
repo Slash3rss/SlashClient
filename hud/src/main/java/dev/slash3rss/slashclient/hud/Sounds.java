@@ -34,6 +34,42 @@ public final class Sounds {
 		return all.toArray(String[]::new);
 	}
 
+	/** A list of sounds with the player's own files (SoundFiles) right after its first one, where they are quick to reach. */
+	public static String[] withFiles(String[] list) {
+		java.util.List<String> files = SoundFiles.offered();
+		if (files.isEmpty() || list.length == 0) return list;
+		java.util.List<String> out = new java.util.ArrayList<>(list.length + files.size());
+		out.add(list[0]);
+		out.addAll(files);
+		for (int i = 1; i < list.length; i++) out.add(list[i]);
+		return out.toArray(String[]::new);
+	}
+
+	/** A saved choice kept when it is one of `allowed` or a file of the player's (even one gone for now: it rings the bell). */
+	public static String valid(String value, String[] allowed) {
+		if (value != null && value.startsWith(SoundFiles.PREFIX)) return value;
+		for (String a : allowed) if (a.equals(value)) return value;
+		return allowed[0];
+	}
+
+	/** How a choice is named in the settings: a file by its name, the rest by their translation under `prefix`. */
+	public static net.minecraft.network.chat.Component label(String prefix, String value) {
+		if (value.startsWith(SoundFiles.PREFIX)) return net.minecraft.network.chat.Component.literal("♪ " + SoundFiles.label(value));
+		return net.minecraft.network.chat.Component.translatable(prefix + value);
+	}
+
+	/** A file of the player's at `percent`; the usual bell when the file is gone or cannot be read. */
+	public static void playFile(String value, float pitch, float percent) {
+		float all = SlashHud.config == null ? 1f : SlashHud.config.soundVolume / 100f;
+		float volume = percent / 100f * all;
+		if (volume <= 0f) {
+			lastVolume = -1;
+			return;
+		}
+		if (SoundFiles.play(value, pitch, volume)) lastVolume = volume;
+		else play("bell", percent);
+	}
+
 	/** One of the shared sounds by its name, or null when the name is not one of them. */
 	public static SoundEvent event(String name) {
 		Object s = switch (name) {
@@ -80,6 +116,10 @@ public final class Sounds {
 
 	/** Plays a shared sound by its name at its own pitch; nothing for "none" or an unknown name. */
 	public static void play(String name, float percent) {
+		if (name.startsWith(SoundFiles.PREFIX)) {
+			playFile(name, 1f, percent);
+			return;
+		}
 		SoundEvent s = event(name);
 		if (s != null) play(s, pitch(name), percent);
 	}

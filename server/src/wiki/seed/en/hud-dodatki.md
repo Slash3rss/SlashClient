@@ -112,3 +112,7 @@ Your name in the chat and above your head becomes "You", "Player", "Hidden" or "
 The **SlashClient sounds** card has a **Volume of all sounds** slider that turns down all of the mod's sounds at once: chat mentions, the hit marker, a potion running out, the tool break warning and SkyUp reminders. Each of these modules also has its own **Volume** slider in its settings.
 
 In 1.21.6 and newer, Minecraft's **Interface** sound slider affects these sounds too. Older versions don't have it, so there the mod's volume is set only with these sliders.
+
+### Your own sounds
+
+On the **SlashClient sounds** card, click **Open the sounds folder** and put **.ogg**, **.mp3** or **.wav** files there (up to 1 MB; at most 30 seconds play). Once you open the settings again, the files are in every list of sounds with a ♪, right after the first sound: chat mentions, the hit marker, a potion running out, the tool warning, notifications and SkyUp reminders. The volume sliders work on them. If a file is gone from the folder, the usual bell rings instead. Only you hear your own sounds.

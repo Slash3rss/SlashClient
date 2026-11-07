@@ -112,3 +112,7 @@ Twój nick na czacie i nad głową zamienia się na „Ty”, „Gracz”, „Uk
 Karta **Dźwięki SlashClient** ma suwak **Głośność wszystkich dźwięków**, który ścisza naraz wszystkie dźwięki moda: oznaczenia w czacie, znacznik trafienia, koniec mikstury, ostrzeżenie o zniszczeniu narzędzia i przypomnienia SkyUp. Każdy z tych modułów ma też w swoich ustawieniach własny suwak **Głośność**.
 
 W grze 1.21.6 i nowszych na te dźwięki działa też suwak **Interfejs** w ustawieniach dźwięku Minecrafta. Starsze wersje go nie mają, więc tam głośność moda ustawisz tylko tymi suwakami.
+
+### Własne dźwięki
+
+W karcie **Dźwięki SlashClient** kliknij **Otwórz folder dźwięków** i wrzuć tam pliki **.ogg**, **.mp3** albo **.wav** (najwyżej 1 MB; gra się najwyżej 30 sekund). Po ponownym otwarciu ustawień pliki są na każdej liście dźwięków z nutką ♪, zaraz po pierwszym dźwięku: przy oznaczeniach w czacie, znaczniku trafienia, końcu mikstury, ostrzeżeniu o narzędziu, powiadomieniach i przypomnieniach SkyUp. Działają na nie suwaki głośności. Gdy plik zniknie z folderu, zamiast niego zadzwoni zwykły dzwonek. Własne dźwięki słyszysz tylko Ty.

@@ -35,6 +35,8 @@ dependencies {
 		implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 		implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 	}
+	// an MP3 file as a notice's own sound (CustomSounds): decoded by JLayer (LGPL), shipped inside the mod
+	include implementation("javazoom:jlayer:1.0.1")
 }
 
 // ---------- one source tree for all versions ----------

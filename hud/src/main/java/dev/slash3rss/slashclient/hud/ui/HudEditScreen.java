@@ -432,7 +432,7 @@ public class HudEditScreen extends Screen {
 		// the second line: the sound of a mention this tab catches, heard when changed
 		int sy = y + TAB_ROW;
 		Ui.draw(g, Ui.tr("slashclient-hud.chat.sound"), x + 6, sy + 5, Ui.TEXT_2);
-		Component now = Ui.tr("slashclient-hud.chat.sound." + (tab.sound().isEmpty() ? "default" : tab.sound()));
+		Component now = dev.slash3rss.slashclient.hud.Sounds.label("slashclient-hud.chat.sound.", tab.sound().isEmpty() ? "default" : tab.sound());
 		String icon = "none".equals(tab.sound()) ? "bell-slash" : "bell";
 		int bw = Math.max(90, Ui.buttonWidth(now, icon, 18, 6)), bx = Math.max(box.getX() - 5, x + 6 + Ui.width(Ui.tr("slashclient-hud.chat.sound")) + 10);
 		Ui.button(g, "chatSound:" + tab.name, bx, sy, bw, 18, icon, now, false, mx, my);
@@ -448,7 +448,7 @@ public class HudEditScreen extends Screen {
 			hits.add(new Hit(ux + 24, sy, 22, 18, () -> moveTab(at, at + 1)));
 		}
 		hits.add(new Hit(bx, sy, bw, 18, () -> {
-			List<String> all = List.of(ChatTabs.SOUNDS);
+			List<String> all = List.of(dev.slash3rss.slashclient.hud.Sounds.withFiles(ChatTabs.SOUNDS));
 			tab.sound = all.get((all.indexOf(tab.sound()) + 1) % all.size());
 			ChatTabs.playSound(minecraft, tab.sound());
 			tabsChanged();
@@ -1181,13 +1181,14 @@ public class HudEditScreen extends Screen {
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
 		if (s instanceof Catalog.Toggle || s instanceof Catalog.Info) return 20;
+		if (s instanceof Catalog.Action a) return Ui.width(Ui.tr(a.buttonKey())) + 16;
 		if (s instanceof Catalog.Note || s instanceof Catalog.Order) return 0;
 		if (s instanceof Catalog.Slider) return 150;
 		if (s instanceof Catalog.Text) return 150;
 		if (s instanceof Catalog.Key) return KEY_W + 4 + 17;
 		if (s instanceof Catalog.Choice ch) {
 			int total = 0;
-			for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
+			for (String v : ch.values()) total += Ui.width(dev.slash3rss.slashclient.hud.Sounds.label(ch.valueKeyPrefix(), v)) + 16;
 			return total - 4;
 		}
 		return ((Catalog.Colors) s).colors().length * 16;
@@ -1356,7 +1357,7 @@ public class HudEditScreen extends Screen {
 					int bx = right;
 					for (int k = ch.values().length - 1; k >= 0; k--) {
 						String v = ch.values()[k];
-						Component option = Ui.tr(ch.valueKeyPrefix() + v);
+						Component option = dev.slash3rss.slashclient.hud.Sounds.label(ch.valueKeyPrefix(), v);
 						int bw = Ui.width(option) + 12;
 						bx -= bw;
 						boolean active = v.equals(ch.get().get());
@@ -1371,10 +1372,15 @@ public class HudEditScreen extends Screen {
 					// too narrow even for its own line: one button that steps through the options
 					List<String> values = List.of(ch.values());
 					String current = values.contains(ch.get().get()) ? ch.get().get() : values.get(0);
-					Component option = Ui.text("‹  ").append(Ui.tr(ch.valueKeyPrefix() + current)).append(Ui.text("  ›"));
+					Component option = Ui.text("‹  ").append(dev.slash3rss.slashclient.hud.Sounds.label(ch.valueKeyPrefix(), current)).append(Ui.text("  ›"));
 					Ui.button(g, "choice:" + s.labelKey(), left, cy, right - left, 16, option, true, mx, my);
 					hits.add(new Hit(left, cy, right - left, 16, () -> ch.set().accept(values.get((values.indexOf(current) + 1) % values.size()))));
 				}
+			} else if (s instanceof Catalog.Action a) {
+				Component text = Ui.tr(a.buttonKey());
+				int bw = Ui.width(text) + 16;
+				Ui.button(g, "action:" + s.labelKey(), right - bw, cy, bw, 16, text, false, mx, my);
+				hits.add(new Hit(right - bw, cy, bw, 16, a.run()));
 			} else if (s instanceof Catalog.Text tx && textFields.containsKey(tx)) {
 				// a text field: the box is drawn here, the field (a widget) over it after the window
 				EditBox box = textFields.get(tx);

@@ -862,11 +862,11 @@ public final class HudConfig {
 		read.serverPackDefault = oneOf(read.serverPackDefault, ServerPacks.MODES);
 		read.screenshotCaptionCorner = oneOf(read.screenshotCaptionCorner, ShotCaption.CORNERS);
 		read.hitMarkerStyle = oneOf(read.hitMarkerStyle, HitMarker.STYLES);
-		read.hitMarkerSoundKind = oneOf(read.hitMarkerSoundKind, HitMarker.SOUNDS);
+		read.hitMarkerSoundKind = dev.slash3rss.slashclient.hud.Sounds.valid(read.hitMarkerSoundKind, HitMarker.SOUNDS);
 		read.mapCave = oneOf(read.mapCave, dev.slash3rss.slashclient.hud.map.MinimapTerrain.CAVE_MODES);
 		read.mapShading = oneOf(read.mapShading, dev.slash3rss.slashclient.hud.map.MinimapTerrain.SHADINGS);
 		read.potionEndPlace = oneOf(read.potionEndPlace, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES);
-		read.potionEndSound = oneOf(read.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
+		read.potionEndSound = dev.slash3rss.slashclient.hud.Sounds.valid(read.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
 		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		read.spotify = read.spotify == null ? defaults.spotify : read.spotify.checked();
@@ -1045,11 +1045,11 @@ public final class HudConfig {
 		hitMarkerDuration = Math.max(100, Math.min(1000, other.hitMarkerDuration));
 		hitMarkerStyle = oneOf(other.hitMarkerStyle, HitMarker.STYLES);
 		hitMarkerSound = other.hitMarkerSound;
-		hitMarkerSoundKind = oneOf(other.hitMarkerSoundKind, HitMarker.SOUNDS);
+		hitMarkerSoundKind = dev.slash3rss.slashclient.hud.Sounds.valid(other.hitMarkerSoundKind, HitMarker.SOUNDS);
 		hitMarkerVolume = Math.max(0, Math.min(100, other.hitMarkerVolume));
 		potionEnd = other.potionEnd;
 		potionEndPlace = oneOf(other.potionEndPlace, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.PLACES);
-		potionEndSound = oneOf(other.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
+		potionEndSound = dev.slash3rss.slashclient.hud.Sounds.valid(other.potionEndSound, dev.slash3rss.slashclient.hud.gamehud.PotionEnd.SOUNDS);
 		potionEndWarn = Math.max(0, Math.min(60, other.potionEndWarn));
 		potionEndVolume = Math.max(0, Math.min(100, other.potionEndVolume));
 		hitMarkerKill = other.hitMarkerKill;
@@ -1145,7 +1145,7 @@ public final class HudConfig {
 		holdUseFast = other.holdUseFast;
 		toolWarning = other.toolWarning;
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
-		toolWarningSound = oneOf(other.toolWarningSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
+		toolWarningSound = dev.slash3rss.slashclient.hud.Sounds.valid(other.toolWarningSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
 		compactHearts = other.compactHearts;
 		foodPreview = other.foodPreview;
 		foodTooltip = other.foodTooltip;
@@ -1299,7 +1299,7 @@ public final class HudConfig {
 		toastAchievements = other.toastAchievements;
 		toastErrors = other.toastErrors;
 		toastOther = other.toastOther;
-		toastSound = oneOf(other.toastSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
+		toastSound = dev.slash3rss.slashclient.hud.Sounds.valid(other.toastSound, dev.slash3rss.slashclient.hud.Sounds.NOTICE);
 		toastVolume = Math.max(0, Math.min(100, other.toastVolume));
 		toastDnd = other.toastDnd;
 		serverFriends = other.serverFriends;

@@ -107,6 +107,10 @@ public final class HitMarker {
 
 	private static void ring(HudConfig c, float pitch) {
 		if (c.hitMarkerVolume <= 0) return;
+		if (c.hitMarkerSoundKind.startsWith(dev.slash3rss.slashclient.hud.SoundFiles.PREFIX)) {
+			dev.slash3rss.slashclient.hud.Sounds.playFile(c.hitMarkerSoundKind, pitch, c.hitMarkerVolume);
+			return;
+		}
 		// its own first three keep their names; the shared ones ring at the kill's higher pitch too
 		SoundEvent s = switch (c.hitMarkerSoundKind) {
 			case "click" -> SoundEvents.NOTE_BLOCK_HAT.value();

@@ -211,6 +211,10 @@ public final class ChatTabs {
 	public static void playSound(Minecraft mc, String sound, int volume) {
 		lastSound = sound;
 		if ("none".equals(sound)) return;
+		if (sound.startsWith(dev.slash3rss.slashclient.hud.SoundFiles.PREFIX)) {
+			dev.slash3rss.slashclient.hud.Sounds.playFile(sound, 1f, volume);
+			return;
+		}
 		// "chime" is the note block's here (older than the shared list); "" and anything unknown, the usual bell
 		if ("chime".equals(sound)) dev.slash3rss.slashclient.hud.Sounds.play(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_CHIME.value(), 1.4f, volume);
 		else dev.slash3rss.slashclient.hud.Sounds.play(dev.slash3rss.slashclient.hud.Sounds.event(sound) == null ? "bell" : sound, volume);

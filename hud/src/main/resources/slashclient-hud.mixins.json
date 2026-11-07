@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_${java}",
 	"client": [
 		"DropGlowColorMixin",
+		"SoundBufferMixin",
 		"EnchantNameMixin",
 		"DropGlowMixin",
 		"AuthServiceMixin",

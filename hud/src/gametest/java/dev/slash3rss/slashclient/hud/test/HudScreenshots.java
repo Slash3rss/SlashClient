@@ -584,6 +584,44 @@ public class HudScreenshots implements FabricClientGameTest {
 				return out.toString();
 			});
 			if (!missing.isEmpty()) throw new AssertionError("Sounds that do not ring: " + missing);
+			// the player's own files: an OGG, an MP3 and an 8-bit WAV in the folder are offered, decoded and played
+			// the test game is muted, and the engine skips silent sounds: barely audible while this runs
+			double master = context.computeOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).get());
+			context.runOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.01));
+			int askedBefore = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SoundFiles.engineAsked);
+			String own = context.computeOnClient(mc -> {
+				StringBuilder out = new StringBuilder();
+				try {
+					java.nio.file.Path dir = dev.slash3rss.slashclient.hud.SoundFiles.folderMade();
+					for (String f : new String[] { "beep.ogg", "beep.mp3", "beep.wav" }) {
+						try (java.io.InputStream in = HudScreenshots.class.getResourceAsStream("/sounds/" + f)) {
+							java.nio.file.Files.copy(in, dir.resolve(f), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+						}
+						dev.slash3rss.slashclient.hud.SoundFiles.lastDecodedBytes = -1;
+						dev.slash3rss.slashclient.hud.SoundFiles.decode(dir.resolve(f)).discardAlBuffer();
+						// 0.4 s of sound: thousands of bytes, whatever the file's rate and channels
+						if (dev.slash3rss.slashclient.hud.SoundFiles.lastDecodedBytes < 4000) out.append(f).append(" decoded to ").append(dev.slash3rss.slashclient.hud.SoundFiles.lastDecodedBytes).append("; ");
+						dev.slash3rss.slashclient.hud.Sounds.lastVolume = -1;
+						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(mc, "file:" + f, 50);
+						if (dev.slash3rss.slashclient.hud.Sounds.lastVolume <= 0) out.append(f).append(" did not play; ");
+					}
+					java.util.List<String> offered = java.util.List.of(dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS));
+					if (!offered.containsAll(java.util.List.of("file:beep.mp3", "file:beep.ogg", "file:beep.wav")) || !"file:beep.mp3".equals(offered.get(1))) out.append("offered: ").append(offered);
+					// a file not there: the usual bell instead of silence
+					dev.slash3rss.slashclient.hud.Sounds.lastVolume = -1;
+					dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(mc, "file:nie-ma.ogg", 50);
+					if (dev.slash3rss.slashclient.hud.Sounds.lastVolume <= 0) out.append("a missing file rang nothing; ");
+				} catch (Exception e) {
+					out.append(e);
+				}
+				return out.toString();
+			});
+			if (!own.isEmpty()) throw new AssertionError("Own sound files: " + own);
+			context.waitTicks(10);
+			// the game's engine itself asked for the three files (the missing one rang the bell)
+			int asked = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SoundFiles.engineAsked) - askedBefore;
+			context.runOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(master));
+			if (asked < 3) throw new AssertionError("The sound engine asked for " + asked + " of 3 own sounds");
 			// the sliders: all of SlashClient's sounds at once, and a module's own
 			context.setScreen(() -> new HudEditScreen("sounds"));
 			context.waitTicks(10);
