@@ -1240,7 +1240,7 @@ function renderSettings() {
   (form.elements.namedItem('consoleWindow') as HTMLInputElement).checked = !!store.settings.consoleWindow;
   (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
   (form.elements.namedItem('seasonalLook') as HTMLInputElement).checked = store.settings.seasonalLook !== false;
-  renderThemes();
+  renderSettingsThemeName();
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
   (form.elements.namedItem('updateChannel') as HTMLSelectElement).value = store.settings.updateChannel ?? 'stable';
   showUpdateChannel();
@@ -2012,10 +2012,30 @@ async function pickTheme(theme: string, themeAccent?: string) {
   if (themeAccent) store.settings.themeAccent = themeAccent;
   wakeStars();
   renderThemes();
+  renderSettingsThemeName();
   await guard(() => api.saveSettings({ theme, ...(themeAccent ? { themeAccent } : {}) }));
 }
 
+/** The picked theme's name on the Settings button. */
+function renderSettingsThemeName() {
+  $('#settings-theme-name').textContent = t(themeOf(store.settings.theme, store.settings.themeAccent).name);
+}
+
+/** The tiles of the open theme window (none open: nothing to draw). */
+let themeGrid: HTMLElement | undefined;
+
+/** "Motyw": the themes in a window, from the button next to the Shop (or in Settings). */
+function openThemes() {
+  if (themeGrid?.isConnected) return;
+  themeGrid = el('div', { className: 'theme-grid' });
+  renderThemes();
+  modalWindow(t('Motyw'), [themeGrid, el('span', { className: 'hint', textContent: t('zmienia się od razu; w swoje dni wygląd sezonowy przykrywa kolory motywu') })], [], () => (themeGrid = undefined), 'theme-modal');
+}
+$('#top-theme').addEventListener('click', openThemes);
+$('#settings-theme').addEventListener('click', openThemes);
+
 function renderThemes() {
+  if (!themeGrid) return;
   const picked = themeOf(store.settings.theme, store.settings.themeAccent).id;
   const own = themeOf(CUSTOM, store.settings.themeAccent);
   // "Własny": the colour field picks the accent, the tile puts it on
@@ -2030,7 +2050,7 @@ function renderThemes() {
     wakeStars();
   });
   color.addEventListener('change', () => void pickTheme(CUSTOM, color.value));
-  $('#theme-grid').replaceChildren(
+  themeGrid.replaceChildren(
     ...THEMES.map((theme) => themeTile(theme, theme.id === picked, () => void pickTheme(theme.id))),
     themeTile(own, picked === CUSTOM, () => void pickTheme(CUSTOM, own.accent), color),
   );

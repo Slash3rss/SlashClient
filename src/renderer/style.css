@@ -58,7 +58,7 @@
 :root.theme-light {
   color-scheme: light;
   --ink-rgb: 15, 23, 42;
-  --shade-rgb: 100, 116, 139;
+  --shade-rgb: 148, 163, 184;
   --panel-rgb: 255, 255, 255;
   --glass-bg: rgba(255, 255, 255, .72);
   --glass-bg-hover: rgba(255, 255, 255, .92);
@@ -116,7 +116,7 @@ code {
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(var(--ink-rgb), .14); }
 
 /* ---------- themes (Settings → Motyw) ---------- */
-.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; align-items: start; }
 .theme-tile {
   display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; height: auto; padding: 6px; border-radius: 10px; cursor: pointer; text-align: left;
   background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-secondary); font-size: 12px; font-weight: 600;
@@ -418,6 +418,13 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 /* a server's MOTD keeps the game's dark box: its colours are made for it */
 :root.theme-light .motd { --ink-rgb: 255, 255, 255; background: #060608; }
 :root.theme-light .server.promoted .server-title b { color: #7c3aed; }
+/* menus, pop-ups and bars drawn in dark colours of their own */
+:root.theme-light .modal { background: rgba(15, 23, 42, .28); }
+:root.theme-light .select-bar, :root.theme-light .fr-chatkeys-notice { background: rgba(255, 255, 255, .94); }
+:root.theme-light .fr-status-menu, :root.theme-light .gif-picker, :root.theme-light .icon-remove { background: #ffffff; }
+:root.theme-light .fr-dot { border-color: var(--bg-secondary); }
+:root.theme-light .fr-dot.mobile { background: var(--bg-secondary); }
+:root.theme-light .feature-banner.warning { color: #78350f; background: rgba(254, 243, 199, .95); }
 .server:hover { border-color: rgba(var(--ink-rgb),  .14); }
 .server.promoted { border-color: rgba(168, 85, 247, .35); box-shadow: 0 0 15px rgba(168, 85, 247, .08); }
 .server-icon { width: 64px; height: 64px; border-radius: 10px; image-rendering: pixelated; background: var(--bg-secondary); object-fit: cover; }
@@ -1718,11 +1725,22 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 .spark-sign { color: var(--warn); text-shadow: 0 0 6px rgba(251, 191, 36, .45); }
 /* the balance and the way to the shop at the top of every view: in the title bar, left of the window's buttons
    (the overlay on Windows and Linux says where they start; on macOS they are on the left, so the corner is free) */
-.top-sparks {
-  position: fixed; top: 5px; z-index: 2; -webkit-app-region: no-drag;
+.top-actions {
+  position: fixed; top: 5px; z-index: 2; -webkit-app-region: no-drag; display: flex; align-items: center; gap: 6px;
   /* left of the window's own buttons: measured in app.ts (placeTopSparks), since the titlebar-area env()
      values are not always there and the pill then slid under the close button */
   right: var(--top-sparks-right, 146px);
+}
+.top-theme {
+  width: 26px; height: 26px; padding: 0; border-radius: 99px; display: grid; place-items: center; font-size: 12px;
+  background: rgba(var(--accent-rgb), .12); border-color: rgba(var(--accent-rgb), .3); color: var(--accent-light);
+}
+.top-theme:hover:not(:disabled) { background: rgba(var(--accent-rgb), .22); border-color: rgba(var(--accent-rgb), .5); }
+:root.theme-light .top-sparks { color: #92400e; }
+.theme-modal { width: min(640px, calc(100vw - 48px)); }
+.theme-modal .hint { display: block; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+#settings-theme { align-self: flex-start; }
+.top-sparks {
   height: 26px; padding: 0 3px 0 10px; gap: 6px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
   background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .28); color: #fcd34d;
 }

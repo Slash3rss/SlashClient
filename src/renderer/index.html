@@ -22,7 +22,11 @@
   </div>
   <div class="titlebar" aria-hidden="true"></div>
   <!-- the balance of sparks and the way to the shop, on every view (next to the window's buttons) -->
-  <button type="button" class="top-sparks feature-shop hidden" id="top-sparks"><span class="spark-sign">✦</span><b id="top-sparks-value"></b><span class="top-sparks-shop"><i class="fa-solid fa-store"></i> Sklep</span></button>
+  <!-- top right, in the title bar: the theme (themes.ts) and the balance with the way to the shop -->
+  <div class="top-actions">
+    <button type="button" class="top-theme" id="top-theme" title="Motyw"><i class="fa-solid fa-palette"></i></button>
+    <button type="button" class="top-sparks feature-shop hidden" id="top-sparks"><span class="spark-sign">✦</span><b id="top-sparks-value"></b><span class="top-sparks-shop"><i class="fa-solid fa-store"></i> Sklep</span></button>
+  </div>
   <canvas id="stars" aria-hidden="true"></canvas>
   <div class="background-decorations" aria-hidden="true">
     <div class="glow-orb orb-1"></div>
@@ -668,8 +672,7 @@
         <label class="check"><input type="checkbox" name="consoleWindow"> Otwieraj okno konsoli przy starcie gry</label>
         <label class="check"><input type="checkbox" name="reduceMotion"> Ogranicz animacje (dla słabszych komputerów)</label>
         <div class="field theme-field">Motyw
-          <div class="theme-grid" id="theme-grid"></div>
-          <span class="hint">zmienia się od razu; w swoje dni wygląd sezonowy przykrywa kolory motywu</span>
+          <button type="button" id="settings-theme"><i class="fa-solid fa-palette"></i> <span id="settings-theme-name"></span></button>
         </div>
         <label class="check feature-seasonal"><input type="checkbox" name="seasonalLook"> Wygląd sezonowy (Halloween, 11 listopada)</label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>

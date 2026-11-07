@@ -27,7 +27,7 @@ describe('the launcher themes', () => {
     const texts = [...THEMES.map((t) => t.name), customTheme('#000000').name, 'Motyw', 'Wybierz kolor',
       'zmienia się od razu; w swoje dni wygląd sezonowy przykrywa kolory motywu'];
     for (const text of texts) assert.ok(lookup(text), `no English for: ${text}`);
-    assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('id="theme-grid"'));
+    assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('id="top-theme"'));
     setLang('pl');
   });
 });
