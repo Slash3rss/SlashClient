@@ -29,6 +29,7 @@ import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
 import { lineLevel } from './logLevel';
+import { applyRememberedTheme, applyTheme, CUSTOM, THEMES, themeOf, type Theme } from './themes';
 import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, offlineSkinsOffered, onFeatures } from './features';
 import { initSeason } from './season';
 import { isPerfPreset, partOn, PERF_PARTS, suggestedPreset, type PerfPart, type PerfPreset } from '../shared/perfPresets';
@@ -85,7 +86,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; theme?: string; themeAccent?: string; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -99,6 +100,8 @@ interface PublicStore {
 interface VersionInfo { id: string; type: string }
 
 const api = window.slash;
+// the theme of the last start at once, so the splash is already in its colours (themes.ts)
+let currentTheme: Theme = applyRememberedTheme();
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
 let store: PublicStore;
@@ -1236,6 +1239,7 @@ function renderSettings() {
   (form.elements.namedItem('consoleWindow') as HTMLInputElement).checked = !!store.settings.consoleWindow;
   (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
   (form.elements.namedItem('seasonalLook') as HTMLInputElement).checked = store.settings.seasonalLook !== false;
+  renderThemes();
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
   (form.elements.namedItem('updateChannel') as HTMLSelectElement).value = store.settings.updateChannel ?? 'stable';
   showUpdateChannel();
@@ -1983,6 +1987,52 @@ $<HTMLInputElement>('#settings-form input[name="reduceMotion"]').addEventListene
   applyMotion();
 });
 // the seasonal look: at once too
+// ---------- the launcher's themes (themes.ts) ----------
+
+/** A theme's tile: its colours as a little picture of the page, and its name. */
+function themeTile(theme: Theme, picked: boolean, onPick: () => void, extra?: Node) {
+  const swatch = el('span', { className: 'theme-swatch' });
+  swatch.style.background = `radial-gradient(circle at 25% 25%, ${theme.orbs[0]}, transparent 60%), radial-gradient(circle at 80% 85%, ${theme.orbs[1]}, transparent 60%), ${theme.bg ?? '#0a0d14'}`;
+  const dot = el('span', { className: 'theme-dot' });
+  dot.style.background = theme.accent;
+  swatch.append(dot);
+  const b = el('button', { type: 'button', className: `theme-tile${picked ? ' active' : ''}`, title: t(theme.name) }, swatch, el('span', { className: 'theme-name', textContent: t(theme.name) }));
+  if (extra) b.append(extra);
+  b.addEventListener('click', onPick);
+  return b;
+}
+
+/** Puts on a theme and keeps it: the page changes at once, the setting is saved right away. */
+async function pickTheme(theme: string, themeAccent?: string) {
+  currentTheme = applyTheme(theme, themeAccent ?? store.settings.themeAccent);
+  store.settings.theme = theme;
+  if (themeAccent) store.settings.themeAccent = themeAccent;
+  wakeStars();
+  renderThemes();
+  await guard(() => api.saveSettings({ theme, ...(themeAccent ? { themeAccent } : {}) }));
+}
+
+function renderThemes() {
+  const picked = themeOf(store.settings.theme, store.settings.themeAccent).id;
+  const own = themeOf(CUSTOM, store.settings.themeAccent);
+  // "Własny": the colour field picks the accent, the tile puts it on
+  const color: HTMLInputElement = document.createElement('input');
+  color.type = 'color';
+  color.className = 'theme-color';
+  color.title = t('Wybierz kolor');
+  color.value = own.accent;
+  color.addEventListener('click', (e) => e.stopPropagation());
+  color.addEventListener('input', () => {
+    currentTheme = applyTheme(CUSTOM, color.value);
+    wakeStars();
+  });
+  color.addEventListener('change', () => void pickTheme(CUSTOM, color.value));
+  $('#theme-grid').replaceChildren(
+    ...THEMES.map((theme) => themeTile(theme, theme.id === picked, () => void pickTheme(theme.id))),
+    themeTile(own, picked === CUSTOM, () => void pickTheme(CUSTOM, own.accent), color),
+  );
+}
+
 $<HTMLInputElement>('#settings-form input[name="seasonalLook"]').addEventListener('change', async (e) => {
   const seasonalLook = (e.target as HTMLInputElement).checked;
   await guard(() => api.saveSettings({ seasonalLook }));
@@ -5385,7 +5435,7 @@ function startStars() {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
     // a warm sky in the Halloween season, white and red stars on Independence Day (season.ts)
     const cls = document.documentElement.classList;
-    const tint = cls.contains('season-halloween') ? '253, 186, 116' : cls.contains('season-independence') ? '254, 202, 202' : '191, 219, 254';
+    const tint = cls.contains('season-halloween') ? '253, 186, 116' : cls.contains('season-independence') ? '254, 202, 202' : currentTheme.stars;
     for (const s of stars) {
       const alpha = still ? 0.5 : 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(s.phase + (t / 1000) * s.speed));
       ctx.fillStyle = `rgba(${tint}, ${alpha.toFixed(3)})`;
@@ -5698,6 +5748,7 @@ function finishBoot() {
   try {
     startStars();
     store = await api.getStore();
+    currentTheme = applyTheme(store.settings.theme, store.settings.themeAccent);
     applyMotion();
     // the list of profiles could not be read at start: the profiles found on disk were added back
     void api.recoveredProfiles().then((n: number) => n && toast(t('Nie udało się odczytać listy profili, więc odzyskano je z dysku ({0}). Sprawdź w ich ustawieniach wersję gry i loader.', n), true));

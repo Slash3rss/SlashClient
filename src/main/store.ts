@@ -84,6 +84,10 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
+  /** The launcher's theme (renderer/themes.ts): a ready one's id or 'custom'; missing = the default blue. */
+  theme?: string;
+  /** The player's own accent colour for the 'custom' theme (#rrggbb). */
+  themeAccent?: string;
   /** "Okno konsoli" opens by itself when a game starts; missing = off. */
   consoleWindow?: boolean;
   /** "Podsumowanie sesji" after the game closes; missing = on. */

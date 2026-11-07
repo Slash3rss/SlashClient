@@ -5,7 +5,7 @@
 .java-compare-row button { flex: none; }
 .java-compare-note { font-size: 12.5px; flex: 1 1 220px; min-width: 0; }
 .java-compare-result:empty { display: none; }
-.java-compare-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--btn-radius); background: rgba(255, 255, 255, .02); border: 1px solid var(--glass-border); }
+.java-compare-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--btn-radius); background: rgba(var(--ink-rgb),  .02); border: 1px solid var(--glass-border); }
 .java-compare-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .java-run { display: flex; flex-direction: column; gap: 5px; }
 .java-run-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }

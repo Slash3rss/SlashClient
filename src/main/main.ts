@@ -379,6 +379,9 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   const previous = store.settings;
   if (allowed.updateChannel !== undefined && allowed.updateChannel !== 'beta') allowed.updateChannel = 'stable';
+  // the theme is only a name and a colour: anything else is not kept
+  if (allowed.theme !== undefined && !(typeof allowed.theme === 'string' && /^[a-z]{1,16}$/.test(allowed.theme))) delete allowed.theme;
+  if (allowed.themeAccent !== undefined && !(typeof allowed.themeAccent === 'string' && /^#[0-9a-f]{6}$/i.test(allowed.themeAccent))) delete allowed.themeAccent;
   if (allowed.sharedPerAccount !== undefined) {
     const picked = Array.isArray(allowed.sharedPerAccount) ? allowed.sharedPerAccount : [];
     allowed.sharedPerAccount = store.accounts.map((a) => a.id).filter((id) => picked.includes(id));
