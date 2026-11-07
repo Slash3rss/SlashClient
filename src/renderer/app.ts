@@ -1998,9 +1998,9 @@ function themeTile(theme: Theme, picked: boolean, onPick: () => void, extra?: No
   swatch.style.background = `radial-gradient(circle at 25% 25%, ${theme.orbs[0]}, transparent 60%), radial-gradient(circle at 80% 85%, ${theme.orbs[1]}, transparent 60%), ${theme.bg ?? '#0a0d14'}`;
   const dot = el('span', { className: 'theme-dot' });
   dot.style.background = theme.accent;
-  swatch.append(dot);
+  // the own colour's field takes the dot's place: every tile keeps the same size
+  swatch.append(extra ?? dot);
   const b = el('button', { type: 'button', className: `theme-tile${picked ? ' active' : ''}`, title: t(theme.name) }, swatch, el('span', { className: 'theme-name', textContent: t(theme.name) }));
-  if (extra) b.append(extra);
   b.addEventListener('click', onPick);
   return b;
 }
