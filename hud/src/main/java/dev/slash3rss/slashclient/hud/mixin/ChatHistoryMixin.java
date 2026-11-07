@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(ChatComponent.class)
 abstract class ChatHistoryMixin {
-	//#if MC >= 1.20.2
+	//#if MC >= 1.20.5
 	@ModifyExpressionValue(method = { "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat" }, at = @At(value = "CONSTANT", args = "intValue=100"))
 	//#else
 	//$ @ModifyExpressionValue(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;ILnet/minecraft/client/GuiMessageTag;Z)V", at = @At(value = "CONSTANT", args = "intValue=100"))

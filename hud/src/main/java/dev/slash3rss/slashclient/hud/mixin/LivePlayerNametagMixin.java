@@ -68,7 +68,7 @@ abstract class LivePlayerNametagMixin {
 	//$ 	original.call(self, state, live, pose, buffers, light);
 	//$ 	pose.popPose();
 	//$ }
-	//#elif MC >= 1.20.2
+	//#elif MC >= 1.20.5
 	//$ @WrapOperation(method = "renderNameTag(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V",
 	//$ 	at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V", ordinal = 1))
 	//$ private void slashclient$liveLine(PlayerRenderer self, net.minecraft.world.entity.Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, float partialTick, Operation<Void> original) {

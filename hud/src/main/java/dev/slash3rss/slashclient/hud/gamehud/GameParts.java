@@ -376,10 +376,10 @@ public final class GameParts {
 		return new int[] { sw / 2 - wide / 2 - 1, 9, sw / 2 + wide / 2 + 1, bottom };
 	}
 
-	//#if MC >= 1.20.2
+	//#if MC >= 1.20.5
 	public static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR, TITLES, TOASTS);
 	//#else
-	//$ // 1.20.1 draws the action bar inline in Gui.render: it cannot be moved there
+	//$ // before 1.20.5 the game draws the action bar inline in Gui.render: it cannot be moved there
 	//$ public static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, TITLES, TOASTS);
 	//#endif
 

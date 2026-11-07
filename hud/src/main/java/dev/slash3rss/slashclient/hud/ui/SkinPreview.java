@@ -422,7 +422,11 @@ public final class SkinPreview {
 //$ 		pose.rotateAround(Axis.XP.rotationDegrees(-5), 0f, -1.0625f, 0f);
 //$ 		pose.mulPose(Axis.YP.rotationDegrees(yaw));
 //$ 		graphics.flush();
+//#if MC >= 1.20.5
 //$ 		Lighting.setupForEntityInInventory(Axis.XP.rotationDegrees(-5));
+//#else
+//$ 		Lighting.setupForEntityInInventory();
+//#endif
 //$ 		pose.pushPose();
 //$ 		pose.scale(1f, 1f, -1f);
 //$ 		pose.translate(0f, -1.5f, 0f);

@@ -76,7 +76,7 @@ public class SlashPauseScreen extends MenuScreen {
 	private List<Nav> tools() {
 		return List.of(
 			new Nav(Ui.tr("gui.advancements"), "m-advancements", () -> {
-				//#if MC >= 1.20.2
+				//#if MC >= 1.20.5
 				if (minecraft.player != null) minecraft.setScreenAndShow(new AdvancementsScreen(minecraft.player.connection.getAdvancements(), this));
 				//#else
 				//$ if (minecraft.player != null) minecraft.setScreenAndShow(new AdvancementsScreen(minecraft.player.connection.getAdvancements()));

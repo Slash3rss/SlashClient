@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 //$ import dev.slash3rss.slashclient.hud.compat.HudElementRegistry;
 //$ import dev.slash3rss.slashclient.hud.compat.VanillaHudElements;
 //$ import net.minecraft.client.gui.GuiGraphics;
-//#elif MC < 1.20.2
+//#elif MC < 1.20.5
 //$ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -107,8 +107,8 @@ abstract class LegacyHudMixin {
 	//$ private void slashclient$actionBar(GuiGraphics g, float partialTick, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.OVERLAY_MESSAGE, g, null, (gg, d) -> original.call(gg, partialTick));
 	//$ }
-	//#elif MC < 1.20.2
-	//$ // 1.20.1 draws most of the HUD in Gui.render itself: the parts are wrapped where it calls them
+	//#elif MC < 1.20.5
+	//$ // before 1.20.5 the game draws most of the HUD in Gui.render itself: the parts are wrapped where it calls them
 	//$ @WrapMethod(method = "renderCrosshair")
 	//$ private void slashclient$crosshair(GuiGraphics g, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.CROSSHAIR, g, null, (gg, d) -> original.call(gg));
@@ -133,6 +133,6 @@ abstract class LegacyHudMixin {
 	//$ private void slashclient$tabList(PlayerTabOverlay tab, GuiGraphics g, int width, Scoreboard scoreboard, Objective objective, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.PLAYER_LIST, g, null, (gg, d) -> original.call(tab, gg, width, scoreboard, objective));
 	//$ }
-	//$ // titles and the action bar are drawn inline in Gui.render: not adjustable on 1.20.1
+	//$ // titles and the action bar are drawn inline in Gui.render: not adjustable before 1.20.5
 	//#endif
 }

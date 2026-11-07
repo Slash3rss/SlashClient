@@ -414,6 +414,11 @@ public final class BenchScene {
 				stage = Stage.NONE;
 				mc.setScreenAndShow(new TitleScreen());
 			});
+			//#elif MC >= 1.20.3
+			//$ mc.createWorldOpenFlows().checkForBackupAndLoad(WORLD, () -> {
+			//$ 	stage = Stage.NONE;
+			//$ 	mc.setScreenAndShow(new TitleScreen());
+			//$ });
 			//#else
 			//$ mc.createWorldOpenFlows().loadLevel(Compat.screen(mc), WORLD);
 			//#endif

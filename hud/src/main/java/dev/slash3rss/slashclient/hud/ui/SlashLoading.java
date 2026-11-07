@@ -204,7 +204,7 @@ public final class SlashLoading {
 			int percent = p.slashclient$progress();
 			return new State("progress", text.isEmpty() ? Ui.tr("slashclient-hud.loading.wait") : Ui.text(text), percent > 0 ? Math.min(100, percent) / 100f : -1, null);
 		}
-		//#if MC >= 1.20.3
+		//#if MC >= 1.20.5
 		if (c == net.minecraft.client.gui.screens.GenericMessageScreen.class) return new State("message", plain(s.getTitle()), -1, null);
 		//#else
 		//$ if (c == net.minecraft.client.gui.screens.GenericDirtMessageScreen.class) return new State("message", plain(s.getTitle()), -1, null);

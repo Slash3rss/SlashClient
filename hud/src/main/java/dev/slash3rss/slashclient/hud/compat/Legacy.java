@@ -82,8 +82,10 @@
 //$ 			default: return null;
 //$ 		}
 //$ 	}
+//#endif
+//#if MC < 1.20.5
 //$
-//$ 	/** The title screen's panorama (Screen.renderPanorama from 1.20.2 on). */
+//$ 	/** The title screen's panorama (Screen.renderPanorama from 1.20.5 on). */
 //$ 	private static net.minecraft.client.renderer.PanoramaRenderer panorama;
 //$
 //$ 	public static void panorama(GuiGraphics gfx, float delta) {
@@ -167,8 +169,10 @@
 //$ 	/** Leaves the world or server with `message` on screen meanwhile. */
 //$ 	public static void disconnectFromWorld(net.minecraft.client.Minecraft mc, net.minecraft.network.chat.Component message) {
 //$ 		if (mc.level != null) mc.level.disconnect();
-//#if MC >= 1.20.2
+//#if MC >= 1.20.5
 //$ 		mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(message));
+//#elif MC >= 1.20.2
+//$ 		mc.disconnect(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(message));
 //#else
 //$ 		mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(message));
 //#endif
