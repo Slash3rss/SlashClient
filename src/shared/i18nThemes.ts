@@ -1,7 +1,7 @@
 /** English texts of the launcher's themes (Settings → "Motyw", renderer/themes.ts). */
 export const THEMES_EN: Record<string, string> = {
   'Motyw': 'Theme',
-  'Motyw zmienia się od razu. W Halloween i w okolicy 11 listopada launcher ma swój świąteczny wygląd – możesz go wyłączyć w Ustawieniach.': 'The theme changes right away. Around Halloween and 11 November the launcher has its own holiday look – you can turn it off in Settings.',
+  'Motyw zmienia się od razu. W czasie świąt launcher może mieć świąteczny wygląd – wyłączysz go w Ustawieniach.': 'The theme changes right away. During holidays the launcher can have a festive look – you can turn it off in Settings.',
   'Niebieski': 'Blue',
   'Fiolet': 'Violet',
   'Szmaragd': 'Emerald',

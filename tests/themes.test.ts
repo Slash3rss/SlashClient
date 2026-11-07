@@ -25,7 +25,7 @@ describe('the launcher themes', () => {
   it('has an English text for every theme and the picker', () => {
     setLang('en');
     const texts = [...THEMES.map((t) => t.name), customTheme('#000000').name, 'Motyw', 'Wybierz kolor',
-      'Motyw zmienia się od razu. W Halloween i w okolicy 11 listopada launcher ma swój świąteczny wygląd – możesz go wyłączyć w Ustawieniach.'];
+      'Motyw zmienia się od razu. W czasie świąt launcher może mieć świąteczny wygląd – wyłączysz go w Ustawieniach.'];
     for (const text of texts) assert.ok(lookup(text), `no English for: ${text}`);
     assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('id="top-theme"'));
     setLang('pl');
