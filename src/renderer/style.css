@@ -413,6 +413,11 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   background: linear-gradient(135deg, rgba(var(--ink-rgb),  .03) 0%, rgba(10, 10, 15, .55) 100%);
   transition: var(--transition);
 }
+/* the light theme: a plain card (the dark fade turned grey there) */
+:root.theme-light .server { background: var(--glass-bg); }
+/* a server's MOTD keeps the game's dark box: its colours are made for it */
+:root.theme-light .motd { --ink-rgb: 255, 255, 255; background: #060608; }
+:root.theme-light .server.promoted .server-title b { color: #7c3aed; }
 .server:hover { border-color: rgba(var(--ink-rgb),  .14); }
 .server.promoted { border-color: rgba(168, 85, 247, .35); box-shadow: 0 0 15px rgba(168, 85, 247, .08); }
 .server-icon { width: 64px; height: 64px; border-radius: 10px; image-rendering: pixelated; background: var(--bg-secondary); object-fit: cover; }
