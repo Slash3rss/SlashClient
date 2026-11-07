@@ -1,0 +1,12 @@
+/* "Okno konsoli": the game's log filling a window of its own (console.html) */
+body.console-window {
+  display: flex; flex-direction: column; gap: 8px; height: 100vh; margin: 0; padding: 10px; box-sizing: border-box;
+  background: var(--bg-primary); overflow: hidden;
+}
+.console-window .log { border-radius: 10px; }
+.console-window .console-state { flex-shrink: 0; font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.console-window .console-state.running::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #22c55e;
+}
+.console-window .console-state.failed { color: var(--danger); }
+.console-window .icon-btn.on { color: var(--accent-light); border-color: var(--glass-border-focus); }

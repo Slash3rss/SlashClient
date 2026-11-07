@@ -28,6 +28,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
+import { lineLevel } from './logLevel';
 import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, offlineSkinsOffered, onFeatures } from './features';
 import { initSeason } from './season';
 import { isPerfPreset, partOn, PERF_PARTS, suggestedPreset, type PerfPart, type PerfPreset } from '../shared/perfPresets';
@@ -84,7 +85,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1232,6 +1233,7 @@ function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
+  (form.elements.namedItem('consoleWindow') as HTMLInputElement).checked = !!store.settings.consoleWindow;
   (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
   (form.elements.namedItem('seasonalLook') as HTMLInputElement).checked = store.settings.seasonalLook !== false;
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
@@ -1260,12 +1262,6 @@ function renderSettings() {
 // ---------- play ----------
 
 const log = $('#log');
-/** Level of a game log line: errors (and stack traces), warnings, or plain info. */
-function lineLevel(line: string): 'error' | 'warn' | '' {
-  if (/\/(ERROR|FATAL)\]|^\s+at |Exception|^Caused by:/.test(line)) return 'error';
-  if (/\/WARN\]/.test(line)) return 'warn';
-  return '';
-}
 
 let logQuery = '';
 
@@ -1404,6 +1400,8 @@ document.querySelectorAll<HTMLButtonElement>('#log-level button').forEach((b) =>
     log.dataset.level = b.dataset.level;
     document.querySelectorAll('#log-level button').forEach((x) => x.classList.toggle('active', x === b));
   }));
+// "Okno konsoli": the picked profile's game log in a window of its own
+$('#log-window').addEventListener('click', () => void guard(() => api.openConsoleWindow(pickedProfile())));
 $('#log-copy').addEventListener('click', async () => {
   await navigator.clipboard.writeText(logText());
   toast(t('Skopiowano log'));
@@ -2003,6 +2001,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
   await guard(() =>
     api.saveSettings({
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
+      consoleWindow: (form.elements.namedItem('consoleWindow') as HTMLInputElement).checked,
       launcherWindow: (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value,
       defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
       autoMemory: (form.elements.namedItem('autoMemory') as HTMLInputElement).checked,

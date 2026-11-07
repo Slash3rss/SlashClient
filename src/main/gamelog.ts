@@ -67,3 +67,13 @@ export function createLineBatcher(send: (lines: string[]) => void, delayMs = 50)
     flush,
   };
 }
+
+/** How many lines of a running game a console window opened later starts with (the Play screen keeps as many). */
+export const CONSOLE_KEPT_LINES = 2000;
+
+/** Keeps the newest `max` lines after adding a batch (a long session would otherwise grow without end). */
+export function keepLast(lines: string[], added: string[], max = CONSOLE_KEPT_LINES): string[] {
+  lines.push(...added);
+  if (lines.length > max) lines.splice(0, lines.length - max);
+  return lines;
+}

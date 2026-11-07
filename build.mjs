@@ -10,8 +10,12 @@ await Promise.all([
     entryPoints: { main: 'src/main/main.ts', preload: 'src/main/preload.ts', cli: 'src/main/cli.ts' }, outdir: 'dist' }),
   build({ ...common, platform: 'browser', format: 'iife',
     entryPoints: ['src/renderer/app.ts'], outfile: 'dist/renderer/app.js' }),
+  build({ ...common, platform: 'browser', format: 'iife',
+    entryPoints: ['src/renderer/console.ts'], outfile: 'dist/renderer/console.js' }),
 ]);
 cpSync('src/renderer/index.html', 'dist/renderer/index.html');
+cpSync('src/renderer/console.html', 'dist/renderer/console.html');
+cpSync('src/renderer/console.css', 'dist/renderer/console.css');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('src/renderer/communityLinks.css', 'dist/renderer/communityLinks.css');
 cpSync('src/renderer/wizard.css', 'dist/renderer/wizard.css');

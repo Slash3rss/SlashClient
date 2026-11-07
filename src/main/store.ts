@@ -84,6 +84,8 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
+  /** "Okno konsoli" opens by itself when a game starts; missing = off. */
+  consoleWindow?: boolean;
   /** "Podsumowanie sesji" after the game closes; missing = on. */
   sessionSummary?: boolean;
   /** The window the Benchmark runs in: as the game opens it (''), full screen, or a borderless window over the screen. */

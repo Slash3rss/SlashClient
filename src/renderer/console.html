@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <title>Konsola</title>
+  <link rel="stylesheet" href="fa/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="console.css">
+</head>
+<!-- "Okno konsoli": one profile's game log in a window of its own (console.ts, main/consoleWindow.ts) -->
+<body class="console-window">
+  <div class="log-tools">
+    <span class="console-state" id="state"></span>
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="search"></div>
+    <div class="segmented" id="level">
+      <button class="active" data-level="all"></button>
+      <button data-level="warn"></button>
+      <button data-level="error"></button>
+    </div>
+    <button class="icon-btn" id="follow"><i class="fa-solid fa-arrow-down"></i></button>
+    <button class="icon-btn" id="pin"><i class="fa-solid fa-thumbtack"></i></button>
+    <button class="icon-btn" id="copy"><i class="fa-regular fa-copy"></i></button>
+  </div>
+  <div class="log" id="log" data-level="all"></div>
+  <script src="console.js"></script>
+</body>
+</html>
