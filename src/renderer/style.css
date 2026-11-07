@@ -16,7 +16,8 @@
   --accent-light: #60a5fa;
   --accent-dark: #1d4ed8;
   --accent-glow: rgba(59, 130, 246, .4);
-  --accent-gradient: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  /* starts a shade deeper than the accent: white button text at WCAG AA (4.5:1), as themes.ts buttonShade() */
+  --accent-gradient: linear-gradient(135deg, #1e6ff5, #1d4ed8);
   /* the accent as numbers for rgba() and a pale one, so a season changes every tint at once */
   --accent-rgb: 59, 130, 246;
   --accent-light-rgb: 96, 165, 250;
@@ -32,7 +33,8 @@
   --glass-border-focus: rgba(59, 130, 246, .4);
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  /* hints and small print: at least 4.5:1 on the dark page and its cards (WCAG AA) */
+  --text-muted: #808896;
   --btn-radius: 10px;
   --card-radius: 16px;
   --font-sans: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

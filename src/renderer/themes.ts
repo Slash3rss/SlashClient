@@ -66,6 +66,29 @@ export function shades(accent: string) {
   return { light: fromHsl(h, s, l + 0.1), dark: fromHsl(h, s, l - 0.15), pale: fromHsl(h, Math.min(1, s), l + 0.22) };
 }
 
+/** WCAG contrast of two colours (1 to 21). */
+export function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const [r, g, bl] = rgbOf(hex).map((c) => c / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+/**
+ * Where the buttons' gradient starts: the accent, made darker until their white text reads well on it
+ * (WCAG AA, 4.5:1). A bright own colour (yellow, light green) would otherwise leave the text unreadable.
+ */
+export function buttonShade(accent: string): string {
+  const [h, s, l] = toHsl(rgbOf(accent));
+  for (let d = 0; d <= 0.6; d += 0.02) {
+    const shade = fromHsl(h, s, l - d);
+    if (contrast('#ffffff', shade) >= 4.5) return shade;
+  }
+  return fromHsl(h, s, 0.2);
+}
+
 /** The player's own colour as a whole theme: its glows from the colour and two of its neighbours. */
 export function customTheme(accent: string): Theme {
   const color = HEX.test(accent) ? accent.toLowerCase() : '#3b82f6';
@@ -99,7 +122,7 @@ export function themeCss(theme: Theme): string {
   const vars = [
     `--accent: ${theme.accent}`, `--accent-light: ${light}`, `--accent-dark: ${dark}`, `--accent-pale: ${pale}`,
     `--accent-rgb: ${rgb(theme.accent)}`, `--accent-light-rgb: ${rgb(light)}`, `--accent-dark-rgb: ${rgb(dark)}`,
-    `--accent-glow: rgba(${rgb(theme.accent)}, .4)`, `--accent-gradient: linear-gradient(135deg, ${theme.accent}, ${dark})`,
+    `--accent-glow: rgba(${rgb(theme.accent)}, .4)`, `--accent-gradient: linear-gradient(135deg, ${buttonShade(theme.accent)}, ${dark})`,
     `--glass-border-focus: rgba(${rgb(theme.accent)}, .4)`,
     ...(theme.bg ? [`--bg-primary: ${theme.bg}`] : []), ...(theme.bg2 ? [`--bg-secondary: ${theme.bg2}`] : []),
   ];

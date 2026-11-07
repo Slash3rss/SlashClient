@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { lookup, setLang } from '../src/shared/i18n';
-import { CUSTOM, customTheme, shades, THEMES, themeCss, themeOf } from '../src/renderer/themes';
+import { buttonShade, contrast, CUSTOM, customTheme, shades, THEMES, themeCss, themeOf } from '../src/renderer/themes';
 
 describe('the launcher themes', () => {
   it('falls back to the default for an unknown theme, and takes only a real colour as its own', () => {
@@ -21,6 +21,12 @@ describe('the launcher themes', () => {
     const css = themeCss(themeOf('emerald'));
     assert.match(css, /:root:not\(\[class\*="season-"\]\) \{ --accent: #10b981/);
     assert.match(css, /\.orb-3/);
+  });
+  it('keeps white button text readable in every theme and any own colour (WCAG AA)', () => {
+    for (const accent of [...THEMES.map((t) => t.accent), '#facc15', '#a3e635', '#ffffff', '#000000', '#22d3ee']) {
+      assert.ok(contrast('#ffffff', buttonShade(accent)) >= 4.5, accent);
+    }
+    assert.ok(contrast('#ffffff', '#1e6ff5') >= 4.5, 'the default gradient in style.css');
   });
   it('has an English text for every theme and the picker', () => {
     setLang('en');
