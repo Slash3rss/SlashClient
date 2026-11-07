@@ -121,6 +121,9 @@ export async function startFakeS3(opts: { bucket: string; region: string; keys: 
         return answer(405, xml('MethodNotAllowed', 'method'));
     }
   });
+  // Node closes an idle connection after 5 s; a slow test machine can take that long between two requests,
+  // and the client then reuses a socket the server is just closing (ECONNRESET). Keep them open instead.
+  server.keepAliveTimeout = 120_000;
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   fake.url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   fake.close = () => new Promise<void>((r) => {
