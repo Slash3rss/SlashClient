@@ -269,7 +269,7 @@ public final class TestHooks {
 	public static String itemCounts() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		var out = new java.util.ArrayList<String>();
-		for (var c : MoreModules.ItemCounter.counts(mc)) out.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(c.icon()).getPath() + " " + c.n());
+		for (var c : MoreModules.ItemCounter.counts(mc)) out.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(c.icon()).getPath() + (dev.slash3rss.slashclient.hud.ui.Ui.look(c.stack()).isEmpty() ? "" : "*") + " " + c.n());
 		return String.join(", ", out);
 	}
 

@@ -223,6 +223,16 @@ public final class ExtraModules {
 			return n;
 		}
 
+		/** The first of these carried, as it looks (a server's arrows with their own picture), or the item itself. */
+		private static Object firstOf(Minecraft mc, Item... items) {
+			var inv = mc.player.getInventory();
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				ItemStack s = inv.getItem(i);
+				for (Item item : items) if (s.is(item)) return s.copy();
+			}
+			return items[0];
+		}
+
 		/** Pairs of (item, count) worth showing now. */
 		private static List<Object[]> shown(Minecraft mc) {
 			List<Object[]> out = new ArrayList<>();
@@ -230,8 +240,8 @@ public final class ExtraModules {
 			boolean bow = false;
 			for (ItemStack s : List.of(mc.player.getMainHandItem(), mc.player.getOffhandItem())) bow |= s.is(Items.BOW) || s.is(Items.CROSSBOW);
 			boolean elytra = mc.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA);
-			if (bow) out.add(new Object[] { Items.ARROW, count(mc, Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW) });
-			if (elytra || mc.player.getMainHandItem().is(Items.CROSSBOW)) out.add(new Object[] { Items.FIREWORK_ROCKET, count(mc, Items.FIREWORK_ROCKET) });
+			if (bow) out.add(new Object[] { firstOf(mc, Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW), count(mc, Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW) });
+			if (elytra || mc.player.getMainHandItem().is(Items.CROSSBOW)) out.add(new Object[] { firstOf(mc, Items.FIREWORK_ROCKET), count(mc, Items.FIREWORK_ROCKET) });
 			return out;
 		}
 
@@ -258,7 +268,8 @@ public final class ExtraModules {
 		private void drawList(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<Object[]> list) {
 			int cx = x + PAD;
 			for (Object[] o : list) {
-				Ui.icon(g, (Item) o[0], "#", cx, y + PAD);
+				if (o[0] instanceof ItemStack s) g.item(s, cx, y + PAD);
+				else Ui.icon(g, (Item) o[0], "#", cx, y + PAD);
 				int n = (int) o[1];
 				String s = String.valueOf(n);
 				// none left is red, a few is yellow

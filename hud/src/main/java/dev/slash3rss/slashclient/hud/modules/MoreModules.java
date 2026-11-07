@@ -338,8 +338,11 @@ public final class MoreModules {
 			new Group(c -> c.itemsPotions, Items.SPLASH_POTION, Items.LINGERING_POTION, Items.POTION),
 		};
 
-		/** An item shown, with how many the player carries. */
-		public record Count(Item icon, int n) {}
+		/**
+		 * An item shown, with how many the player carries: `stack` is one of them as carried (with a
+		 * server's model on it), null for the sample in the editor, where `icon` stands in.
+		 */
+		public record Count(Item icon, ItemStack stack, int n) {}
 
 		public String id() {
 			return "items";
@@ -359,10 +362,26 @@ public final class MoreModules {
 			return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
 		}
 
-		private static int carried(Inventory inv, Item item) {
+		/** The item and its look: a server's custom item (paper with a model of a coin) is not plain paper. */
+		private static String kind(ItemStack s) {
+			return key(s.getItem()) + Ui.look(s);
+		}
+
+		/** How many of this very kind (item and look) the inventory holds. */
+		private static int carried(Inventory inv, ItemStack like) {
+			String kind = kind(like);
 			int n = 0;
-			for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).is(item)) n += inv.getItem(i).getCount();
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				ItemStack s = inv.getItem(i);
+				if (s.is(like.getItem()) && kind(s).equals(kind)) n += s.getCount();
+			}
 			return n;
+		}
+
+		private static ItemStack one(ItemStack s) {
+			ItemStack c = s.copy();
+			c.setCount(1);
+			return c;
 		}
 
 		public static List<Count> counts(Minecraft mc) {
@@ -370,33 +389,41 @@ public final class MoreModules {
 			if (mc.player == null) return out;
 			HudConfig c = Modules.cfg;
 			Inventory inv = mc.player.getInventory();
-			java.util.Set<Item> counted = new java.util.HashSet<>();
+			// a group counts every arrow (pearl, totem…) whatever it looks like; its icon is the first one carried
+			java.util.Set<Item> grouped = new java.util.HashSet<>();
 			for (Group group : GROUPS) {
 				if (!group.on().test(c)) continue;
-				counted.addAll(List.of(group.items()));
+				grouped.addAll(List.of(group.items()));
 				int n = 0;
-				for (Item item : group.items()) n += carried(inv, item);
-				if (n > 0) out.add(new Count(group.items()[0], n));
+				ItemStack first = null;
+				for (Item item : group.items()) {
+					for (int i = 0; i < inv.getContainerSize(); i++) {
+						ItemStack s = inv.getItem(i);
+						if (!s.is(item)) continue;
+						n += s.getCount();
+						if (first == null) first = s;
+					}
+				}
+				if (n > 0) out.add(new Count(group.items()[0], one(first), n));
 			}
-			// the player's own items, each on its own
+			// the player's own items, each kind on its own: a server's items made of one item each keep their own picture
+			java.util.Set<String> counted = new java.util.HashSet<>();
 			for (String id : ownItems(c.itemsCustom)) {
 				for (int i = 0; i < inv.getContainerSize(); i++) {
 					ItemStack s = inv.getItem(i);
-					if (s.isEmpty() || counted.contains(s.getItem()) || !key(s.getItem()).equals(id)) continue;
-					counted.add(s.getItem());
-					out.add(new Count(s.getItem(), carried(inv, s.getItem())));
-					break;
+					if (s.isEmpty() || grouped.contains(s.getItem()) || !key(s.getItem()).equals(id) || !counted.add(kind(s))) continue;
+					out.add(new Count(s.getItem(), one(s), carried(inv, s)));
 				}
 			}
-			// what is in the hand, all of it in the inventory (blocks while building), unless counted above
+			// what is in the hand, all of that kind in the inventory (blocks while building), unless counted above
 			ItemStack hand = mc.player.getMainHandItem();
-			if (c.itemsHeld && !hand.isEmpty() && !counted.contains(hand.getItem())) out.add(new Count(hand.getItem(), carried(inv, hand.getItem())));
+			if (c.itemsHeld && !hand.isEmpty() && !grouped.contains(hand.getItem()) && !counted.contains(kind(hand))) out.add(new Count(hand.getItem(), one(hand), carried(inv, hand)));
 			return out;
 		}
 
 		private static List<Count> shown(Minecraft mc) {
 			List<Count> c = counts(mc);
-			return c.isEmpty() ? List.of(new Count(Items.ARROW, 64), new Count(Items.ENDER_PEARL, 16), new Count(Items.TOTEM_OF_UNDYING, 1)) : c;
+			return c.isEmpty() ? List.of(new Count(Items.ARROW, null, 64), new Count(Items.ENDER_PEARL, null, 16), new Count(Items.TOTEM_OF_UNDYING, null, 1)) : c;
 		}
 
 		@Override
@@ -418,7 +445,8 @@ public final class MoreModules {
 			int cx = x + PAD;
 			for (Count c : list) {
 				// in the main menu (editor before any world) items can't be made yet: an icon badge instead
-				Ui.icon(g, c.icon(), "#", cx, y + PAD);
+				if (c.stack() != null) g.item(c.stack(), cx, y + PAD);
+				else Ui.icon(g, c.icon(), "#", cx, y + PAD);
 				String n = String.valueOf(c.n());
 				text(g, mc, n, cx + 18, y + PAD + 4, Modules.textColor());
 				cx += 18 + mc.font.width(n) + 4;

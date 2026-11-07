@@ -511,6 +511,25 @@ public final class Ui {
 	}
 
 	/**
+	 * What makes a stack look unlike the game's own item: a server's resource pack model on it
+	 * (custom model data, or another item model). Empty for the game's own look; two stacks of one
+	 * item with different looks are different things to the player (a server's coin and plain paper).
+	 */
+	public static String look(net.minecraft.world.item.ItemStack stack) {
+		//#if MC >= 1.21.4
+		var model = stack.get(net.minecraft.core.component.DataComponents.ITEM_MODEL);
+		var data = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA);
+		boolean ownModel = java.util.Objects.equals(model, stack.getItem().components().get(net.minecraft.core.component.DataComponents.ITEM_MODEL));
+		return (ownModel ? "" : String.valueOf(model)) + (data == null ? "" : "#" + data);
+		//#elif MC >= 1.20.5
+		//$ var data = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA);
+		//$ return data == null ? "" : "#" + data.value();
+		//#else
+		//$ return stack.getTag() != null && stack.getTag().contains("CustomModelData") ? "#" + stack.getTag().getInt("CustomModelData") : "";
+		//#endif
+	}
+
+	/**
 	 * An item as an icon. Out of a world (the main menu) items cannot be made yet, so the item's
 	 * own picture stands in when the game has one (a block's side for a block), else `fallback`
 	 * on an accent badge: one of our icons by its name, or a short symbol.

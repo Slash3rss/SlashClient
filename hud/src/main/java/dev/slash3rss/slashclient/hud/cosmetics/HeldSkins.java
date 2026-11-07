@@ -112,15 +112,7 @@ public final class HeldSkins {
 
 	/** Whether the item looks as the game's own (no model of a server's resource pack on it). */
 	static boolean vanillaLook(ItemStack stack) {
-		//#if MC >= 1.21.4
-		if (stack.has(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA)) return false;
-		return java.util.Objects.equals(stack.get(net.minecraft.core.component.DataComponents.ITEM_MODEL),
-			stack.getItem().components().get(net.minecraft.core.component.DataComponents.ITEM_MODEL));
-		//#elif MC >= 1.20.5
-		//$ return !stack.has(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA);
-		//#else
-		//$ return stack.getTag() == null || !stack.getTag().contains("CustomModelData");
-		//#endif
+		return dev.slash3rss.slashclient.hud.ui.Ui.look(stack).isEmpty();
 	}
 
 	/** The item model of a skin (items/held/<id>.json, 1.21.4+). */
