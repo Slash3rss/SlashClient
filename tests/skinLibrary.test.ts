@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset } from '../src/main/skinLibrary';
+import { addPreset, listPresets, looksSlim, readPreset, rememberSkin, removePreset, updatePreset } from '../src/main/skinLibrary';
 import { setLang } from '../src/shared/i18n';
 
 function pngHeader(width: number, height: number): Buffer {
@@ -33,6 +33,14 @@ describe('skin library', () => {
     assert.deepEqual((await listPresets(dir)).map((p) => p.id), [a.id]);
     await assert.rejects(readPreset(b.id, dir), /Nie znaleziono/);
     await assert.rejects(readPreset('../../etc/passwd', dir), /Nie znaleziono/);
+  });
+  it('keeps a skin that was set, once', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skinlib-'));
+    const first = await rememberSkin(pngHeader(64, 64), { name: 'wojownik', variant: 'slim' }, dir);
+    // set again (or from the library itself): the same picture is not added twice
+    assert.equal((await rememberSkin(pngHeader(64, 64), { name: 'Steve', variant: 'classic' }, dir)).id, first.id);
+    await rememberSkin(pngHeader(64, 32), { name: 'stary', variant: 'classic' }, dir);
+    assert.deepEqual((await listPresets(dir)).map((p) => p.name).sort(), ['stary', 'wojownik']);
   });
   it('refuses files that are not skins', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skinlib-'));

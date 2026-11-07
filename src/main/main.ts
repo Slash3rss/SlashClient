@@ -114,7 +114,7 @@ import { applyPerfPreset, piSodiumChecks } from './perfPreset';
 import { isOtherArmBoard, partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { gnomeWindowEnv, installCommand } from './gnomeWindow';
 import { addDesktopShortcut, desktopDir, install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
-import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
+import { addPreset, listPresets, looksSlim, readPreset, rememberSkin, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -1806,6 +1806,13 @@ async function freshMsa(accountId: string, marginMs = 0): Promise<MicrosoftAccou
 
 /** The skin file the player picked, kept here until they confirm (the page only gets a preview). */
 let pendingSkin: Buffer | undefined;
+/** The picked file's name, for the library entry the skin gets once it is set. */
+let pendingSkinName: string | undefined;
+
+/** Puts a skin that was just set into the library (once); a full library folder never fails the change. */
+function rememberSet(png: Buffer, name: string, slim: boolean) {
+  rememberSkin(png, { name, variant: slim ? 'slim' : 'classic' }).catch(() => {});
+}
 
 handle('skin:capes', async (accountId: string) => ownedCapes((await freshMsa(accountId)).accessToken));
 handle('skin:pickFile', async () => {
@@ -1816,19 +1823,35 @@ handle('skin:pickFile', async () => {
   const png = await fsp.readFile(filePaths[0]);
   const preview = readSkinFile(png);
   pendingSkin = png;
+  pendingSkinName = path.basename(filePaths[0], path.extname(filePaths[0]));
   return preview;
+});
+/** A PNG dropped on the preview: checked like a picked file, with the arm model guessed from it. */
+handle('skin:dropFile', async (file: string) => {
+  if (typeof file !== 'string' || !/\.png$/i.test(file)) throw new Error(t('Skin musi być plikiem PNG.'));
+  if ((await fsp.stat(file)).size > 1024 * 1024) throw new Error(t('Ten plik jest za duży jak na skin.'));
+  const png = await fsp.readFile(file);
+  const preview = readSkinFile(png);
+  const image = nativeImage.createFromBuffer(png);
+  const { width, height } = image.getSize();
+  pendingSkin = png;
+  pendingSkinName = path.basename(file, path.extname(file));
+  return { preview, slim: looksSlim(image.toBitmap(), width, height) };
 });
 /** A skin made in the editor: checked like a picked file, then waits for "Save skin". */
 handle('skin:setPending', (dataUrl: string) => {
   const png = Buffer.from(dataUrl.split(',')[1] ?? '', 'base64');
   const preview = readSkinFile(png);
   pendingSkin = png;
+  pendingSkinName = undefined;
   return preview;
 });
 handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => {
   if (!pendingSkin) throw new Error(t('Najpierw wybierz plik skina.'));
   forgetSkins();
-  await uploadSkin((await freshMsa(accountId)).accessToken, pendingSkin, variant).finally(forgetSkins);
+  const account = await freshMsa(accountId);
+  await uploadSkin(account.accessToken, pendingSkin, variant).finally(forgetSkins);
+  rememberSet(pendingSkin, pendingSkinName ?? account.name, variant === 'slim');
   pendingSkin = undefined;
 });
 handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken).finally(forgetSkins));
@@ -1889,6 +1912,7 @@ handle('offlineSkin:fromPreset', async (id: string) => {
   const { preset, png } = await readPreset(id);
   const preview = readSkinFile(png);
   pendingSkin = png;
+  pendingSkinName = preset.name;
   return { preview, variant: preset.variant };
 });
 /**
@@ -1906,6 +1930,7 @@ handle('offlineSkin:save', async (accountId: string, slim: boolean) => {
     png = Buffer.from(await res.arrayBuffer());
   }
   const saved = await offlineSkinCall<OfflineSkin>('PUT', `/v1/me/offline-skins/${encodeURIComponent(account.name)}`, offlineSkinUpload(account.name, png, slim));
+  if (pendingSkin) rememberSet(pendingSkin, pendingSkinName ?? account.name, slim);
   pendingSkin = undefined;
   return saved;
 });

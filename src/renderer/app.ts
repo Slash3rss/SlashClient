@@ -4986,14 +4986,18 @@ $('#cape-apply').addEventListener('click', () => {
   });
 });
 
-$('#skin-change').addEventListener('click', async () => {
-  const preview: string | undefined = await guard(() => api.pickSkinFile());
-  if (!preview || !skinViewer) return;
+/** A picked (or dropped) skin on the model of a Microsoft account, waiting for "Zapisz skin". */
+async function showPendingSkin(preview: string) {
+  if (!skinViewer) return;
   await skinViewer.loadSkin(preview, { model: skinVariant === 'slim' ? 'slim' : 'default' });
   skinViewer.playerObject.userData.pending = preview;
   $('#skin-actions').classList.add('hidden');
   $('#skin-pending').classList.remove('hidden');
   $('#skin-note').textContent = t('Podgląd nowego skina. Zapisz, żeby ustawić go w grze.');
+}
+$('#skin-change').addEventListener('click', async () => {
+  const preview: string | undefined = await guard(() => api.pickSkinFile());
+  if (preview) await showPendingSkin(preview);
 });
 document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((b) =>
   b.addEventListener('click', () => {
@@ -5113,6 +5117,53 @@ function saveOfflineSkin(button: HTMLButtonElement) {
 }
 
 $('#offline-skin-signin').addEventListener('click', () => showView('friends'));
+
+/**
+ * A PNG dragged from the desktop onto the preview works like "Zmień skin…" (or "Wybierz plik PNG"
+ * for an offline account): shown on the model with the arm model guessed, set after "Zapisz skin".
+ */
+{
+  const stage = $('#skin-stage');
+  let depth = 0;
+  const overlay = (on: boolean) => $('#skin-drop').classList.toggle('hidden', !on);
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+  stage.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    overlay(true);
+  });
+  stage.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+  });
+  stage.addEventListener('dragleave', () => {
+    if (--depth <= 0) (depth = 0), overlay(false);
+  });
+  stage.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    depth = 0;
+    overlay(false);
+    const file = e.dataTransfer?.files[0];
+    const account = store.accounts.find((a: { id: string }) => a.id === skinAccountId);
+    if (!file || !account) return;
+    if (account.type === 'offline' && !offlineSkinUsable(account)) {
+      toast(offlineSkinsOffered() && !offlineSignedIn ? t('Zaloguj się do konta SlashClient, żeby ustawić skin.') : t('Na tym koncie nie da się teraz zmienić skina.'), true);
+      return;
+    }
+    const picked: { preview: string; slim: boolean } | undefined = await guard(() => api.dropSkinFile(file));
+    if (!picked || skinAccountId !== account.id) return;
+    const variant = picked.slim ? 'slim' : 'classic';
+    if (account.type === 'offline') {
+      await previewOfflineSkin(picked.preview, variant);
+      return;
+    }
+    skinVariant = variant;
+    document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === variant));
+    await showPendingSkin(picked.preview);
+  });
+}
 $('#offline-skin-file').addEventListener('click', async () => {
   const preview: string | undefined = await guard(() => api.pickSkinFile());
   if (preview) await previewOfflineSkin(preview, offlineVariant);

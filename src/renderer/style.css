@@ -727,6 +727,8 @@ button.busy { pointer-events: none; }
 .skin-stage.loading canvas { opacity: 0; }
 .skin-stage .spinner { position: absolute; left: 50%; top: 160px; margin: -14px 0 0 -14px; }
 .skin-stage:not(.loading) .spinner { display: none; }
+/* a skin file dragged over the preview */
+.skin-drop { position: absolute; inset: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; text-align: center; border: 2px dashed rgba(var(--accent-rgb), .7); border-radius: 12px; background: rgba(var(--panel-rgb), .92); font-weight: 600; pointer-events: none; z-index: 2; }
 /* under the preview, so the model never covers them */
 .skin-zoom { display: flex; justify-content: center; gap: 6px; margin-top: 6px; opacity: .7; transition: opacity .2s ease; }
 .skin-stage:hover .skin-zoom { opacity: 1; }

@@ -66,6 +66,18 @@ export async function addPreset(png: Buffer, fields: Pick<SkinPreset, 'name' | '
   return preset;
 }
 
+/**
+ * A skin the player just put on an account goes to the library by itself, so it is one click
+ * away later; the same picture already there is not added again (answers the one there).
+ */
+export async function rememberSkin(png: Buffer, fields: Pick<SkinPreset, 'name' | 'variant'>, dir = libraryDir()): Promise<SkinPreset> {
+  for (const preset of await readIndex(dir)) {
+    const same = await Promise.resolve().then(() => fs.readFile(pngPath(dir, preset.id))).then((b) => b.equals(png), () => false);
+    if (same) return preset;
+  }
+  return addPreset(png, fields, dir);
+}
+
 /** Changes the name, arm model or cape of a preset. */
 export async function updatePreset(id: string, changes: Partial<Pick<SkinPreset, 'name' | 'variant' | 'capeId'>>, dir = libraryDir()): Promise<SkinPreset> {
   const list = await readIndex(dir);

@@ -101,6 +101,7 @@ const api = {
   ownedCapes: (accountId: string) => invoke('skin:capes', accountId),
   pickSkinFile: () => invoke('skin:pickFile'),
   setPendingSkin: (dataUrl: string) => invoke('skin:setPending', dataUrl),
+  dropSkinFile: (file: File) => invoke('skin:dropFile', webUtils.getPathForFile(file)),
   uploadSkin: (accountId: string, variant: string) => invoke('skin:upload', accountId, variant),
   resetSkin: (accountId: string) => invoke('skin:reset', accountId),
   setCape: (accountId: string, capeId: string | null) => invoke('skin:setCape', accountId, capeId),
