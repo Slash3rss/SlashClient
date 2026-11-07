@@ -409,7 +409,7 @@ public final class BenchScene {
 		if (mc.getLevelSource().levelExists(WORLD)) {
 			stage = Stage.JOINING;
 			stageTicks = 0;
-			//#if MC >= 1.21.1
+			//#if MC >= 1.20.5
 			mc.createWorldOpenFlows().openWorld(WORLD, () -> {
 				stage = Stage.NONE;
 				mc.setScreenAndShow(new TitleScreen());

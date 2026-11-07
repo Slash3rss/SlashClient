@@ -108,6 +108,8 @@ public final class SprayRender {
 	private static void vertex(PoseStack.Pose p, VertexConsumer vc, float x, float y, float z, float u, float v, int alpha, int light, float nx, float ny, float nz) {
 		//#if MC >= 1.21
 		vc.addVertex(p, x, y, z).setColor(255, 255, 255, alpha).setUv(u, v).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(p, nx, ny, nz);
+		//#elif MC >= 1.20.5
+		//$ vc.vertex(p, x, y, z).color(255, 255, 255, alpha).uv(u, v).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(p, nx, ny, nz).endVertex();
 		//#else
 		//$ vc.vertex(p.pose(), x, y, z).color(255, 255, 255, alpha).uv(u, v).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(p.normal(), nx, ny, nz).endVertex();
 		//#endif

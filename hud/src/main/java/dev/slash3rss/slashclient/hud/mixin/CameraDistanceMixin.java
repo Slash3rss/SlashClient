@@ -15,7 +15,7 @@ abstract class CameraDistanceMixin {
 		return CameraDistance.distance(distance);
 	}
 	//#else
-	//$ // a double before 1.20.5
+	//$ // a double before 1.21
 	//$ private double slashclient$distance(double distance) {
 	//$ 	return CameraDistance.distance((float) distance);
 	//$ }

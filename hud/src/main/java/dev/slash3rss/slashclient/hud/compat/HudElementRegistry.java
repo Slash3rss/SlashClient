@@ -1,7 +1,7 @@
 //#if MC < 1.21.2
 //$ package dev.slash3rss.slashclient.hud.compat;
 //$
-//#if MC >= 1.20.2
+//#if MC >= 1.21
 //$ import net.minecraft.client.DeltaTracker;
 //#else
 //$ import dev.slash3rss.slashclient.hud.compat.HudElement.DeltaTracker;

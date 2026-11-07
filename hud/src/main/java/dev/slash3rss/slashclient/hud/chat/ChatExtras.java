@@ -247,7 +247,7 @@ public final class ChatExtras {
 		MutableComponent all = Component.empty();
 		runs(p, (style, part) -> all.append(Component.literal(part).withStyle(style)));
 		try {
-			//#if MC >= 1.21.1
+			//#if MC >= 1.20.5
 			Minecraft mc = Minecraft.getInstance();
 			com.mojang.serialization.DynamicOps<com.google.gson.JsonElement> ops = mc.level != null ? mc.level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE) : com.mojang.serialization.JsonOps.INSTANCE;
 			return net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(ops, all).getOrThrow().toString();

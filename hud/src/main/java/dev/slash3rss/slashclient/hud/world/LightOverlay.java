@@ -269,6 +269,8 @@ public final class LightOverlay {
 	private static void vertex(PoseStack.Pose p, VertexConsumer vc, float x, float y, float z, float u, float v, int r, int g, int b) {
 		//#if MC >= 1.21
 		vc.addVertex(p, x, y, z).setColor(r, g, b, 220).setUv(u, v).setOverlay(OverlayTexture.NO_OVERLAY).setLight(FULL_BRIGHT).setNormal(p, 0, 1, 0);
+		//#elif MC >= 1.20.5
+		//$ vc.vertex(p, x, y, z).color(r, g, b, 220).uv(u, v).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(FULL_BRIGHT).normal(p, 0, 1, 0).endVertex();
 		//#else
 		//$ vc.vertex(p.pose(), x, y, z).color(r, g, b, 220).uv(u, v).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(FULL_BRIGHT).normal(p.normal(), 0, 1, 0).endVertex();
 		//#endif

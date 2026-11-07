@@ -426,7 +426,11 @@ public final class SkinPreview {
 //$ 		pose.pushPose();
 //$ 		pose.scale(1f, 1f, -1f);
 //$ 		pose.translate(0f, -1.5f, 0f);
+//#if MC >= 1.21
 //$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY);
+//#else
+//$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+//#endif
 //$ 		if (propRoot != null) propRoot.render(pose, graphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.cosmetics.Props.texture(prop))), 15728880, OverlayTexture.NO_OVERLAY);
 //$ 		pose.popPose();
 //$ 		graphics.flush();

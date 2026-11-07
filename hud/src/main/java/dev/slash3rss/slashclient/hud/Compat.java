@@ -112,7 +112,7 @@ public final class Compat {
 		return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
 		//#elif MC >= 26.1
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options, false);
-		//#elif MC >= 1.20.2
+		//#elif MC >= 1.21
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
 		//#else
 		//$ return new net.minecraft.client.gui.screens.OptionsScreen(parent, mc.options);

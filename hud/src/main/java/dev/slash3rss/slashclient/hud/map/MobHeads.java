@@ -161,7 +161,7 @@ public final class MobHeads {
 		put(tex(32, 32).box(0, 0, -2.5f, -5, -2.5f, 5, 5, 5).done(), "allay");
 		// an armadillo's small snout with its ears standing up behind it
 		put(tex(64, 64).box(43, 15, -1.5f, -1, -1, 3, 5, 2).box(43, 10, -3.5f, -4, -0.6f, 2, 5, 0).box(47, 10, 1.5f, -4, -0.6f, 2, 5, 0).done(), "armadillo");
-		//#if MC >= 1.21.1
+		//#if MC >= 1.20.3
 		// the bat of 1.20.3 has a smaller head with long ears
 		put(tex(32, 32).box(0, 7, -2, -3, -1, 4, 3, 2).box(1, 15, -4, -6, 0, 3, 5, 0).box(8, 15, 1, -6, 0, 3, 5, 0).done(), "bat");
 		//#else

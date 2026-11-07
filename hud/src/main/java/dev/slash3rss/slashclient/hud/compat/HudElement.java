@@ -1,7 +1,7 @@
 //#if MC < 1.21.6
 //$ package dev.slash3rss.slashclient.hud.compat;
 //$
-//#if MC >= 1.20.2
+//#if MC >= 1.21
 //$ import net.minecraft.client.DeltaTracker;
 //#else
 //#endif
@@ -11,9 +11,9 @@
 //$ @FunctionalInterface
 //$ public interface HudElement {
 //$ 	void render(GuiGraphics g, DeltaTracker delta);
-//#if MC < 1.20.2
+//#if MC < 1.21
 //$
-//$ 	/** 1.20.1 has no DeltaTracker: the HUD parts take nothing from it, so it carries nothing. */
+//$ 	/** Before 1.21 there is no DeltaTracker: the HUD parts take nothing from it, so it carries nothing. */
 //$ 	final class DeltaTracker {
 //$ 		private DeltaTracker() {}
 //$ 	}

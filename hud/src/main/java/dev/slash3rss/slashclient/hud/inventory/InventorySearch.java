@@ -239,6 +239,11 @@ public final class InventorySearch {
 				Component name = net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), e.getIntValue());
 				out.append(name.getString()).append('\n').append(bothLanguages(name));
 			}
+			//#elif MC >= 1.20.5
+			//$ for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantmentsForCrafting(stack).entrySet()) {
+			//$ 	Component name = e.getKey().value().getFullname(e.getIntValue());
+			//$ 	out.append(name.getString()).append('\n').append(bothLanguages(name));
+			//$ }
 			//#else
 			//$ for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantments(stack).entrySet()) {
 			//$ 	Component name = e.getKey().getFullname(e.getValue());

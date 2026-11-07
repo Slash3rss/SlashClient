@@ -173,12 +173,12 @@ public final class SoundFiles {
 
 	/** Through the game's own reader of its sounds. */
 	private static SoundBuffer ogg(InputStream in) throws IOException {
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		try (var stream = new net.minecraft.client.sounds.JOrbisAudioStream(in)) {
 			return cut(stream.readAll(), stream.getFormat());
 		}
 		//#endif
-		//#if MC < 1.21
+		//#if MC < 1.20.5
 		//$ try (var stream = new com.mojang.blaze3d.audio.OggAudioStream(in)) {
 		//$ 	return cut(stream.readAll(), stream.getFormat());
 		//$ }

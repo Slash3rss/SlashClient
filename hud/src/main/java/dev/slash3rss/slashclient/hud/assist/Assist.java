@@ -658,7 +658,7 @@ public final class Assist {
 	public static double damage(ItemStack stack) {
 		if (stack.isEmpty()) return 0;
 		double[] sum = { 0 };
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		stack.forEachModifier(net.minecraft.world.entity.EquipmentSlot.MAINHAND, (attribute, modifier) -> {
 			if (attribute.value() == net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE.value()
 				&& modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE) sum[0] += modifier.amount();

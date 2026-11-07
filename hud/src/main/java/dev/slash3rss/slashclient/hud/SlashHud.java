@@ -352,7 +352,7 @@ public class SlashHud implements ClientModInitializer {
 		// before the game reads the keys of this tick: the drop key's presses on a valuable item
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		// the exhaustion on a server, counted in the game (the food bar's strip): a block broken costs a little
-		//#if MC >= 1.21.1
+		//#if MC >= 1.20.5
 		net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> dev.slash3rss.slashclient.hud.gamehud.Exhaustion.broke());
 		//#endif
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {

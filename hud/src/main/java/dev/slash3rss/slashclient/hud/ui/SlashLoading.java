@@ -225,7 +225,7 @@ public final class SlashLoading {
 		}
 		//#if MC < 1.21.9
 		//$ if (c == net.minecraft.client.gui.screens.ReceivingLevelScreen.class) {
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		//$ 	if (((dev.slash3rss.slashclient.hud.mixin.ReceivingLevelScreenAccessor) s).slashclient$reason() != net.minecraft.client.gui.screens.ReceivingLevelScreen.Reason.OTHER) return null;
 		//#endif
 		//$ 	return new State("terrain", Ui.tr("slashclient-hud.loading.terrain"), -1, null);

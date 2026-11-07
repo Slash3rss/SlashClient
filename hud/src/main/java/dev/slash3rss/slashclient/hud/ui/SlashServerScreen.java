@@ -131,7 +131,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	private enum Status { PINGING, UNREACHABLE, INCOMPATIBLE, ONLINE }
 
 	private static Status status(ServerData d) {
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		return switch (d.state()) {
 			case UNREACHABLE -> Status.UNREACHABLE;
 			case INCOMPATIBLE -> Status.INCOMPATIBLE;
@@ -1004,7 +1004,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 
 	/** Made-up answers for the test servers ("*.test") and the partners, as if they had been pinged. */
 	private static void sample(ServerData d) {
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		if (d.state() != ServerData.State.INITIAL) return;
 		//#else
 		//$ if (d.pinged) return;
@@ -1020,20 +1020,20 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		d.status = Component.literal(d.players.online() + "/" + d.players.max()).withStyle(ChatFormatting.GRAY);
 		d.playerList = List.of(Component.literal("Slash3rss"), Component.literal("Steve"), Component.literal("Alex"));
 		d.version = Component.literal("1.21");
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		ServerData.State state = ServerData.State.SUCCESSFUL;
 		//#endif
 		if (ip.startsWith("old.")) {
 			d.version = Component.literal("1.8.9");
 			d.protocol = 47;
-			//#if MC >= 1.21
+			//#if MC >= 1.20.5
 			state = ServerData.State.INCOMPATIBLE;
 			//#endif
 		}
 		if (ip.startsWith("text.")) {
 			d.version = Component.literal("NOWY SEZON w sobotę");
 			d.protocol = 9999;
-			//#if MC >= 1.21
+			//#if MC >= 1.20.5
 			state = ServerData.State.INCOMPATIBLE;
 			//#endif
 		}
@@ -1042,12 +1042,12 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			d.ping = -1;
 			d.players = null;
 			d.status = Component.empty();
-			//#if MC >= 1.21
+			//#if MC >= 1.20.5
 			state = ServerData.State.UNREACHABLE;
 			//#endif
 		}
 		if (ip.startsWith("long.")) d.motd = Component.literal("Bardzo długi opis serwera, który nie mieści się w jednej linijce i musi przejść do drugiej, a nawet trzeciej").withStyle(ChatFormatting.AQUA);
-		//#if MC >= 1.21
+		//#if MC >= 1.20.5
 		d.setState(state);
 		//#endif
 		d.setIconBytes(sampleIcon(seed));

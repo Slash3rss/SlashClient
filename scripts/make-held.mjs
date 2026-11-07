@@ -639,6 +639,8 @@ for (const [id, make] of Object.entries(WEAPONS)) {
   writeFileSync(path.join(textures, `${id}.png`), spritePng(s));
   writeFileSync(path.join(figure, `${id}.png`), figurePng(s));
   write(models, `${id}.json`, json({ parent: 'minecraft:item/handheld', textures: { layer0: tex(id) } }));
+  // before 1.21.4 the game is asked for models/item/held/legacy/<id> (the sword's own model as it is)
+  write(path.join(models, 'legacy'), `${id}.json`, json({ parent: model(id) }));
   write(items, `${id}.json`, json({ model: { type: 'minecraft:model', model: model(id) } }));
   list.push({ id, kind: 'sword', mask: mask(s) });
 }

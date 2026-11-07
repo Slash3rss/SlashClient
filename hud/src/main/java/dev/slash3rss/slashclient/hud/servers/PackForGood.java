@@ -22,7 +22,7 @@ public final class PackForGood {
 	private static final Map<Screen, boolean[]> ticked = Collections.synchronizedMap(new WeakHashMap<>());
 
 	public static void attach(Minecraft mc, Screen screen) {
-		//#if MC >= 1.21
+		//#if MC >= 1.20.3
 		if (!(screen instanceof ConfirmScreen confirm) || !screen.getClass().getName().contains("PackConfirmScreen") || !KeptPacks.asking()) return;
 		boolean[] on = ticked.get(screen);
 		if (on == null) {

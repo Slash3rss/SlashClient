@@ -25,7 +25,7 @@ public final class BlockWindows {
 	/** Whether this window is drawn as its block (its labels are then white, on the block's colours). */
 	public static boolean drawn(Object screen) {
 		if (!on()) return false;
-		//#if MC >= 1.21
+		//#if MC >= 1.20.3
 		if (screen instanceof net.minecraft.client.gui.screens.inventory.CrafterScreen) return true;
 		//#endif
 		//#if MC >= 1.21.11

@@ -2,12 +2,18 @@ package dev.slash3rss.slashclient.hud.mixin;
 
 import net.minecraft.client.gui.Gui;
 import org.spongepowered.asm.mixin.Mixin;
-//#if MC < 1.21.2 && MC >= 1.20.2
+//#if MC < 1.21.2 && MC >= 1.21
 //$ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 //$ import dev.slash3rss.slashclient.hud.compat.HudElementRegistry;
 //$ import dev.slash3rss.slashclient.hud.compat.VanillaHudElements;
 //$ import net.minecraft.client.DeltaTracker;
+//$ import net.minecraft.client.gui.GuiGraphics;
+//#elif MC >= 1.20.5 && MC < 1.21
+//$ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+//$ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+//$ import dev.slash3rss.slashclient.hud.compat.HudElementRegistry;
+//$ import dev.slash3rss.slashclient.hud.compat.VanillaHudElements;
 //$ import net.minecraft.client.gui.GuiGraphics;
 //#elif MC < 1.20.2
 //$ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -30,7 +36,7 @@ import org.spongepowered.asm.mixin.Mixin;
  */
 @Mixin(Gui.class)
 abstract class LegacyHudMixin {
-	//#if MC < 1.21.2 && MC >= 1.20.2
+	//#if MC < 1.21.2 && MC >= 1.21
 	//$ @WrapMethod(method = "renderCrosshair")
 	//$ private void slashclient$crosshair(GuiGraphics g, DeltaTracker delta, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.CROSSHAIR, g, delta, (gg, d) -> original.call(gg, d));
@@ -64,6 +70,42 @@ abstract class LegacyHudMixin {
 	//$ @WrapMethod(method = "renderOverlayMessage")
 	//$ private void slashclient$actionBar(GuiGraphics g, DeltaTracker delta, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.OVERLAY_MESSAGE, g, delta, (gg, d) -> original.call(gg, d));
+	//$ }
+	//#elif MC >= 1.20.5 && MC < 1.21
+	//$ // 1.20.5 has the same parts, drawn with the frame's partial tick instead of a DeltaTracker
+	//$ @WrapMethod(method = "renderCrosshair")
+	//$ private void slashclient$crosshair(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.CROSSHAIR, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderEffects")
+	//$ private void slashclient$effects(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.STATUS_EFFECTS, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderScoreboardSidebar")
+	//$ private void slashclient$scoreboard(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.SCOREBOARD, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderTitle")
+	//$ private void slashclient$title(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.TITLE_AND_SUBTITLE, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderChat")
+	//$ private void slashclient$chat(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.CHAT, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderTabList")
+	//$ private void slashclient$tabList(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.PLAYER_LIST, g, null, (gg, d) -> original.call(gg, partialTick));
+	//$ }
+	//$
+	//$ @WrapMethod(method = "renderOverlayMessage")
+	//$ private void slashclient$actionBar(GuiGraphics g, float partialTick, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.OVERLAY_MESSAGE, g, null, (gg, d) -> original.call(gg, partialTick));
 	//$ }
 	//#elif MC < 1.20.2
 	//$ // 1.20.1 draws most of the HUD in Gui.render itself: the parts are wrapped where it calls them
