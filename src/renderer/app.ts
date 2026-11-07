@@ -29,6 +29,7 @@ import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
 import { lineLevel } from './logLevel';
+import { openPlayerProfile } from './playerProfile';
 import { applyRememberedTheme, applyTheme, CUSTOM, THEMES, themeOf, type Theme } from './themes';
 import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, offlineSkinsOffered, onFeatures } from './features';
 import { initSeason } from './season';
@@ -1562,6 +1563,8 @@ api.on('game:exit', ({ code, signal, byUser, profileId }: { code: number | null;
   logTo(profileId, `[SlashClient] ${reason}.`);
   toast(t('{0}. Sprawdź logi.', reason), true);
 });
+// a link to a player's profile clicked in the launcher (main.ts): the profile in a window here
+api.on('profile:open', (handle: string) => void openPlayerProfile({ api, toast, errorText, slots: SLOTS }, handle));
 api.on('store', (s: PublicStore) => {
   store = s;
   render();
@@ -2085,6 +2088,7 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   },
   hasMinecraft: () => store.accounts.some((a) => a.type === 'msa'),
   showAchievements: (id, name) => achievements.showFriend(id, name),
+  showProfile: (handle) => void openPlayerProfile({ api, toast, errorText, slots: SLOTS }, handle),
   gameRunning: () => (store.runningProfiles ?? []).length > 0,
   // a friend's server is not on the list: the join window gets what we know about it
   inviteTarget: async () => {

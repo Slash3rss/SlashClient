@@ -70,6 +70,8 @@ export interface FriendsDeps {
   hasMinecraft?: () => boolean;
   /** Opens a friend's achievements. */
   showAchievements?: (id: string, name: string) => void;
+  /** A player's public profile in the launcher (playerProfile.ts); without it the site opens in the browser. */
+  showProfile?: (handle: string) => void;
   /** A game is running: "started playing" stays in the game's own toast instead of a system notification. */
   gameRunning?: () => boolean;
 }
@@ -817,7 +819,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   /** The player's public profile on the site: open it, copy its link, choose who sees what. */
   function profileRow(me: Me) {
     const own = el('button', { type: 'button', className: 'fr-chip-btn feature-profiles' }, icon('fa-id-card'), t(' Mój profil'));
-    own.addEventListener('click', () => profileLink(deps, me.handle, 'open'));
+    own.addEventListener('click', () => (deps.showProfile ? deps.showProfile(me.handle) : profileLink(deps, me.handle, 'open')));
     const copy = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Kopiuj link do profilu') }, icon('fa-copy'));
     copy.addEventListener('click', () => profileLink(deps, me.handle, 'copy'));
     const privacy = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-user-lock'), t(' Prywatność profilu'));
@@ -1352,7 +1354,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     invite.addEventListener('click', () => openInvite(f));
     extra(invite, t('Zaproś do gry'), 'fa-gamepad');
     const profile = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Pokaż profil') }, icon('fa-id-card'));
-    profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
+    profile.addEventListener('click', () => (deps.showProfile ? deps.showProfile(f.handle) : profileLink(deps, f.handle, 'open')));
     extra(profile, t('Pokaż profil'), 'fa-id-card');
     const mediaBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Multimedia') }, icon('fa-photo-film'));
     mediaBtn.addEventListener('click', () => openMedia(f));

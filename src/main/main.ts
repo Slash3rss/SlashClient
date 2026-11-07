@@ -12,6 +12,7 @@ import { libraryIcons, removeFromLibrary } from './iconLibrary';
 import { pullShared, pushShared, sharedDirFor } from './sync';
 import { createLineBatcher } from './gamelog';
 import { createConsoleWindows } from './consoleWindow';
+import { profileLinkHandle } from '../shared/profileLinks';
 import { openLoopback } from './oauthLoopback';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
@@ -331,7 +332,10 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   // Open external links in the system browser instead of inside the launcher.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) shell.openExternal(url);
+    // a link to a SlashClient player's profile opens it in the launcher (playerProfile.ts)
+    const profileHandle = profileLinkHandle(url, store.settings.socialUrl);
+    if (profileHandle) send('profile:open', profileHandle);
+    else if (url.startsWith('https://')) shell.openExternal(url);
     return { action: 'deny' };
   });
   // the window only ever shows the launcher's own page: a page from elsewhere would get its API (preload)
@@ -2579,6 +2583,11 @@ handle('social:me', (maxAgeMs?: number) => socialCall(() => social.me(typeof max
 /** The page saw the network come back: no waiting for the next reconnect try. */
 handle('social:reconnect', () => social.reconnectNow());
 
+/** A player's public profile as the server lets this player see it (playerProfile.ts; nicks may have dots, unlike other paths). */
+handle('social:profile', (profileHandle: string) => socialCall(async () => {
+  if (typeof profileHandle !== 'string' || !/^[\w.]{1,40}$/.test(profileHandle)) throw new SocialError('bad_request');
+  return social.call('GET', `/v1/profiles/${encodeURIComponent(profileHandle)}`);
+}));
 /** A player's public profile on the site (/u/<handle>): its address, opened in the browser when asked. */
 handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
   if (typeof profileHandle !== 'string' || !/^[\w.]{1,40}$/.test(profileHandle)) throw new Error('social:bad_request');
@@ -2586,6 +2595,16 @@ handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
   if (open && /^https?:\/\//.test(url)) await shell.openExternal(url);
   return url;
 });
+
+/**
+ * The pictures of a public profile shown in the launcher (playerProfile.ts): the face, the skin and the
+ * clan's logo, only from the addresses the profile itself names, as data: addresses for the page.
+ */
+const PROFILE_ASSET = /^\/v1\/(?:profiles\/[\w.%-]{1,80}\/(?:head|skin)|skin\/[0-9a-f-]{32,36}|clans\/[\w-]{1,64}\/logo\.png(?:\?v=\d{1,20})?)$/;
+handle('social:profileAsset', (assetPath: string) => socialCall(async () => {
+  if (typeof assetPath !== 'string' || !PROFILE_ASSET.test(assetPath)) throw new SocialError('bad_request');
+  return `data:image/png;base64,${(await social.download(assetPath)).toString('base64')}`;
+}));
 
 // ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
 

@@ -1,0 +1,49 @@
+/* a player's public profile in a window of the launcher (playerProfile.ts) */
+.pv-modal { width: min(760px, calc(100vw - 48px)); max-height: calc(100vh - 72px); overflow-y: auto; }
+.pv-profile { display: flex; flex-direction: column; gap: 14px; }
+.pv-head { display: flex; gap: 18px; align-items: center; }
+.pv-figure { flex-shrink: 0; width: 200px; height: 270px; border-radius: 14px; background: radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), .16), transparent 70%); }
+.pv-figure canvas { display: block; }
+.pv-who { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pv-name { display: flex; align-items: center; gap: 12px; }
+.pv-name h2 { margin: 0; font-size: 24px; line-height: 1.2; overflow-wrap: anywhere; }
+.pv-avatar { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; object-fit: cover; image-rendering: pixelated; background: var(--bg-secondary); }
+.pv-letter { display: grid; place-items: center; font-weight: 700; font-size: 20px; color: var(--accent-light); }
+.pv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-chip {
+  --chip: var(--accent-light);
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 13px;
+  color: var(--chip); border: 1px solid color-mix(in srgb, var(--chip) 40%, transparent); background: color-mix(in srgb, var(--chip) 12%, transparent);
+}
+.pv-logo { width: 16px; height: 16px; border-radius: 4px; image-rendering: pixelated; }
+.pv-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.pv-online { color: #22c55e; }
+.pv-online i { font-size: 9px; vertical-align: 2px; }
+.pv-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.pv-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; text-align: center;
+  border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+}
+.pv-stat i { color: var(--accent-light); }
+.pv-stat b { font-size: 18px; }
+.pv-stat span { font-size: 12px; }
+.pv-section h3 { margin: 4px 0 8px; font-size: 15px; }
+.pv-section h3 i { color: var(--accent-light); }
+.pv-achs, .pv-cosmetics, .pv-servers { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.pv-ach, .pv-cosmetic, .pv-server {
+  display: flex; gap: 10px; align-items: center; padding: 8px 10px; min-width: 0;
+  border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass-bg);
+}
+.pv-server { flex-direction: column; align-items: flex-start; gap: 0; }
+.pv-ach-icon { width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 8px; background: var(--glass-bg-hover); color: var(--text-muted); }
+.pv-ach.done .pv-ach-icon { color: var(--gold); background: rgba(250, 204, 21, .12); }
+.pv-ach:not(.done) { opacity: .7; }
+.pv-ach-text, .pv-cosmetic > div { display: flex; flex-direction: column; min-width: 0; }
+.pv-ach-text b, .pv-ach-text small, .pv-cosmetic b, .pv-server b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-cosmetic > i { width: 20px; text-align: center; color: var(--accent-light); }
+.pv-progress { height: 4px; margin-top: 4px; border-radius: 99px; background: var(--glass-bg-hover); overflow: hidden; }
+.pv-progress i { display: block; height: 100%; background: var(--accent); }
+.pv-more { margin-top: 8px; }
+@media (max-width: 640px) {
+  .pv-head { flex-direction: column; }
+}

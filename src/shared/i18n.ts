@@ -36,6 +36,7 @@ import { PI_EN } from './i18nPi';
 import { SETS_EN } from './i18nSets';
 import { OFFLINE_SKINS_EN } from './i18nOfflineSkins';
 import { CONSOLE_WINDOW_EN } from './i18nConsoleWindow';
+import { PLAYER_PROFILE_EN } from './i18nPlayerProfile';
 import { THEMES_EN } from './i18nThemes';
 
 export type Lang = 'pl' | 'en';
@@ -57,6 +58,7 @@ const EN: Record<string, string> = {
   // an offline account's skin for SlashClient players (own file)
   ...OFFLINE_SKINS_EN,
   ...CONSOLE_WINDOW_EN,
+  ...PLAYER_PROFILE_EN,
   ...THEMES_EN,
   // inviting friends (own file)
   ...REFERRALS_EN,
