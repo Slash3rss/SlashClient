@@ -29,7 +29,7 @@ import java.util.Set;
 
 /**
  * One trip through a SkyUp dungeon, from its boss bar showing to the player leaving: how long it took, the
- * highest level, the rooms walked through and cleared, the spawners destroyed, the loot opened and the ores
+ * highest level, the rooms walked through and cleared, the loot opened and the ores
  * mined, the mobs killed and what the player got. When it is over, a card with all that slides down under the
  * boss bars, and the trip is kept in a list (the dungeon map's settings, "Historia dungeonów").
  *
@@ -44,7 +44,7 @@ public final class DungeonRun {
 	/** An item got: its id, its look (a server's own model, Ui.look), the name it had and how many. */
 	public record Gain(String id, String look, String name, int count) {}
 
-	/** One trip, as shown and kept. */
+	/** One trip, as shown and kept (`spawners` is no more counted: SkyUp's spawners cannot be broken; kept for the list's file). */
 	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains) {}
 
 	/** Shorter than this (a hint that came, a peek in): no card, nothing kept. */
@@ -138,10 +138,6 @@ public final class DungeonRun {
 	/** A room emptied of its mobs, by its middle (one room counts once, however often it fills again). */
 	static void cleared(int x, int z) {
 		if (running) cleared.add(((long) (x >> 2) << 32) ^ (z >> 2 & 0xFFFFFFFFL));
-	}
-
-	static void spawnerDestroyed() {
-		if (running) spawners++;
 	}
 
 	/** A chest, barrel or pot opened or broken, or an ore mined, for the first time. */
@@ -304,7 +300,6 @@ public final class DungeonRun {
 		List<Map.Entry<Item, Component>> out = new ArrayList<>();
 		out.add(Map.entry(Items.CLOCK, Ui.tr("slashclient-hud.dungeon.sum.time", time(s.ms()))));
 		out.add(Map.entry(Items.MOSSY_STONE_BRICKS, Ui.tr("slashclient-hud.dungeon.sum.rooms", s.rooms(), s.cleared())));
-		out.add(Map.entry(Items.SPAWNER, Ui.tr("slashclient-hud.dungeon.sum.spawners", s.spawners())));
 		out.add(Map.entry(Items.CHEST, Ui.tr("slashclient-hud.dungeon.sum.loot", s.loot())));
 		out.add(Map.entry(Items.DEEPSLATE_IRON_ORE, Ui.tr("slashclient-hud.dungeon.sum.ores", s.ores())));
 		out.add(Map.entry(Items.IRON_SWORD, Ui.tr("slashclient-hud.dungeon.sum.kills", s.kills())));

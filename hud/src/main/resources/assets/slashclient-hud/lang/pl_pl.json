@@ -1376,7 +1376,6 @@
 	"slashclient-hud.dungeon.sum.left": "Lista w ustawieniach mapy dungeonu",
 	"slashclient-hud.dungeon.sum.time": "Czas: %s",
 	"slashclient-hud.dungeon.sum.rooms": "Pokoje: %s (wyczyszczone %s)",
-	"slashclient-hud.dungeon.sum.spawners": "Spawnery zniszczone: %s",
 	"slashclient-hud.dungeon.sum.loot": "Otwarte łupy: %s",
 	"slashclient-hud.dungeon.sum.ores": "Wykopane rudy: %s",
 	"slashclient-hud.dungeon.sum.kills": "Zabite moby: %s",

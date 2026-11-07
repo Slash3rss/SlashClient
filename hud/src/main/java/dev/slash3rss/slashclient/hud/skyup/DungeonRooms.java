@@ -483,11 +483,7 @@ public final class DungeonRooms {
 		}
 		rememberMobs(mc, px, pz);
 		// spawners near the player that are gone now were destroyed
-		spawners.values().removeIf(s -> {
-			boolean gone = Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1]));
-			if (gone) DungeonRun.spawnerDestroyed();
-			return gone;
-		});
+		spawners.values().removeIf(s -> Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1])));
 		spawners.putAll(seenSpawners);
 		// spawners as entities (an armour stand's head, a hologram) and as blocks; one room counts each place once
 		java.util.Set<Long> counted = new java.util.HashSet<>();

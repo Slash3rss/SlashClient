@@ -1376,7 +1376,6 @@
 	"slashclient-hud.dungeon.sum.left": "The list is in the dungeon map's settings",
 	"slashclient-hud.dungeon.sum.time": "Time: %s",
 	"slashclient-hud.dungeon.sum.rooms": "Rooms: %s (%s cleared)",
-	"slashclient-hud.dungeon.sum.spawners": "Spawners broken: %s",
 	"slashclient-hud.dungeon.sum.loot": "Loot opened: %s",
 	"slashclient-hud.dungeon.sum.ores": "Ores mined: %s",
 	"slashclient-hud.dungeon.sum.kills": "Mobs killed: %s",
