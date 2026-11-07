@@ -2029,7 +2029,7 @@ function openThemes() {
   if (themeGrid?.isConnected) return;
   themeGrid = el('div', { className: 'theme-grid' });
   renderThemes();
-  modalWindow(t('Motyw'), [themeGrid, el('span', { className: 'hint', textContent: t('zmienia się od razu; w swoje dni wygląd sezonowy przykrywa kolory motywu') })], [], () => (themeGrid = undefined), 'theme-modal');
+  modalWindow(t('Motyw'), [themeGrid, el('span', { className: 'hint', textContent: t('Motyw zmienia się od razu. W Halloween i w okolicy 11 listopada launcher ma swój świąteczny wygląd – możesz go wyłączyć w Ustawieniach.') })], [], () => (themeGrid = undefined), 'theme-modal');
 }
 $('#top-theme').addEventListener('click', openThemes);
 $('#settings-theme').addEventListener('click', openThemes);
