@@ -332,6 +332,8 @@ select option { background: var(--bg-secondary); }
 input[type=range] { accent-color: var(--accent); width: 100%; }
 input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .check { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px; }
+/* a long hint next to a checkbox wraps instead of squeezing the box */
+.check > input { flex-shrink: 0; }
 .chip-toggle { flex-shrink: 0; cursor: pointer; }
 .chip-toggle input { display: none; }
 .chip-toggle span {

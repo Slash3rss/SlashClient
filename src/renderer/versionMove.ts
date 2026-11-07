@@ -40,7 +40,7 @@ export function initVersionMove(d: MoveDeps) {
       case 'ready': return { text: `${i.currentVersion} → ${i.targetVersion}${i.prerelease ? ` (${t('wersja testowa')})` : ''}`, fit: true };
       case 'same': return { text: t('już działa na {0}', to), fit: true };
       case 'missing': return { text: t('brak wersji dla {0}: zostanie wyłączony', to), fit: false };
-      default: return { text: t('nie ma go na Modrinth: nie da się sprawdzić'), fit: false };
+      default: return { text: t('nie ma go na Modrinth ani CurseForge: nie da się sprawdzić'), fit: false };
     }
   }
 
@@ -56,7 +56,7 @@ export function initVersionMove(d: MoveDeps) {
     for (const i of p.items) counts[i.status]++;
     const parts = [
       counts.ready ? t('do przeniesienia: {0}', counts.ready) : '', counts.same ? t('już pasują: {0}', counts.same) : '',
-      counts.missing ? t('czekają na nową wersję: {0}', counts.missing) : '', counts.unknown ? t('spoza Modrinth: {0}', counts.unknown) : '',
+      counts.missing ? t('czekają na nową wersję: {0}', counts.missing) : '', counts.unknown ? t('spoza Modrinth i CurseForge: {0}', counts.unknown) : '',
     ];
     $('#move-summary').textContent = p.items.length
       ? `Minecraft ${p.from} → ${p.to}: ${parts.filter(Boolean).join(' · ')}`
@@ -79,7 +79,7 @@ export function initVersionMove(d: MoveDeps) {
     $('#move-pending-title').replaceChildren(el('i', { className: 'fa-solid fa-hourglass-half' }), ' ',
       t('Po przeniesieniu na {0} czekają (wyłączone): {1}.', report.to, report.pending.length) + deps);
     $('#move-pending-list').replaceChildren(...report.pending.map((p) => row(p.title, p.iconUrl, p.filename,
-      p.status === 'missing' ? t('brak wersji') : t('spoza Modrinth'), false, true, p.status === 'missing')));
+      p.status === 'missing' ? t('brak wersji') : t('spoza Modrinth i CurseForge'), false, true, p.status === 'missing')));
   }
 
   /** Fills the card; the same profile on the same version again only when `force` (the store is redrawn often). */
@@ -101,7 +101,7 @@ export function initVersionMove(d: MoveDeps) {
     $<HTMLButtonElement>('#move-check').disabled = fromPack || !targets.length;
     $('#move-intro').textContent = fromPack
       ? t('Ten profil pochodzi z modpacka: zmień wersję modpacka (wyżej), a on sam przeniesie się na inną wersję Minecrafta.')
-      : t('SlashClient sprawdzi na Modrinth, które mody mają wersję dla wybranego Minecrafta, i przeniesie profil jednym kliknięciem (najpierw zrobi migawkę). Mody, które nie są jeszcze gotowe, zostaną wyłączone i będą widoczne na liście.');
+      : t('SlashClient sprawdzi na Modrinth i CurseForge, które mody mają wersję dla wybranego Minecrafta, i przeniesie profil jednym kliknięciem (najpierw zrobi migawkę profilu i kopie zapasowe światów). Mody, które nie są jeszcze gotowe, zostaną wyłączone i będą widoczne na liście.');
     const report: MoveReport | undefined = await guard(() => api.moveReport(profile.id));
     if (shown === profile.id) renderReport(report);
   }
@@ -129,12 +129,13 @@ export function initVersionMove(d: MoveDeps) {
       title: t('Przenieść profil na Minecraft {0}?', p.to),
       body: [
         el('p', { className: 'muted', textContent: t('Najpierw powstanie migawka profilu: z karty „Migawki profilu” wrócisz do wersji {0} jednym kliknięciem.', p.from) }),
+        ...($<HTMLInputElement>('#move-backup-worlds').checked ? [el('p', { className: 'muted', textContent: t('Każdy świat dostanie kopię zapasową (zakładka Światy → Kopie zapasowe): świat otwarty na nowszej wersji może się już nie otworzyć na starszej.') })] : []),
         ...(waiting.length ? [el('p', { className: 'share-warn', textContent: t('Te mody zostaną wyłączone, bo nie są jeszcze gotowe: {0}.', waiting.map((i) => i.title).join(', ')) })] : []),
       ],
       ok: t('Przenieś'), okIcon: 'fa-right-left',
     });
     if (!ok) return;
-    const report: MoveReport | undefined = await d.busy(button, () => guard(() => api.moveApply(id, p.to, { disableUnknown: $<HTMLInputElement>('#move-disable-unknown').checked })), t('Przenoszę…'));
+    const report: MoveReport | undefined = await d.busy(button, () => guard(() => api.moveApply(id, p.to, { disableUnknown: $<HTMLInputElement>('#move-disable-unknown').checked, backupWorlds: $<HTMLInputElement>('#move-backup-worlds').checked })), t('Przenoszę…'));
     if (!report) return;
     plan = undefined;
     $('#move-result').classList.add('hidden');

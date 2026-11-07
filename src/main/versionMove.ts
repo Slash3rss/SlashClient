@@ -9,7 +9,8 @@ import { USER_AGENT } from '../shared/version';
 /**
  * Moving a profile to another Minecraft version. Every mod in mods/ is looked up on Modrinth by
  * its hash, then Modrinth is asked for the newest version of the same project for the target
- * game version and loader. Mods with such a version are swapped for it in one go (after a
+ * game version and loader. Mods installed from CurseForge that Modrinth does not know are asked
+ * about on CurseForge the same way (their project ids get a `cf:` prefix here). Mods with such a version are swapped for it in one go (after a
  * snapshot, so the move is one click from undone); mods without one are disabled and listed,
  * so the player sees what is not ready yet and can check again later (the list stays in
  * .slashclient/version-move.json). Resource packs and shaders rarely depend on the version and stay.
@@ -25,7 +26,12 @@ export interface MoveVersion {
   loaders: string[];
   files: { url: string; filename: string; primary: boolean; size: number; hashes: { sha1: string } }[];
   dependencies?: { project_id: string | null; dependency_type: string }[];
+  /** A CurseForge file in Modrinth's shape: `project_id` is `cf:<id>`, `id` the file's id. */
+  source?: 'curseforge';
 }
+
+/** The manifest's project id in the move's terms: CurseForge ones with their `cf:` prefix. */
+const projectKey = (m: Pick<ManifestEntry, 'projectId' | 'source'>) => (m.source === 'curseforge' ? `cf:${m.projectId}` : m.projectId);
 
 /** A mod file in the profile's mods/ folder. */
 export interface ModFile { filename: string; enabled: boolean; sha1: string }
@@ -120,6 +126,13 @@ export interface MoveSource {
   /** The newest version of each file's project for the game version and loaders, by SHA1; `types` limits how stable. */
   newest: (sha1s: string[], gameVersion: string, loaders: string[], types: string[]) => Promise<Record<string, MoveVersion>>;
   projects: (ids: string[]) => Promise<{ id: string; title: string; icon_url?: string }[]>;
+  /**
+   * The same for the files Modrinth does not know, asked on CurseForge (only those the launcher
+   * installed from there): what each is and the newest version for the target, by SHA1.
+   */
+  curseforge?: (gameDir: string, sha1s: string[], gameVersion: string, loaders: string[]) => Promise<{
+    current: Record<string, MoveVersion>; target: Record<string, MoveVersion>; projects: { id: string; title: string; icon_url?: string }[];
+  }>;
 }
 
 const post = <T>(url: string, body: unknown) =>
@@ -161,6 +174,14 @@ export async function checkMove(gameDir: string, from: string, to: string, loade
   Object.assign(target, await source.newest(rest, to, loaders, ['release', 'beta', 'alpha']));
   const ids = [...new Set(known.map((h) => current[h].project_id))];
   const projects = new Map((await source.projects(ids).catch(() => [])).map((p) => [p.id, { title: p.title, iconUrl: p.icon_url }]));
+  // what Modrinth does not know may have come from CurseForge; when CurseForge cannot be asked it stays unknown
+  const unknown = sha1s.filter((h) => !current[h]);
+  const cf = source.curseforge && unknown.length ? await source.curseforge(gameDir, unknown, to, loaders).catch(() => undefined) : undefined;
+  if (cf) {
+    Object.assign(current, cf.current);
+    Object.assign(target, cf.target);
+    for (const p of cf.projects) projects.set(p.id, { title: p.title, iconUrl: p.icon_url });
+  }
   return { plan: { from, to, loader, items: planMove(files, current, target, to, loader, projects) }, current, target };
 }
 
@@ -245,10 +266,10 @@ export async function applyMove(opts: ApplyOptions): Promise<MoveReport> {
     const on = f.enabled || !!opts.enable?.has(item.filename);
     await fs.rename(tmp, on ? dest : `${dest}.disabled`);
     const entry: ManifestEntry = {
-      type: 'mod', filename, projectId: next.project_id, versionId: next.id, versionNumber: next.version_number,
-      title: item.title, ...(item.iconUrl ? { iconUrl: item.iconUrl } : {}),
+      type: 'mod', filename, projectId: next.project_id.replace(/^cf:/, ''), versionId: next.id, versionNumber: next.version_number,
+      title: item.title, ...(item.iconUrl ? { iconUrl: item.iconUrl } : {}), ...(next.source ? { source: next.source } : {}),
     };
-    const at = manifest.findIndex((m) => m.type === 'mod' && (m.filename === item.filename || m.projectId === next.project_id));
+    const at = manifest.findIndex((m) => m.type === 'mod' && (m.filename === item.filename || projectKey(m) === next.project_id));
     // a library pulled in as a dependency stays one in the new version
     if (at >= 0 && manifest[at].dependency !== undefined) entry.dependency = manifest[at].dependency;
     if (at >= 0) manifest[at] = entry;
@@ -271,7 +292,7 @@ export async function applyMove(opts: ApplyOptions): Promise<MoveReport> {
 
   // libraries the new versions need (e.g. a new Fabric API module)
   const have = new Set(plan.items.filter((i) => i.projectId && (i.status === 'ready' || i.status === 'same')).map((i) => i.projectId!));
-  for (const m of manifest) if (m.type === 'mod') have.add(m.projectId);
+  for (const m of manifest) if (m.type === 'mod') have.add(projectKey(m));
   const failedDeps: string[] = [];
   for (const id of missingDependencies(moved, have)) {
     await opts.installDependency(id).catch(() => failedDeps.push(id));
@@ -309,7 +330,11 @@ export interface MoveDeps {
   /** Whether the loader has a build for that game version. */
   loaderSupports: (loader: Profile['loader'], gameVersion: string) => Promise<boolean>;
   snapshot: (profile: Profile, label: string) => Promise<unknown>;
-  /** Installs a mod (newest fitting version) with its dependencies; answers the titles. */
+  /** Backs every world of the game folder up (the Worlds tab's backups); answers how many. */
+  backupWorlds: (gameDir: string, onProgress: (done: number, total: number) => void) => Promise<number>;
+  /** Where mods are looked up (Modrinth, and CurseForge for what came from there). */
+  source?: MoveSource;
+  /** Installs a mod (newest fitting version) with its dependencies; answers the titles. A `cf:` id is a CurseForge one. */
   installMod: (gameDir: string, projectId: string, gameVersion: string, loader: string) => Promise<string[]>;
 }
 
@@ -352,12 +377,12 @@ export function registerVersionMove(deps: MoveDeps): void {
     if (profile.loader !== 'vanilla' && !(await deps.loaderSupports(profile.loader, to))) {
       throw new Error(t('{0} nie ma jeszcze wersji dla Minecrafta {1}.', profile.loader, to));
     }
-    const check = await checkMove(deps.gameDir(profile), from, to, profile.loader);
+    const check = await checkMove(deps.gameDir(profile), from, to, profile.loader, deps.source);
     checked.set(profileId, { at: Date.now(), check });
     return check.plan;
   });
 
-  handle('move:apply', async (profileId: string, to: string, opts?: { disableUnknown?: boolean }) => {
+  handle('move:apply', async (profileId: string, to: string, opts?: { disableUnknown?: boolean; backupWorlds?: boolean }) => {
     const profile = profileById(profileId);
     usable(profile);
     return locked(profileId, async () => {
@@ -368,12 +393,15 @@ export function registerVersionMove(deps: MoveDeps): void {
         let entry = checked.get(profileId);
         if (!entry || entry.check.plan.to !== to || entry.check.plan.from !== from || Date.now() - entry.at > CHECK_TTL_MS) {
           task.progress(t('Sprawdzanie modów'), 0, 1);
-          entry = { at: Date.now(), check: await checkMove(gameDir, from, to, profile.loader) };
+          entry = { at: Date.now(), check: await checkMove(gameDir, from, to, profile.loader, deps.source) };
         }
         checked.delete(profileId);
         // the whole profile as it is now, one click from undone
         task.progress(t('Zapisywanie migawki profilu'), 0, 1);
         await deps.snapshot(profile, t('Przed przeniesieniem: {0} → {1}', from, to));
+        // the snapshot holds mods and settings, not worlds: a world opened on the new version is
+        // converted by the game and the old one may no longer open it, so each gets a backup first
+        if (opts?.backupWorlds !== false) await deps.backupWorlds(gameDir, (done, total) => task.progress(t('Kopie zapasowe światów'), done, total));
         const report = await applyMove({
           gameDir, checked: entry.check, disableUnknown: opts?.disableUnknown !== false,
           installDependency: async (id) => (await deps.installMod(gameDir, id, to, profile.loader)).join(', '),
@@ -410,7 +438,7 @@ export function registerVersionMove(deps: MoveDeps): void {
       for (const p of report.pending) {
         if (await exists(`${contentFile(gameDir, 'mod', p.filename)}.disabled`)) still.add(p.filename);
       }
-      const check = await checkMove(gameDir, report.from, report.to, profile.loader, modrinthSource, still);
+      const check = await checkMove(gameDir, report.from, report.to, profile.loader, deps.source, still);
       const next = await applyMove({
         gameDir, checked: check, disableUnknown: true, enable: still,
         installDependency: async (id) => (await deps.installMod(gameDir, id, report.to, profile.loader)).join(', '),

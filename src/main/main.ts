@@ -47,7 +47,7 @@ import {
   type ContentType, type InstallRole, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
-  checkCurseForgeUpdates, curseForgeLinks, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
+  checkCurseForgeUpdates, curseForgeLinks, curseForgeMoveCheck, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
   curseForgeProjects, curseForgeScreenshots, latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
@@ -125,7 +125,7 @@ import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 import { registerMaintenance } from './maintenance';
 import { applyToolSettings, gpuLaunchOptions, registerLauncherTools } from './launcherTools';
 import { registerCloudProfiles } from './cloudProfiles';
-import { registerVersionMove } from './versionMove';
+import { modrinthSource, registerVersionMove } from './versionMove';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -1653,7 +1653,23 @@ registerVersionMove({
   handle, profiles: () => store.profiles, gameDir: profileGameDir, running: profileBusy, persist,
   startTask: (title) => startTask(title), resolveVersion: resolveVersionId, snapshot: snapshotBefore,
   loaderSupports: async (loader, gameVersion) => loader === 'vanilla' || (await loaderVersions(loader, gameVersion).catch(() => [])).length > 0,
-  installMod: (gameDir, projectId, gameVersion, loader) => installProject(gameDir, projectId, 'mod', gameVersion, loader),
+  source: { ...modrinthSource, curseforge: (...args) => (curseforge(), curseForgeMoveCheck(...args)) },
+  backupWorlds: async (gameDir, onProgress) => {
+    const worlds = await listWorlds(gameDir);
+    for (const [i, world] of worlds.entries()) {
+      onProgress(i, worlds.length);
+      await backupWorld(gameDir, world.folder);
+    }
+    return worlds.length;
+  },
+  installMod: async (gameDir, projectId, gameVersion, loader) => {
+    if (!projectId.startsWith('cf:')) return installProject(gameDir, projectId, 'mod', gameVersion, loader);
+    curseforge();
+    const { installed, manual } = await installCurseForgeProject(gameDir, projectId.slice(3), 'mod', gameVersion, loader, undefined, undefined, 'dependency');
+    // a library the author keeps on CurseForge's site cannot be fetched here: the move lists it as not installed
+    if (!installed.length && manual.length) throw new Error(manual.map((m) => m.title).join(', '));
+    return installed;
+  },
 });
 
 /** True for files inside one of the profiles' game folders. */

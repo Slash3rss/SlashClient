@@ -182,3 +182,64 @@ describe('moving a profile to another Minecraft version: the files', () => {
     await fs.rm(game, { recursive: true, force: true });
   });
 });
+
+describe('moving a profile to another Minecraft version: mods from CurseForge', () => {
+  async function setup() {
+    const game = await fs.mkdtemp(path.join(os.tmpdir(), 'slashclient-move-cf-'));
+    await fs.mkdir(path.join(game, 'mods'), { recursive: true });
+    await fs.writeFile(path.join(game, 'mods', 'jei-1.jar'), 'jei-1');
+    await fs.writeFile(path.join(game, 'mods', 'mine.jar'), 'mine');
+    await fs.mkdir(path.join(game, '.slashclient'), { recursive: true });
+    await fs.writeFile(path.join(game, '.slashclient', 'content.json'), JSON.stringify([
+      { type: 'mod', filename: 'jei-1.jar', projectId: '238222', versionId: '100', versionNumber: 'jei-1', title: 'JEI', source: 'curseforge' },
+    ]));
+    return game;
+  }
+  const cf = (id: string, games: string[], opts: Partial<MoveVersion> = {}) => version(id, 'cf:238222', games, { source: 'curseforge', ...opts });
+  const modrinth: MoveSource = { identify: async () => ({}), newest: async () => ({}), projects: async () => [] };
+  const download = async (tasks: { url: string; dest: string }[]) => {
+    for (const task of tasks) await fs.writeFile(task.dest, path.basename(task.url, '.jar'));
+  };
+
+  it('moves a mod Modrinth does not know with its CurseForge version', async () => {
+    const game = await setup();
+    const asked: string[][] = [];
+    const source: MoveSource = {
+      ...modrinth,
+      curseforge: async (_dir, hashes) => {
+        asked.push(hashes);
+        return {
+          current: { [sha1('jei-1')]: cf('100', ['1.21.1']) },
+          target: { [sha1('jei-1')]: cf('jei-2', ['1.21.4'], { dependencies: [{ project_id: 'cf:306612', dependency_type: 'required' }] }) },
+          projects: [{ id: 'cf:238222', title: 'JEI' }],
+        };
+      },
+    };
+    const checked = await checkMove(game, '1.21.1', '1.21.4', 'fabric', source);
+    // only what Modrinth did not recognise goes to CurseForge
+    assert.deepEqual(asked[0].sort(), [sha1('jei-1'), sha1('mine')].sort());
+    assert.deepEqual(checked.plan.items.map((i) => [i.title, i.status]), [['mine', 'unknown'], ['JEI', 'ready']]);
+    const deps: string[] = [];
+    await applyMove({ gameDir: game, checked, disableUnknown: true, download, installDependency: async (id) => (deps.push(id), id) });
+    assert.ok((await fs.readdir(path.join(game, 'mods'))).includes('jei-2.jar'));
+    const entry = (await readManifest(game)).find((m) => m.filename === 'jei-2.jar');
+    assert.deepEqual([entry?.projectId, entry?.versionId, entry?.source], ['238222', 'jei-2', 'curseforge']);
+    assert.equal((await readManifest(game)).filter((m) => m.type === 'mod').length, 1);
+    // a CurseForge library is installed from CurseForge
+    assert.deepEqual(deps, ['cf:306612']);
+    await fs.rm(game, { recursive: true, force: true });
+  });
+
+  it('leaves the mod unknown when CurseForge cannot be asked', async () => {
+    const game = await setup();
+    const source: MoveSource = {
+      ...modrinth,
+      curseforge: async () => {
+        throw new Error('curseforge_unavailable');
+      },
+    };
+    const checked = await checkMove(game, '1.21.1', '1.21.4', 'fabric', source);
+    assert.deepEqual(checked.plan.items.map((i) => i.status), ['unknown', 'unknown']);
+    await fs.rm(game, { recursive: true, force: true });
+  });
+});

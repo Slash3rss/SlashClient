@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import {
-  curseForgePackIcon, CurseForgeUnavailable, filePage, installCurseForgePack, installCurseForgeProject, listCurseForgeVersions, logoOf, packByName, parseCurseManifest,
+  curseForgeMoveCheck, curseForgePackIcon, CurseForgeUnavailable, filePage, installCurseForgePack, installCurseForgeProject, listCurseForgeVersions, logoOf, packByName, parseCurseManifest,
   searchCurseForge, setCurseForgeServer, updateCurseForgePack,
   type CfFile, type CfMod,
 } from '../src/main/curseforge';
@@ -259,5 +259,29 @@ describe('curseforge download links and pack icons', () => {
     const manifest = parseCurseManifest(JSON.stringify({ manifestType: 'minecraftModpack', name: 'P', projectID: 6, minecraft: { version: '1.20.1', modLoaders: [] }, files: [] }));
     assert.equal(manifest.projectID, 6);
     assert.equal(parseCurseManifest(JSON.stringify({ manifestType: 'minecraftModpack', name: 'P', projectID: 'x', minecraft: { version: '1.20.1' } })).projectID, undefined);
+  });
+});
+
+describe('curseforge: moving a profile to another game version', () => {
+  it('finds what a CurseForge mod is and its newest release with a link for the target version', async () => {
+    const game = await tmp();
+    await installCurseForgeProject(game, '1', 'mod', '1.20.1', 'fabric');
+    const later = (day: number) => `2026-02-0${day}T00:00:00Z`;
+    files.push(
+      file(12, 1, 'jei-2.jar', { gameVersions: ['1.21.4', 'Fabric'], fileDate: later(1) }),
+      // a newer beta: the release still wins
+      file(13, 1, 'jei-3-beta.jar', { gameVersions: ['1.21.4', 'Fabric'], fileDate: later(2), releaseType: 2 }),
+      // the newest one has no link: the launcher could not fetch it
+      file(14, 1, 'jei-4.jar', { gameVersions: ['1.21.4', 'Fabric'], fileDate: later(3), downloadUrl: null }),
+    );
+    const jei = sha1(blobs['jei.jar']);
+    const res = await curseForgeMoveCheck(game, [jei, 'not-from-curseforge'], '1.21.4', ['fabric']);
+    assert.deepEqual(Object.keys(res.current), [jei]);
+    assert.deepEqual([res.current[jei].id, res.current[jei].project_id, res.current[jei].source], ['11', 'cf:1', 'curseforge']);
+    assert.deepEqual(res.current[jei].dependencies, [{ project_id: 'cf:2', dependency_type: 'required' }]);
+    assert.equal(res.target[jei].id, '12');
+    assert.deepEqual(res.target[jei].game_versions, ['1.21.4']);
+    assert.deepEqual(res.target[jei].loaders, ['fabric']);
+    assert.deepEqual(res.projects, [{ id: 'cf:1', title: 'JEI' }]);
   });
 });

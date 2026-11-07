@@ -354,7 +354,7 @@
               <div class="row bench-head">
                 <h3><i class="fa-solid fa-right-left"></i> Przenieś na inną wersję Minecrafta</h3>
               </div>
-              <p class="muted" id="move-intro">SlashClient sprawdzi na Modrinth, które mody mają wersję dla wybranego Minecrafta, i przeniesie profil jednym kliknięciem (najpierw zrobi migawkę). Mody, które nie są jeszcze gotowe, zostaną wyłączone i będą widoczne na liście.</p>
+              <p class="muted" id="move-intro">SlashClient sprawdzi na Modrinth i CurseForge, które mody mają wersję dla wybranego Minecrafta, i przeniesie profil jednym kliknięciem (najpierw zrobi migawkę profilu i kopie zapasowe światów). Mody, które nie są jeszcze gotowe, zostaną wyłączone i będą widoczne na liście.</p>
               <div class="row move-pick">
                 <label class="field grow">Docelowa wersja<select id="move-target"></select></label>
                 <button type="button" id="move-check"><i class="fa-solid fa-magnifying-glass"></i> Sprawdź mody</button>
@@ -362,7 +362,8 @@
               <div class="move-result hidden" id="move-result">
                 <p class="muted" id="move-summary"></p>
                 <div class="join-list move-list" id="move-list"></div>
-                <label class="check" id="move-unknown-row"><input type="checkbox" id="move-disable-unknown" checked><span>Wyłącz mody spoza Modrinth <span class="hint">nie da się sprawdzić, czy zadziałają</span></span></label>
+                <label class="check"><input type="checkbox" id="move-backup-worlds" checked><span>Najpierw zrób kopie zapasowe światów <span class="hint">świat otwarty na nowszej wersji może się nie otworzyć na starszej; kopie są w zakładce Światy → Kopie zapasowe</span></span></label>
+                <label class="check" id="move-unknown-row"><input type="checkbox" id="move-disable-unknown" checked><span>Wyłącz mody spoza Modrinth i CurseForge <span class="hint">nie da się sprawdzić, czy zadziałają</span></span></label>
                 <div class="row join-actions">
                   <button type="button" class="primary" id="move-go"><i class="fa-solid fa-right-left"></i> Przenieś profil</button>
                 </div>

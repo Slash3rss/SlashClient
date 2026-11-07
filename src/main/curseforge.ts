@@ -10,6 +10,7 @@ import {
   type ContentType, type GalleryImage, type InstallRole, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import type { ManualFile } from './manualFiles';
+import type { MoveVersion } from './versionMove';
 import { t } from '../shared/i18n';
 
 /**
@@ -309,6 +310,48 @@ export async function checkCurseForgeUpdates(gameDir: string, gameVersion: strin
     });
   }
   return updates;
+}
+
+// ---------- moving a profile to another game version (versionMove.ts) ----------
+
+/** A CurseForge file in the shape the version move works with (Modrinth's); its project id gets a `cf:` prefix. */
+function moveVersionOf(f: CfFile): MoveVersion {
+  const info = toInfo(f);
+  const sha1 = sha1Of(f);
+  return {
+    id: String(f.id), project_id: `cf:${f.modId}`, version_number: info.versionNumber, version_type: info.type,
+    game_versions: info.gameVersions, loaders: info.loaders, source: 'curseforge',
+    files: f.downloadUrl && sha1 ? [{ url: f.downloadUrl, filename: path.basename(f.fileName), primary: true, size: f.fileLength, hashes: { sha1 } }] : [],
+    dependencies: f.dependencies.filter((d) => d.relationType === REQUIRED_DEPENDENCY).map((d) => ({ project_id: `cf:${d.modId}`, dependency_type: 'required' })),
+  };
+}
+
+/**
+ * The mods installed from CurseForge among `sha1s` (by the launcher's manifest, the SHA1 on disk
+ * matching CurseForge's) and the newest file of each for `gameVersion` and the loaders: a release
+ * when there is one, else the newest beta or alpha. Files the author keeps on CurseForge's site
+ * cannot be fetched by the launcher, so they do not count as a new version.
+ */
+export async function curseForgeMoveCheck(gameDir: string, sha1s: string[], gameVersion: string, loaders: string[]) {
+  const current: Record<string, MoveVersion> = {};
+  const target: Record<string, MoveVersion> = {};
+  const projects: { id: string; title: string; icon_url?: string }[] = [];
+  const wanted = new Set(sha1s);
+  const tracked = (await readManifest(gameDir)).filter((m) => m.type === 'mod' && m.source === 'curseforge' && Number.isSafeInteger(Number(m.versionId)));
+  if (!tracked.length || !wanted.size) return { current, target, projects };
+  for (const f of await bulk<CfFile>('/mods/files', 'fileIds', tracked.map((m) => Number(m.versionId)))) {
+    const sha1 = sha1Of(f);
+    const entry = tracked.find((m) => m.versionId === String(f.id));
+    if (!sha1 || !entry || !wanted.has(sha1) || current[sha1]) continue;
+    current[sha1] = moveVersionOf(f);
+    projects.push({ id: `cf:${f.modId}`, title: entry.title, ...(entry.iconUrl ? { icon_url: entry.iconUrl } : {}) });
+    const found = (await Promise.all(loaders.map((loader) => listFiles(f.modId, { gameVersion, loader }).catch(() => [] as CfFile[])))).flat()
+      .filter((c) => c.downloadUrl && sha1Of(c))
+      .sort((x, y) => Date.parse(y.fileDate) - Date.parse(x.fileDate));
+    const best = found.find((c) => c.releaseType === 1) ?? found[0];
+    if (best) target[sha1] = moveVersionOf(best);
+  }
+  return { current, target, projects };
 }
 
 // ---------- modpacks (CurseForge .zip: manifest.json + overrides/) ----------
