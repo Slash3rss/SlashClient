@@ -72,6 +72,12 @@ export function offlineSkinOf(list: readonly OfflineSkin[], name: string): Offli
   return list.find((s) => s.name.toLowerCase() === lower);
 }
 
+/** What tells the mod the player's own skin (its picture is fetched by hash); nothing without a saved one. */
+export function offlineSkinArgs(skin: OfflineSkin | undefined): string[] {
+  if (!skin || !/^[0-9a-f]{8,64}$/.test(skin.hash)) return [];
+  return [`-Dslashclient.offlineSkin=${skin.hash}`, ...(skin.slim ? ['-Dslashclient.offlineSkinSlim=true'] : [])];
+}
+
 /** The PUT body for /v1/me/offline-skins/:name, checked here so the player gets a clear message, not a server code. */
 export function offlineSkinUpload(name: string, png: Buffer, slim: boolean): { png: string; slim: boolean } {
   if (!OFFLINE_SKIN_NAME.test(name)) throw new Error(t('Skin dla graczy SlashClient można ustawić tylko dla nicku z liter, cyfr i _ (najwyżej 16 znaków).'));

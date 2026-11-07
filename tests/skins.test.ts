@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { mcLinkBody, offlineSkinError, offlineSkinOf, offlineSkinUpload, readSkinFile } from '../src/main/skins';
+import { mcLinkBody, offlineSkinArgs, offlineSkinError, offlineSkinOf, offlineSkinUpload, readSkinFile } from '../src/main/skins';
 import { lookup, setLang } from '../src/shared/i18n';
 
 /** The first bytes of a PNG: signature + IHDR with the given size (enough for the size check). */
@@ -33,6 +33,12 @@ describe('offline skins for SlashClient players', () => {
   it('finds the skin of a nick without case', () => {
     assert.equal(offlineSkinOf(list, 'gracz_1')?.hash, 'abc123');
     assert.equal(offlineSkinOf(list, 'Gracz_2'), undefined);
+  });
+  it('tells the game the own skin of the player, and nothing odd', () => {
+    assert.deepEqual(offlineSkinArgs({ name: 'Gracz_1', hash: 'abcdef12', slim: true }), ['-Dslashclient.offlineSkin=abcdef12', '-Dslashclient.offlineSkinSlim=true']);
+    assert.deepEqual(offlineSkinArgs({ name: 'Gracz_1', hash: 'abcdef12', slim: false }), ['-Dslashclient.offlineSkin=abcdef12']);
+    assert.deepEqual(offlineSkinArgs({ name: 'Gracz_1', hash: 'x -Dbad=1', slim: false }), []);
+    assert.deepEqual(offlineSkinArgs(undefined), []);
   });
   it('sends only nicks and files the server takes', () => {
     const png = pngHeader(64, 64);

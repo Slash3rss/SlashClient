@@ -47,6 +47,23 @@ public final class OfflineSkins {
 
 	/** uuid → the skin the server named for that player. */
 	private static final Map<UUID, Skin> skins = new ConcurrentHashMap<>();
+	/**
+	 * The player's own skin, set in the launcher for this offline account (slashclient.offlineSkin): the
+	 * player sees it on themselves everywhere, in the menu too, where no server has named it yet.
+	 */
+	private static final Skin OWN = own(System.getProperty("slashclient.offlineSkin"), Boolean.getBoolean("slashclient.offlineSkinSlim"));
+
+	static Skin own(String hash, boolean slim) {
+		return hash != null && HASH.matcher(hash).matches() ? new Skin(hash, slim) : null;
+	}
+
+	/** The skin named for this player: by the server, or for the player themselves the one from the launcher. */
+	private static Skin skinOf(UUID id) {
+		Skin skin = skins.get(id);
+		if (skin != null || OWN == null) return skin;
+		var user = Minecraft.getInstance().getUser();
+		return user != null && id.equals(user.getProfileId()) ? OWN : null;
+	}
 	/** hash → the picture, once loaded and registered as a texture. */
 	//#if MC >= 1.21.9
 	private static final Map<String, ClientAsset.Texture> loaded = new ConcurrentHashMap<>();
@@ -89,7 +106,7 @@ public final class OfflineSkins {
 	//$ public static Identifier body(UUID id) {
 	//#endif
 		if (id == null || !enabled()) return null;
-		Skin skin = skins.get(id);
+		Skin skin = skinOf(id);
 		if (skin == null) return null;
 		var texture = loaded.get(skin.hash());
 		if (texture == null) load(skin.hash());
@@ -98,7 +115,7 @@ public final class OfflineSkins {
 
 	/** Whether that player's skin has slim arms (only with a picture from body()). */
 	public static boolean slim(UUID id) {
-		Skin skin = skins.get(id);
+		Skin skin = skinOf(id);
 		return skin != null && skin.slim();
 	}
 

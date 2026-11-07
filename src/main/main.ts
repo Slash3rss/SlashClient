@@ -59,7 +59,7 @@ import {
 } from './profileShare';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
-import { mcLinkBody, offlineSkinError, offlineSkinOf, offlineSkinUpload, ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin, type OfflineSkin } from './skins';
+import { mcLinkBody, offlineSkinArgs, offlineSkinError, offlineSkinOf, offlineSkinUpload, ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin, type OfflineSkin } from './skins';
 import { GameBridge } from './bridge';
 import { CoverCache, NowPlayingReader } from './nowPlaying';
 import { skyupGameArticle, skyupIndex, skyupSearch } from './skyupWiki';
@@ -2004,6 +2004,9 @@ async function startGame(profileId: string, accountId: string, server: string | 
     hud.jvmArgs.push(...bridge.jvmArgs());
     // the mod names SlashClient with its version: on F3 and to the servers (the client's brand)
     hud.jvmArgs.push(`-Dslashclient.version=${app.getVersion()}`);
+    // an offline account's skin for SlashClient players: the player sees it on themselves too, in the
+    // menu as well, where no server has named it yet (OfflineSkins in the mod)
+    if (account.type === 'offline') hud.jvmArgs.push(...offlineSkinArgs(offlineSkinOf(await offlineSkinList(), account.name)));
   }
   // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded; on the
   // test scene the mod opens (the first time makes) its own world from the menu

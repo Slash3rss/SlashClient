@@ -4392,22 +4392,31 @@ let chosenCape = '';
 const capeFrames = new Map<string, number>();
 const FRAME_MS = 150;
 let capeTimer: ReturnType<typeof setInterval> | undefined;
+/**
+ * Counts what was put on the back: a cape still loading when something newer came (the menu drawn again
+ * while the skin loads, as for an offline account) starts no frames. Before, its timer was left running
+ * next to the newer one and the preview flicked between several capes.
+ */
+let capeTurn = 0;
 
 /** Puts a cape on the preview; an animated one keeps turning its frames, as in the game. */
 async function wearCape(id: string) {
-  clearInterval(capeTimer);
+  stopCapeAnimation();
+  const turn = capeTurn;
   await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
   const frames = capeFrames.get(id);
-  if (!frames) return;
+  if (!frames || turn !== capeTurn) return;
   let f = 0;
   capeTimer = setInterval(() => {
+    if (turn !== capeTurn) return;
     if (!document.hidden) void skinViewer?.loadCape(`img/capes/${id}_${(f = (f + 1) % frames)}.png`, { backEquipment: 'cape' });
   }, FRAME_MS);
 }
 
-/** Anything else on the back stops an animated cape. */
+/** Anything else on the back stops an animated cape (and one still loading). */
 function stopCapeAnimation() {
   clearInterval(capeTimer);
+  capeTurn++;
 }
 
 /** A cape's tile: animated ones play their frames while the tile is on the page. */
