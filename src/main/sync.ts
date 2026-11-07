@@ -138,13 +138,22 @@ async function syncBinary(file: string, from: string, to: string, opts: SyncOpti
  * The game writes only the keys it knows at that moment (the mods and the version it runs), so a
  * profile without a mod would otherwise wipe that mod's key bindings for every profile.
  */
-export function mergeOptions(base: string, top: string): string {
+export function mergeOptions(base: string, top: string, own: readonly string[] = []): string {
   const lines = (text: string) => text.split(/\r?\n/).filter((l) => l.includes(':'));
   const keyOf = (l: string) => l.slice(0, l.indexOf(':'));
-  const topKeys = new Set(lines(top).map(keyOf));
+  // `own` settings never come from `top`: what `base` has of them stays as it is
+  const incoming = lines(top).filter((l) => !own.includes(keyOf(l)));
+  const topKeys = new Set(incoming.map(keyOf));
   const kept = lines(base).filter((l) => !topKeys.has(keyOf(l)));
-  return [...lines(top), ...kept].join('\n') + '\n';
+  return [...incoming, ...kept].join('\n') + '\n';
 }
+
+/**
+ * Settings that stay each profile's own: the resource packs turned on name files in the profile's own
+ * resourcepacks folder. Shared, a game of a profile without one of the packs (or on a version it does
+ * not fit) dropped it from the list as it closed, and every other profile then started with it off.
+ */
+export const PROFILE_OWN_OPTIONS = ['resourcePacks', 'incompatibleResourcePacks'];
 
 /** Copies a synced file; options.txt is merged into what is there instead of replacing it. */
 async function sync(file: string, from: string, to: string, opts: SyncOptions): Promise<boolean> {
@@ -152,7 +161,7 @@ async function sync(file: string, from: string, to: string, opts: SyncOptions): 
   try {
     const top = await fs.readFile(from, 'utf8');
     const base = await fs.readFile(to, 'utf8').catch(() => '');
-    const merged = mergeOptions(base, top);
+    const merged = mergeOptions(base, top, PROFILE_OWN_OPTIONS);
     if (merged === base) return true;
     if (opts.backup && base) await fs.copyFile(to, `${to}.bak`).catch(() => {});
     await writeAtomic(to, merged);

@@ -69,6 +69,31 @@ describe('shared game settings', () => {
     assert.match(mergeOptions(shared, 'key_key.slashclient-hud.zoom:key.keyboard.z\n'), /zoom:key\.keyboard\.z/);
   });
 
+  it("keeps each profile's own resource packs on when another profile is played", async () => {
+    const { pullShared, pushShared, a, b, shared } = await twoProfiles();
+    await fs.writeFile(path.join(a, 'options.txt'), 'fov:0.5\nresourcePacks:["vanilla","file/Faithful.zip"]\nincompatibleResourcePacks:[]\n');
+    await pushShared(a);
+    // the shared settings carry no packs: they are files of profile A
+    assert.doesNotMatch(await fs.readFile(path.join(shared, 'options.txt'), 'utf8'), /resourcePacks/);
+    // B has no Faithful: its game drops it and writes its own list as it closes
+    await pullShared(b);
+    assert.equal(await fs.readFile(path.join(b, 'options.txt'), 'utf8'), 'fov:0.5\n');
+    await fs.writeFile(path.join(b, 'options.txt'), 'fov:0.9\nresourcePacks:["vanilla"]\n');
+    await pushShared(b);
+    // A starts again with its pack on, and with the field of view B changed
+    await pullShared(a);
+    assert.equal(await fs.readFile(path.join(a, 'options.txt'), 'utf8'), 'fov:0.9\nresourcePacks:["vanilla","file/Faithful.zip"]\nincompatibleResourcePacks:[]\n');
+  });
+
+  it('a shared copy from an older launcher does not turn packs off either', async () => {
+    const { pullShared, a, shared } = await twoProfiles();
+    await fs.mkdir(shared, { recursive: true });
+    await fs.writeFile(path.join(shared, 'options.txt'), 'fov:0.5\nresourcePacks:["vanilla"]\n');
+    await fs.writeFile(path.join(a, 'options.txt'), 'resourcePacks:["vanilla","file/Moja.zip"]\n');
+    await pullShared(a);
+    assert.match(await fs.readFile(path.join(a, 'options.txt'), 'utf8'), /resourcePacks:\["vanilla","file\/Moja\.zip"\]/);
+  });
+
   it('never empties the shared server list with a broken or empty file', async () => {
     const { pullShared, pushShared, readServerList, a, b, shared } = await twoProfiles();
     const good = serversDat(['Hypixel', 'mc.hypixel.net'], ['SkyUp', 'skyup.pl']);
