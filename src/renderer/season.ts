@@ -100,6 +100,14 @@ export function initSeason(deps: SeasonDeps) {
   garland.className = 'season-bunting';
   garland.setAttribute('aria-hidden', 'true');
   garland.innerHTML = bunting();
+  // the bunting ends before the theme and shop buttons in the top right (and the window's own buttons there)
+  const fitBunting = () => {
+    const actions = document.querySelector('.top-actions');
+    const left = actions ? actions.getBoundingClientRect().left : innerWidth;
+    garland.style.right = `${Math.max(0, Math.round(innerWidth - left + 10))}px`;
+  };
+  const actions = document.querySelector('.top-actions');
+  if (actions && 'ResizeObserver' in window) new ResizeObserver(fitBunting).observe(actions);
   const ctx = canvas.getContext('2d');
   const pctx = patch.getContext('2d');
   let bats: Bat[] = [];
@@ -121,6 +129,8 @@ export function initSeason(deps: SeasonDeps) {
     patch.style.height = `${PATCH_H}px`;
     pctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
     fitPatch();
+    // after the top buttons found their place on this resize (app.ts, placeTopSparks)
+    requestAnimationFrame(fitBunting);
     const count = Math.max(4, Math.min(9, Math.round(innerWidth / 180)));
     bats = Array.from({ length: count }, () => ({
       x: Math.random() * innerWidth,
