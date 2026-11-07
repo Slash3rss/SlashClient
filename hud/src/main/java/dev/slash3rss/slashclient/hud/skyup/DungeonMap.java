@@ -212,6 +212,8 @@ public final class DungeonMap implements HudModule {
 		level = null;
 		dungeonLevel = "";
 		hintedAt = 0;
+		// the trip is over: its summary (out of a world, none)
+		DungeonRun.end(Minecraft.getInstance().level != null);
 	}
 
 	/** True while there is a dungeon to show. */
@@ -251,6 +253,7 @@ public final class DungeonMap implements HudModule {
 			bossBar = readLevel(mc);
 			// the boss bar: in a dungeon (a map starts, or goes on); gone: out, unless the hint just came
 			if (bossBar && !active) start();
+			if (bossBar) DungeonRun.begin();
 			// the boss bar shows once the player is in the start room: its floor is the ground the
 			// rooms' heights count from (a map started by the hint was still in the lobby)
 			if (bossBar && active && !grounded) {
@@ -502,6 +505,7 @@ public final class DungeonMap implements HudModule {
 			Matcher m = LEVEL.matcher(event.getName().getString());
 			if (m.find()) {
 				dungeonLevel = m.group(1);
+				DungeonRun.level(dungeonLevel);
 				// how far the player got, for SkyUp's task "Dotrzyj do poziomu w dungeonach" (the tasks are on 26.3)
 				//#if MC >= 26.3
 				SkyCounters.dungeonLevel(Long.parseLong(dungeonLevel));

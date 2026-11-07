@@ -299,6 +299,7 @@ public final class DungeonRooms {
 				}
 			} else if (c != null && c.present) {
 				// gone (broken, or a mined ore the server turned into stone): taken until it comes back
+				if (!c.taken()) DungeonRun.took(c.ore);
 				c.present = false;
 				c.broken = true;
 			}
@@ -409,7 +410,10 @@ public final class DungeonRooms {
 			if (c != null) break;
 			c = containers.get(BlockPos.asLong(p.getX() + d[0], p.getY(), p.getZ() + d[1]));
 		}
+		// the dungeon's container open: what the player takes out of it is the trip's loot
+		if (c != null) DungeonRun.lootOpen(mc, Compat.screen(mc));
 		if (c == null || c.opened) return;
+		if (!c.taken()) DungeonRun.took(c.ore);
 		c.opened = true;
 		// the other half of a double chest
 		for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
@@ -435,6 +439,9 @@ public final class DungeonRooms {
 		}
 		if (px >= 0 && pz >= 0 && px < size && pz < size) visited[pz * size + px] = true;
 		for (int i = 0; i < roomOf.length; i++) if (visited[i] && roomOf[i] >= 0) rooms.get(roomOf[i]).visited = true;
+		int walked = 0;
+		for (int r = 0; r < rooms.size(); r++) if (rooms.get(r).visited && r != startRoom()) walked++;
+		DungeonRun.rooms(walked);
 
 		for (Container c : containers.values()) {
 			int r = roomAt(c.x - originX, c.z - originZ);
@@ -476,7 +483,11 @@ public final class DungeonRooms {
 		}
 		rememberMobs(mc, px, pz);
 		// spawners near the player that are gone now were destroyed
-		spawners.values().removeIf(s -> Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1])));
+		spawners.values().removeIf(s -> {
+			boolean gone = Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1]));
+			if (gone) DungeonRun.spawnerDestroyed();
+			return gone;
+		});
 		spawners.putAll(seenSpawners);
 		// spawners as entities (an armour stand's head, a hologram) and as blocks; one room counts each place once
 		java.util.Set<Long> counted = new java.util.HashSet<>();
@@ -509,7 +520,10 @@ public final class DungeonRooms {
 			Room room = rooms.get(r);
 			boolean near = Math.abs(room.centerX() - px) < NEAR && Math.abs(room.centerZ() - pz) < NEAR;
 			// mobs come back only from a spawner: a room without one has no time to count down
-			if (room.mobs == 0 && near && room.spawners > 0) cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
+			if (room.mobs == 0 && near && room.spawners > 0) {
+				cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
+				DungeonRun.cleared(room.centerX(), room.centerZ());
+			}
 			else if (room.mobs == 0) stillInfested.add(p);
 		}
 		infested.clear();

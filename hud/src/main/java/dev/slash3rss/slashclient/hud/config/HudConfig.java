@@ -195,6 +195,8 @@ public final class HudConfig {
 	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobMinion = "head", dungeonMobOther = "head";
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
 	public boolean dungeonContainers = true;
+	/** A card with the trip's summary after leaving a dungeon (and the list of trips kept, DungeonRun). */
+	public boolean dungeonSummary = true;
 	/** The dungeon map's floor in its blocks' colours instead of one plain grey. */
 	public boolean dungeonBlockColors = false;
 	/** The kinds of loot counted on the dungeon map (in rooms and under it): chests, barrels, pots, flower pots, deepslate ores. */
@@ -908,6 +910,7 @@ public final class HudConfig {
 		dungeonMobMinion = "skull".equals(other.dungeonMobMinion) ? "head" : other.dungeonMobMinion;
 		dungeonMobOther = "skull".equals(other.dungeonMobOther) ? "head" : other.dungeonMobOther;
 		dungeonContainers = other.dungeonContainers;
+		dungeonSummary = other.dungeonSummary;
 		dungeonBlockColors = other.dungeonBlockColors;
 		dungeonChests = other.dungeonChests;
 		dungeonBarrels = other.dungeonBarrels;

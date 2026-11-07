@@ -363,6 +363,7 @@ public class SlashHud implements ClientModInitializer {
 			SessionRenew.tick(mc);
 			PartnerIcons.tick(mc);
 			DungeonMap.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.DungeonRun.tick(mc);
 			LootHighlight.tick(mc);
 			Minimap.tick(mc);
 			if (mc.level == null) dev.slash3rss.slashclient.hud.map.MapStore.tick(mc);
@@ -487,6 +488,7 @@ public class SlashHud implements ClientModInitializer {
 			Shots.draw(g);
 			SlotLock.drawHotbar(g, mc);
 			dev.slash3rss.slashclient.hud.gamehud.PotionEnd.draw(g, mc);
+			dev.slash3rss.slashclient.hud.skyup.DungeonRun.draw(g, mc);
 			//#if MC >= 26.3
 			dev.slash3rss.slashclient.hud.skyup.SkyReminder.draw(g, mc);
 			//#endif

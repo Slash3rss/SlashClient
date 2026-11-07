@@ -113,7 +113,7 @@
 		"SkyCraftMixin",
 		"SkyEatMixin",
 		"SkyPlaceMixin",
-		"SlotLockMixin",
+		"SlotLockMixin", "DungeonLootMixin", "DungeonDropMixin",
 		"TimeMixin",
 		"TimePacketMixin",
 		"WeatherMixin"

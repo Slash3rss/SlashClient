@@ -19,11 +19,13 @@ abstract class SlotLockMixin {
 	@Inject(method = "handleContainerInput", at = @At("HEAD"), cancellable = true)
 	private void slashclient$lockedSlot(int containerId, int slotId, int button, net.minecraft.world.inventory.ContainerInput input, Player player, CallbackInfo ci) {
 		if (SlotLock.blocks(player, containerId, slotId, button, input.name())) ci.cancel();
+		else dev.slash3rss.slashclient.hud.skyup.DungeonRun.clicked(player, slotId, button, input.name());
 	}
 	//#else
 	//$ @Inject(method = "handleInventoryMouseClick", at = @At("HEAD"), cancellable = true)
 	//$ private void slashclient$lockedSlot(int containerId, int slotId, int button, net.minecraft.world.inventory.ClickType input, Player player, CallbackInfo ci) {
 	//$ 	if (SlotLock.blocks(player, containerId, slotId, button, input.name())) ci.cancel();
+	//$ 	else dev.slash3rss.slashclient.hud.skyup.DungeonRun.clicked(player, slotId, button, input.name());
 	//$ }
 	//#endif
 }

@@ -317,6 +317,11 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobMinion", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobMinion, v -> cfg.dungeonMobMinion = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.summary", () -> cfg.dungeonSummary, v -> cfg.dungeonSummary = v));
+					settings.add(new Action("slashclient-hud.dungeon.history", "slashclient-hud.dungeon.history.open", () -> {
+						var mc = net.minecraft.client.Minecraft.getInstance();
+						mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.DungeonHistoryScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+					}));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
 					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside", "apart" }, "slashclient-hud.dungeon.countersAt.",
 						() -> cfg.dungeonCountersAt, v -> {
