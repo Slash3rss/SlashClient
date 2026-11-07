@@ -7,7 +7,7 @@ import { api, confirmModal, el, errorText, icon, toast } from './common.js';
 
 const ERRORS = {
   bad_server: 'Zły adres serwera (np. skyup.pl).', bad_name: 'Nazwa do 48 znaków.', bad_strip: 'Znaki do obcięcia: do 16.',
-  bad_extractors: 'Od 1 do 6 odczytów.', bad_source: 'Źródło: nagłówek albo stopka.', bad_line: 'Linia od 0 (cały tekst) do 20.',
+  bad_extractors: 'Od 1 do 6 odczytów.', bad_source: 'Źródło: nagłówek, stopka albo pasek bossa.', bad_line: 'Linia od 0 (cały tekst) do 20.',
   bad_pattern: 'Wzorzec się nie kompiluje albo używa czegoś, czego gra nie odczyta tak samo.', bad_pattern_length: 'Wzorzec: od 1 do 200 znaków.',
   bad_pattern_escape: 'Dozwolone są tylko \\d \\w \\s \\b (i wielkie), \\n \\t, \\uXXXX i znaki interpunkcyjne po \\.',
   bad_pattern_group: 'Grupy: (?: (?= (?! (?<= (?<! i (?<nazwa> (litery i cyfry, bez powtórzeń nazw).',
@@ -16,6 +16,7 @@ const ERRORS = {
   bad_pattern_no_group: 'Każdy odczyt potrzebuje grupy z nazwą, np. (?<sector>…).',
   bad_map: 'Tabela nazw: do 50 par, każda strona do 40 znaków.', bad_template: 'Szablon (do 64 znaków) z co najmniej jednym {nazwa} z grup odczytów.',
   bad_discord: 'Zły opis Discorda.', bad_discord_text: 'Teksty Discorda do 128 znaków; w szablonach tylko {server}, {detail} i nazwy grup.',
+  bad_badge: 'Mała ikonka na czas: nazwa grupy z odczytów i obrazek.',
   bad_image: 'Obrazek: adres https (do 256 znaków) albo klucz zasobu aplikacji Discord.', exists: 'Ten serwer ma już regułę.',
 };
 const fail = (err) => toast(ERRORS[err?.code] ?? errorText(err), true);
@@ -70,7 +71,7 @@ function card(r) {
   const enabled = el('input', { type: 'checkbox', checked: r.enabled !== false });
   const rows = el('div', { class: 'sr-extractors' });
   const extractorRow = (x) => {
-    const source = el('select', {}, el('option', { value: 'header', textContent: 'Nagłówek' }), el('option', { value: 'footer', textContent: 'Stopka' }));
+    const source = el('select', {}, el('option', { value: 'header', textContent: 'Nagłówek' }), el('option', { value: 'footer', textContent: 'Stopka' }), el('option', { value: 'bossbar', textContent: 'Pasek bossa' }));
     source.value = x.source;
     const line = el('input', { type: 'number', min: 0, max: 20, value: x.line ?? 1, title: 'Linia (0: cały tekst)', class: 'sr-line' });
     const pattern = el('input', { type: 'text', value: x.pattern ?? '', placeholder: '^(?<sector>S\\d{1,2}(?: \\([^()]{1,24}\\))?)$', maxLength: 200, class: 'grow sr-pattern', spellcheck: false });
@@ -83,25 +84,27 @@ function card(r) {
   const d = r.discord ?? {};
   const details = text(d.details, 'Gra na {server}', 128), state = text(d.state, '{sector}', 128);
   const largeImage = text(d.largeImage, 'https://…/logo.png'), largeText = text(d.largeText, 'SkyUp.pl', 128), smallImage = text(d.smallImage, ''), smallText = text(d.smallText, '', 128);
+  const badgeWhen = text(d.badgeWhen, 'dungeon', 32), badgeImage = text(d.badgeImage, 'https://…/dungeon.png'), badgeText = text(d.badgeText, 'Dungeon poz. {dungeon}', 128);
 
   const read = () => ({
     server: server.value, name: name.value, enabled: enabled.checked, strip: strip.value, template: template.value,
     extractors: [...rows.children].map((row) => row.read()),
     map: map.value.split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2 && p[0].trim()).map(([k, ...v]) => [k.trim(), v.join('=').trim()]),
-    discord: { details: details.value, state: state.value, largeImage: largeImage.value, largeText: largeText.value, smallImage: smallImage.value, smallText: smallText.value },
+    discord: { details: details.value, state: state.value, largeImage: largeImage.value, largeText: largeText.value, smallImage: smallImage.value, smallText: smallText.value, badgeWhen: badgeWhen.value, badgeImage: badgeImage.value, badgeText: badgeText.value },
   });
 
   const header = el('textarea', { rows: 2, value: r.server === 'skyup.pl' || !r.id ? SAMPLE : '', placeholder: 'Nagłówek listy graczy (linie jak w grze, kody § mogą zostać)' });
   const footer = el('textarea', { rows: 2, placeholder: 'Stopka (opcjonalnie)' });
+  const bossbar = el('textarea', { rows: 1, placeholder: 'Paski bossa (opcjonalnie), np. Dungeon poz. 3' });
   const result = el('div', { class: 'small sr-result' });
   const preview = el('button', { type: 'button', onclick: async () => {
-    const res = await call('POST', '/v1/admin/status-preview', { rule: read(), header: header.value, footer: footer.value });
+    const res = await call('POST', '/v1/admin/status-preview', { rule: read(), header: header.value, footer: footer.value, bossbar: bossbar.value });
     if (!res) return;
     const vals = Object.entries(res.values).map(([k, v]) => `${k} = ${v}`).join(', ') || 'nic';
     result.replaceChildren(
       el('div', {}, 'Status: ', el('b', { textContent: res.detail ?? '(brak — nic nie pasuje)' })),
       el('div', { class: 'muted', textContent: `Grupy: ${vals}` }),
-      el('div', { class: 'muted', textContent: `Discord: ${res.discord.details || '(domyślnie)'} · ${res.discord.state || '(domyślnie)'}` }));
+      el('div', { class: 'muted', textContent: `Discord: ${res.discord.details || '(domyślnie)'} · ${res.discord.state || '(domyślnie)'}${res.discord.badge ? ` · mała ikonka: ${res.discord.badge}` : ''}` }));
   } }, icon('fa-solid fa-flask'), 'Sprawdź');
 
   const save = el('button', { type: 'button', class: 'primary', onclick: async () => {
@@ -124,7 +127,8 @@ function card(r) {
     field('Tabela nazw (jedna para na linię: z serwera = do pokazania)', map),
     el('h4', { textContent: 'Discord Rich Presence' }),
     el('div', { class: 'sr-grid' }, field('Górna linia (details)', details, '{server}, {detail}, grupy; puste: wersja gry'), field('Dolna linia (state)', state, 'puste: „Na serwerze …”'),
-      field('Duży obrazek', largeImage, 'https://… albo klucz zasobu'), field('Tekst dużego obrazka', largeText), field('Mały obrazek', smallImage), field('Tekst małego obrazka', smallText)),
-    el('details', { class: 'sr-preview' }, el('summary', { textContent: 'Sprawdź na przykładzie' }), header, footer, preview, result),
+      field('Duży obrazek', largeImage, 'https://… albo klucz zasobu'), field('Tekst dużego obrazka', largeText), field('Mały obrazek', smallImage), field('Tekst małego obrazka', smallText),
+      field('Mała ikonka, gdy jest grupa', badgeWhen, 'np. dungeon: tylko wtedy, zamiast małego obrazka'), field('Obrazek tej ikonki', badgeImage, 'https://… albo klucz zasobu'), field('Tekst tej ikonki', badgeText, 'np. Dungeon poz. {dungeon}')),
+    el('details', { class: 'sr-preview' }, el('summary', { textContent: 'Sprawdź na przykładzie' }), header, footer, bossbar, preview, result),
     el('div', { class: 'row' }, save, el('div', { class: 'grow' }), remove));
 }

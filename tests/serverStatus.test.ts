@@ -48,6 +48,20 @@ describe('server statuses from the tab list', () => {
     assert.equal(decorate(BASE, { server: 'mc.example.com', status: { server: 'mc.example.com', detail: 'Lobby', values: {} }, rules: RULES, hideServer: false }).state, `${BASE.state} · Lobby`);
   });
 
+  it("shows a dungeon's gate as the small picture while in a dungeon", () => {
+    const rules: PublishedRules = { rules: [{ ...RULES.rules[0], discord: { ...RULES.rules[0].discord, smallImage: 'star', smallText: 'Gwiazdka', badgeWhen: 'dungeon', badgeImage: 'https://slashclient.pl/img/discord/dungeon.png', badgeText: 'Dungeon poz. {dungeon}' } }] };
+    const p = decorate(BASE, { server: 'skyup.pl', status: { ...SKY, server: 'skyup.pl', values: { ...SKY.values, dungeon: '4' } }, rules, hideServer: false });
+    assert.equal(p.smallImageKey, 'https://slashclient.pl/img/discord/dungeon.png');
+    assert.equal(p.smallImageText, 'Dungeon poz. 4');
+    assert.equal(p.state, 'S3 (Wyspy)');
+    // out of the dungeon: the rule's usual small picture
+    const out = decorate(BASE, { server: 'skyup.pl', status: { ...SKY, server: 'skyup.pl' }, rules, hideServer: false });
+    assert.equal(out.smallImageKey, 'star');
+    assert.equal(out.smallImageText, 'Gwiazdka');
+    // the level without a status (a tab list it did not read) still shows
+    assert.equal(decorate(BASE, { server: 'skyup.pl', status: { server: 'skyup.pl', values: { dungeon: '2' } }, rules, hideServer: false }).smallImageText, 'Dungeon poz. 2');
+  });
+
   it('keeps the server and its status off Discord when it is hidden from friends', () => {
     setLang('pl');
     const p = decorate(BASE, { server: 'play.skyup.pl', status: SKY, rules: RULES, hideServer: true });

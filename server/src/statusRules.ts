@@ -7,6 +7,8 @@ import { serverKey, serverRule } from './achievements.ts';
  * Statuses from the tab list: per server, how SlashClient HUD reads the text a server puts over and
  * under the player list (e.g. SkyUp's "» S3 (Wyspy) «") and turns it into a short status friends see
  * next to the server ("Gra na SkyUp.pl · S3 (Wyspy)"), and what Discord Rich Presence shows there.
+ * A rule may also read the boss bar's titles (SkyUp's "Dungeon poz. 3") and put a small picture on
+ * Discord while a value is known (the dungeon's gate with "Dungeon poz. 3").
  * The admin keeps the rules (the Partnerzy tab); games and launchers ask GET /v1/status-rules (public,
  * with an ETag) and do the reading themselves, the server only keeps the short result in the presence.
  *
@@ -14,9 +16,17 @@ import { serverKey, serverRule } from './achievements.ts';
  * understand the same way is accepted, and nothing that can backtrack for long (see `checkPattern`).
  */
 
-export type Source = 'header' | 'footer';
+export type Source = 'header' | 'footer' | 'bossbar';
+/** `bossbar`: the titles of the boss bars on screen, one per line (games before 0.9.73 read the header there, where it matches nothing). */
 export interface Extractor { source: Source; /** 1-based line; 0 = the whole text */ line: number; pattern: string }
-export interface DiscordLook { details: string; state: string; largeImage: string; largeText: string; smallImage: string; smallText: string }
+/**
+ * `badge*`: a small picture shown instead of `smallImage` while the value `badgeWhen` is known (in a
+ * dungeon), with `badgeText` made of the values. Launchers before 0.9.73 do not know it and leave it out.
+ */
+export interface DiscordLook {
+  details: string; state: string; largeImage: string; largeText: string; smallImage: string; smallText: string;
+  badgeWhen?: string; badgeImage?: string; badgeText?: string;
+}
 export interface StatusRule {
   id: string; server: string; name: string; enabled: boolean;
   /** Characters cut from both ends of every line (with spaces), e.g. SkyUp's "»« ". */
@@ -37,16 +47,21 @@ const NAME = /^[a-zA-Z][a-zA-Z0-9]{0,31}$/;
 const PLACEHOLDER = /\{([a-zA-Z][a-zA-Z0-9]{0,31})\}/g;
 const EMPTY_DISCORD: DiscordLook = { details: '', state: '', largeImage: '', largeText: '', smallImage: '', smallText: '' };
 
+/** The extractor and Discord badge for SkyUp's dungeons: the boss bar says "Dungeon poz. 3" there. */
+export const SKYUP_DUNGEON_EXTRACTOR: Extractor = { source: 'bossbar', line: 0, pattern: 'Dungeon\\s+poz\\.?\\s*(?<dungeon>\\d{1,3})' };
+export const SKYUP_DUNGEON_BADGE = { badgeWhen: 'dungeon', badgeImage: 'https://slashclient.pl/img/discord/dungeon.png', badgeText: 'Dungeon poz. {dungeon}' };
+
 /** SkyUp.pl as its tab list looks (26.3): "» SkyUP - AnyBlock «" over "» S0 (Spawn) «" or "» LOBBY «". AnyBlock is its only server, so only the sector is shown. */
 export const SKYUP_RULE: Omit<StatusRule, 'id' | 'updatedAt'> = {
   server: 'skyup.pl', name: 'SkyUp.pl', enabled: true, strip: '»« ',
   extractors: [
     { source: 'header', line: 1, pattern: '^Sky[Uu][Pp] - (?<mode>[^»«]{1,32})$' },
     { source: 'header', line: 2, pattern: '^(?<sector>LOBBY|Lobby|S\\d{1,2}(?: \\([^()]{1,24}\\))?)$' },
+    SKYUP_DUNGEON_EXTRACTOR,
   ],
   map: { LOBBY: 'Lobby' },
   template: '{sector}',
-  discord: { ...EMPTY_DISCORD, details: 'Gra na {server}', state: '{sector}', largeText: 'SkyUp.pl' },
+  discord: { ...EMPTY_DISCORD, details: 'Gra na {server}', state: '{sector}', largeText: 'SkyUp.pl', ...SKYUP_DUNGEON_BADGE },
 };
 
 // ---------- checking what the admin typed ----------
@@ -201,7 +216,7 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
   const groups = new Set<string>();
   const extractors = (rawEx as unknown[]).map((e) => {
     const x = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>;
-    if (x.source !== 'header' && x.source !== 'footer') bad('bad_source');
+    if (x.source !== 'header' && x.source !== 'footer' && x.source !== 'bossbar') bad('bad_source');
     const line = Number(x.line ?? 0);
     if (!Number.isInteger(line) || line < 0 || line > 20) bad('bad_line');
     const names = checkPattern(x.pattern);
@@ -235,6 +250,13 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
     smallImage: cleanImage(d.smallImage),
     smallText: cleanText(d.smallText, 128, 'bad_discord_text'),
   };
+  const badgeWhen = cleanText(d.badgeWhen, 32, 'bad_badge');
+  if (badgeWhen) {
+    if (!groups.has(badgeWhen)) bad('bad_badge');
+    const badgeImage = cleanImage(d.badgeImage);
+    if (!badgeImage) bad('bad_badge');
+    Object.assign(discord, { badgeWhen, badgeImage, badgeText: cleanTemplate(d.badgeText, 128, 'bad_discord_text', discordKnown) });
+  }
   return { server, name, enabled, strip, extractors, map, template, discord };
 }
 
@@ -287,12 +309,12 @@ export function render(template: string, values: Record<string, string>): string
 
 export interface Reading { detail?: string; values: Record<string, string> }
 
-/** What a rule makes of a tab list's header and footer. */
-export function evaluate(rule: Pick<StatusRule, 'strip' | 'extractors' | 'map' | 'template'>, header: string, footer: string): Reading {
+/** What a rule makes of a tab list's header and footer (and the boss bars' titles, one per line). */
+export function evaluate(rule: Pick<StatusRule, 'strip' | 'extractors' | 'map' | 'template'>, header: string, footer: string, bossbar = ''): Reading {
   const values: Record<string, string> = {};
   const lowerMap = new Map(Object.entries(rule.map).map(([k, v]) => [k.toLowerCase(), v]));
   for (const x of rule.extractors) {
-    const text = sourceText(x.source === 'header' ? header : footer, x.line, rule.strip);
+    const text = sourceText(x.source === 'header' ? header : x.source === 'bossbar' ? bossbar : footer, x.line, rule.strip);
     if (text === undefined) continue;
     let m: RegExpExecArray | null;
     try {
@@ -335,6 +357,20 @@ export class StatusRuleStore {
     sql.exec(SCHEMA);
     // SkyUp's rule comes once, with the table; the admin may change or remove it for good
     if (!existed) this.save({ ...SKYUP_RULE, id: randomBytes(6).toString('hex'), updatedAt: Date.now() });
+    this.upgrade();
+  }
+
+  /**
+   * Additions to the seeded SkyUp rule, each once: a rule kept from before gets them too, and when
+   * the admin takes one out later it stays out.
+   */
+  private upgrade() {
+    this.sql.exec('CREATE TABLE IF NOT EXISTS status_rule_upgrades (name TEXT PRIMARY KEY, at INTEGER NOT NULL)');
+    const done = this.sql.prepare('INSERT OR IGNORE INTO status_rule_upgrades (name, at) VALUES (?, ?)').run('skyup_dungeon', Date.now());
+    if (!done.changes) return;
+    const sky = this.all().find((r) => r.server === SKYUP_RULE.server);
+    if (!sky || sky.extractors.length >= 6 || sky.extractors.some((x) => x.source === 'bossbar') || sky.discord.badgeWhen) return;
+    this.save({ ...sky, extractors: [...sky.extractors, SKYUP_DUNGEON_EXTRACTOR], discord: { ...sky.discord, ...SKYUP_DUNGEON_BADGE }, updatedAt: Date.now() });
   }
 
   all(): StatusRule[] {
@@ -473,9 +509,11 @@ export function createStatusRules(ctx: StatusRuleContext) {
       const rule = attempt(() => cleanRule((input.rule ?? {}) as Record<string, unknown>));
       const header = typeof input.header === 'string' ? input.header.slice(0, 1024) : '';
       const footer = typeof input.footer === 'string' ? input.footer.slice(0, 1024) : '';
-      const reading = evaluate(rule, header, footer);
-      const values = { ...reading.values, server: rule.name || rule.server, ...(reading.detail ? { detail: reading.detail } : {}) };
-      return { detail: reading.detail ?? null, values: reading.values, discord: { details: render(rule.discord.details, values), state: render(rule.discord.state, values) } };
+      const bossbar = typeof input.bossbar === 'string' ? input.bossbar.slice(0, 1024) : '';
+      const reading = evaluate(rule, header, footer, bossbar);
+      const values: Record<string, string> = { ...reading.values, server: rule.name || rule.server, ...(reading.detail ? { detail: reading.detail } : {}) };
+      const badge = rule.discord.badgeWhen && values[rule.discord.badgeWhen] ? render(rule.discord.badgeText ?? '', values) || rule.discord.badgeWhen : '';
+      return { detail: reading.detail ?? null, values: reading.values, discord: { details: render(rule.discord.details, values), state: render(rule.discord.state, values), badge } };
     }],
   ];
 

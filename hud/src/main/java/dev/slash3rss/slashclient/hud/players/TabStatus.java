@@ -29,11 +29,14 @@ import java.util.regex.Pattern;
  * admin panel, GET /v1/status-rules); each second this reads the header and footer, makes the short
  * status ("S3 (Wyspy)") with the rule for the server the game is on, and tells the launcher when it
  * changes. The launcher passes it to friends (only when they may see the server) and to Discord.
+ * A rule may read the boss bars' titles too (SkyUp's "Dungeon poz. 3"): Discord then shows a small
+ * picture of a dungeon with its level.
  */
 public final class TabStatus {
 	private TabStatus() {}
 
-	public record Extractor(boolean footer, int line, Pattern pattern, List<String> groups) {}
+	/** `source`: 0 the header, 1 the footer, 2 the boss bars' titles (one per line). */
+	public record Extractor(int source, int line, Pattern pattern, List<String> groups) {}
 	public record Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template) {}
 	public record Reading(String detail, Map<String, String> values) {}
 
@@ -79,7 +82,8 @@ public final class TabStatus {
 				List<String> groups = new ArrayList<>();
 				Matcher m = GROUP_NAME.matcher(pattern);
 				while (m.find()) groups.add(m.group(1));
-				list.add(new Extractor("footer".equals(x.get("source").getAsString()), x.has("line") ? x.get("line").getAsInt() : 0, Pattern.compile(pattern), groups));
+				String source = x.get("source").getAsString();
+				list.add(new Extractor("footer".equals(source) ? 1 : "bossbar".equals(source) ? 2 : 0, x.has("line") ? x.get("line").getAsInt() : 0, Pattern.compile(pattern), groups));
 			}
 			Map<String, String> map = new LinkedHashMap<>();
 			if (o.has("map") && o.get("map").isJsonObject()) for (var en : o.getAsJsonObject("map").entrySet()) map.put(en.getKey(), en.getValue().getAsString());
@@ -242,9 +246,14 @@ public final class TabStatus {
 
 	/** What a rule makes of a header and footer. */
 	public static Reading evaluate(Rule rule, String header, String footer) {
+		return evaluate(rule, header, footer, "");
+	}
+
+	/** What a rule makes of a header, footer and the boss bars' titles (one per line). */
+	public static Reading evaluate(Rule rule, String header, String footer, String bossbar) {
 		Map<String, String> values = new LinkedHashMap<>();
 		for (Extractor x : rule.extractors()) {
-			String text = source(x.footer() ? footer : header, x.line(), rule.strip());
+			String text = source(x.source() == 1 ? footer : x.source() == 2 ? bossbar : header, x.line(), rule.strip());
 			if (text == null) continue;
 			try {
 				Matcher m = x.pattern().matcher(new Budget(text, new int[] {STEP_BUDGET}));
@@ -288,16 +297,29 @@ public final class TabStatus {
 		refresh();
 		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) Compat.tabList(mc);
 		Component h = parts.slashclient$header(), f = parts.slashclient$footer();
-		String header = h == null ? "" : h.getString(), footer = f == null ? "" : f.getString();
+		String header = h == null ? "" : h.getString(), footer = f == null ? "" : f.getString(), bars = bossBars(mc);
 		List<Rule> list = rules;
-		String text = server + "\u0000" + header + "\u0000" + footer + "\u0000" + System.identityHashCode(list);
+		String text = server + "\u0000" + header + "\u0000" + footer + "\u0000" + bars + "\u0000" + System.identityHashCode(list);
 		if (!text.equals(lastText)) {
 			lastText = text;
 			lastServer = server;
 			Rule rule = ruleFor(list, server);
-			queue(server, rule == null ? null : evaluate(rule, header, footer));
+			queue(server, rule == null ? null : evaluate(rule, header, footer, bars));
 		}
 		flush();
+	}
+
+	/** The titles of the boss bars on screen, one per line ("Dungeon poz. 3" in a SkyUp dungeon). */
+	static String bossBars(Minecraft mc) {
+		var overlay = Compat.bossOverlay(mc);
+		if (overlay == null) return "";
+		StringBuilder out = new StringBuilder();
+		for (var event : ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values()) {
+			if (out.length() > 0) out.append('\n');
+			out.append(event.getName().getString());
+			if (out.length() > 1024) break;
+		}
+		return out.toString();
 	}
 
 	private static void queue(String server, Reading reading) {
@@ -305,8 +327,9 @@ public final class TabStatus {
 		if (server == null) body.add("server", com.google.gson.JsonNull.INSTANCE);
 		else {
 			body.addProperty("server", server);
-			if (reading != null && reading.detail() != null) {
-				body.addProperty("detail", reading.detail());
+			// the values go even without a status: a dungeon's level shows on Discord wherever the tab list is
+			if (reading != null && reading.detail() != null) body.addProperty("detail", reading.detail());
+			if (reading != null && !reading.values().isEmpty()) {
 				JsonObject values = new JsonObject();
 				reading.values().forEach(values::addProperty);
 				body.add("values", values);
@@ -380,6 +403,14 @@ public final class TabStatus {
 		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) Compat.tabList(mc);
 		Component h = parts.slashclient$header(), f = parts.slashclient$footer();
 		return readForTest(server, h == null ? "" : h.getString(), f == null ? "" : f.getString());
+	}
+
+	/** For the test: the values the rules read from the tab list and boss bars on screen, as if on `server`. */
+	public static String valuesOnScreenForTest(Minecraft mc, String server) {
+		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) Compat.tabList(mc);
+		Component h = parts.slashclient$header(), f = parts.slashclient$footer();
+		Rule rule = ruleFor(rules, server);
+		return rule == null ? "" : evaluate(rule, h == null ? "" : h.getString(), f == null ? "" : f.getString(), bossBars(mc)).values().toString();
 	}
 
 	/** For the test: what the rules make of a tab list on a server ("" for nothing). */

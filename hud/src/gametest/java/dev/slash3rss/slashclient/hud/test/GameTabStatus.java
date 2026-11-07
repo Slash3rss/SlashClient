@@ -20,6 +20,7 @@ import java.util.List;
  * real header (colours, » «) set on the game's tab list; every sector, the lobby, a strange header
  * and another server. Then the friends window with a friend on SkyUp in sector S3, on the list and in
  * the chat's header ("Gra na SkyUp.pl · S3 (Wyspy)"). The layout audit runs over it.
+ * A dungeon's level comes from the boss bar ("Dungeon poz. 3"), for Discord's small picture.
  */
 public class GameTabStatus implements FabricClientGameTest {
 	private static final String ALA = "ala-sky", BOB = "bob-menu";
@@ -33,6 +34,9 @@ public class GameTabStatus implements FabricClientGameTest {
 		JsonArray ex = new JsonArray();
 		ex.add(extractor(1, "^Sky[Uu][Pp] - (?<mode>[^»«]{1,32})$"));
 		ex.add(extractor(2, "^(?<sector>LOBBY|Lobby|S\\d{1,2}(?: \\([^()]{1,24}\\))?)$"));
+		JsonObject dungeon = extractor(0, "Dungeon\\s+poz\\.?\\s*(?<dungeon>\\d{1,3})");
+		dungeon.addProperty("source", "bossbar");
+		ex.add(dungeon);
 		rule.add("extractors", ex);
 		JsonObject map = new JsonObject();
 		map.addProperty("LOBBY", "Lobby");
@@ -94,6 +98,18 @@ public class GameTabStatus implements FabricClientGameTest {
 			if (!strange.isEmpty()) throw new AssertionError("A strange header gave '" + strange + "'");
 			String other = context.computeOnClient(mc -> TabStatus.readForTest("mc.example.com", "» SkyUP - AnyBlock «\n» S3 (Wyspy) «", ""));
 			if (!other.isEmpty()) throw new AssertionError("Another server gave '" + other + "'");
+
+			// in a dungeon: the boss bar says its level
+			context.runOnClient(mc -> Compat.tabList(mc).setHeader(header("S8 (Dungeon)")));
+			world.getServer().runCommand("bossbar add slashtest:dng \"Dungeon poz. 3\"");
+			world.getServer().runCommand("bossbar set slashtest:dng players @a");
+			context.waitTicks(10);
+			String inDungeon = context.computeOnClient(mc -> TabStatus.valuesOnScreenForTest(mc, "skyup.pl"));
+			if (!inDungeon.contains("dungeon=3") || !inDungeon.contains("sector=S8 (Dungeon)")) throw new AssertionError("In a dungeon the values are " + inDungeon);
+			world.getServer().runCommand("bossbar remove slashtest:dng");
+			context.waitTicks(10);
+			String left = context.computeOnClient(mc -> TabStatus.valuesOnScreenForTest(mc, "skyup.pl"));
+			if (left.contains("dungeon")) throw new AssertionError("Out of the dungeon the values are " + left);
 
 			// the tab list with SkyUp's header, held open
 			context.runOnClient(mc -> {

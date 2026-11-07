@@ -8,7 +8,11 @@ import type { Presence } from './discord';
  * Discord gets the rule's own look: its pictures and lines made of the same values.
  */
 
-export interface DiscordLook { details?: string; state?: string; largeImage?: string; largeText?: string; smallImage?: string; smallText?: string }
+/** `badge*` (server 0.9.73+): a small picture while the value `badgeWhen` is known (in a SkyUp dungeon). */
+export interface DiscordLook {
+  details?: string; state?: string; largeImage?: string; largeText?: string; smallImage?: string; smallText?: string;
+  badgeWhen?: string; badgeImage?: string; badgeText?: string;
+}
 export interface PublishedRule { server: string; name?: string; discord?: DiscordLook }
 export interface PublishedRules { version?: string; rules: PublishedRule[]; discord?: DiscordLook }
 
@@ -104,6 +108,11 @@ export function decorate(base: Presence, o: DecorateOptions): Presence {
   out.details = discordText(render(look.details, values)) ?? out.details;
   out.state = discordText(render(look.state, values)) ?? (status?.detail ? discordText(`${out.state ?? ''} · ${status.detail}`) : out.state);
   pictures(look);
+  // the small picture for now: in a dungeon, its gate with "Dungeon poz. 3"
+  if (look.badgeWhen && look.badgeImage && values[look.badgeWhen]) {
+    out.smallImageKey = look.badgeImage;
+    out.smallImageText = discordText(render(look.badgeText, values));
+  }
   return out;
 }
 

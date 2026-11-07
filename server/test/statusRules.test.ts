@@ -7,7 +7,8 @@ import { after, before, describe, it } from 'node:test';
 import WebSocket from 'ws';
 import { createApp } from '../src/app.ts';
 import { cleanPresence, publicPresence } from '../src/presence.ts';
-import { SKYUP_RULE, checkPattern, cleanDefaults, cleanRule, evaluate, matches, render, sanitizeDetail, RuleError } from '../src/statusRules.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { SKYUP_RULE, StatusRuleStore, checkPattern, cleanDefaults, cleanRule, evaluate, matches, render, sanitizeDetail, RuleError } from '../src/statusRules.ts';
 
 // SkyUp.pl's tab list as the game gets it (26.3): colours, the decorative » «, the lines under one another
 const SKYUP_HEADER = (sector: string) => `§8» §b§lSkyUP §7- §fAnyBlock §8«\n§8» §e${sector} §8«\n`;
@@ -36,6 +37,36 @@ describe('status rules: reading the tab list', () => {
     assert.equal(evaluate(rule, SKYUP_HEADER('S3 (Wyspy)'), '').detail, 'AnyBlock · S3 (Wyspy)');
     // the mode line missing: no half status
     assert.equal(evaluate(rule, '» S3 (Wyspy) «', '').detail, undefined);
+  });
+
+  it("reads a SkyUp dungeon's level from the boss bar", () => {
+    const r = evaluate(SKYUP_RULE, SKYUP_HEADER('S8 (Dungeon)'), SKYUP_FOOTER, 'Jakiś boss\n§c§lDungeon poz. 3');
+    assert.equal(r.values.dungeon, '3');
+    assert.equal(r.detail, 'S8 (Dungeon)');
+    // no boss bar, or a header with the words: no dungeon
+    assert.equal(evaluate(SKYUP_RULE, SKYUP_HEADER('S8 (Dungeon)'), '').values.dungeon, undefined);
+    assert.equal(evaluate(SKYUP_RULE, 'Dungeon poz. 3', 'Dungeon poz. 3').values.dungeon, undefined);
+    assert.equal(cleanRule({ ...SKYUP_RULE }).discord.badgeText, 'Dungeon poz. {dungeon}');
+    // the small picture needs a group the rule reads and a picture
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, discord: { ...SKYUP_RULE.discord, badgeWhen: 'floor' } })), 'bad_badge');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, discord: { ...SKYUP_RULE.discord, badgeImage: '' } })), 'bad_badge');
+    assert.equal(cleanRule({ ...SKYUP_RULE, discord: { ...SKYUP_RULE.discord, badgeWhen: '' } }).discord.badgeWhen, undefined);
+  });
+
+  it("a SkyUp rule kept from before gets the dungeon once", () => {
+    const sql = new DatabaseSync(':memory:');
+    const { extractors, discord, ...rest } = SKYUP_RULE;
+    sql.exec('CREATE TABLE status_rules (id TEXT PRIMARY KEY, server TEXT NOT NULL UNIQUE, data TEXT NOT NULL, updated_at INTEGER NOT NULL)');
+    const old = { ...rest, extractors: extractors.filter((x) => x.source !== 'bossbar'), discord: { details: discord.details, state: discord.state, largeImage: 'logo', largeText: '', smallImage: '', smallText: '' } };
+    sql.prepare('INSERT INTO status_rules VALUES (?, ?, ?, ?)').run('a1', 'skyup.pl', JSON.stringify(old), 1);
+    const sky = new StatusRuleStore(sql).all()[0];
+    assert.equal(sky.extractors.length, 3);
+    assert.equal(sky.discord.badgeWhen, 'dungeon');
+    assert.equal(sky.discord.largeImage, 'logo');
+    // taken out by the admin: it stays out
+    const store = new StatusRuleStore(sql);
+    store.save({ ...sky, extractors: sky.extractors.slice(0, 2), discord: { ...sky.discord, badgeWhen: undefined } });
+    assert.equal(new StatusRuleStore(sql).all()[0].extractors.length, 2);
   });
 
   it('says nothing for an unknown header', () => {
@@ -183,7 +214,10 @@ describe('status rules: the endpoints', () => {
     assert.equal(added.body.rules.length, 2);
     const preview = await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...sky, discord: { details: 'Gra na {server}', state: '{sector}' } }, header: SKYUP_HEADER('S9 (Event)') });
     assert.equal(preview.body.detail, 'S9 (Event)');
-    assert.deepEqual(preview.body.discord, { details: 'Gra na SkyUp.pl', state: 'S9 (Event)' });
+    assert.deepEqual(preview.body.discord, { details: 'Gra na SkyUp.pl', state: 'S9 (Event)', badge: '' });
+    const inDungeon = await call('POST', '/v1/admin/status-preview', admin.token, { rule: sky, header: SKYUP_HEADER('S8 (Dungeon)'), bossbar: 'Dungeon poz. 12' });
+    assert.equal(inDungeon.body.values.dungeon, '12');
+    assert.equal(inDungeon.body.discord.badge, 'Dungeon poz. 12');
     assert.equal((await call('POST', '/v1/admin/status-defaults', admin.token, { largeImage: 'ftp://x' })).body.error, 'bad_image');
     assert.equal((await call('POST', '/v1/admin/status-defaults', admin.token, { largeImage: 'logo', largeText: 'SlashClient' })).status, 200);
     assert.equal((await call('GET', '/v1/status-rules')).body.discord.largeText, 'SlashClient');
