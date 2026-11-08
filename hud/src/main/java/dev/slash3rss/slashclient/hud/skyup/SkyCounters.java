@@ -702,7 +702,9 @@ public final class SkyCounters {
 	}
 
 	public static void attacked(Player player, Entity target) {
-		if (mine(player) && target instanceof LivingEntity) hit.put(target.getId(), new Hit(System.currentTimeMillis(), stackOf(target)));
+		// in a dungeon also in creative (an admin in vanish): those kills go only to the dungeon's summary, no task's
+		boolean counts = mine(player) || DungeonMap.active() && player == Minecraft.getInstance().player;
+		if (counts && target instanceof LivingEntity) hit.put(target.getId(), new Hit(System.currentTimeMillis(), stackOf(target)));
 	}
 
 	private static void killed(LivingEntity living, int amount) {
