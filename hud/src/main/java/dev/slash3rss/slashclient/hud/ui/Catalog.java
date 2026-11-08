@@ -317,6 +317,7 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobMinion", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobMinion, v -> cfg.dungeonMobMinion = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.xp", () -> cfg.dungeonXp, v -> cfg.dungeonXp = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
 					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside", "apart" }, "slashclient-hud.dungeon.countersAt.",
 						() -> cfg.dungeonCountersAt, v -> {

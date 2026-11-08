@@ -1396,6 +1396,7 @@
 	"slashclient-hud.dungeon.countersAt.inside": "Na mapie",
 	"slashclient-hud.dungeon.countersAt.apart": "Osobno (przesuń w edytorze)",
 	"slashclient-hud.dungeon.counters": "Liczniki łupów pokoju",
+	"slashclient-hud.dungeon.xp": "Exp dungeonu na bossbarze",
 	"slashclient-hud.dungeon.debug": "Debug: siatka i tabliczki na pełnej mapie (M), D zapisuje plik dla twórców",
 	"slashclient-hud.dungeon.debugSaved": "Zapisano: %s",
 	"slashclient-hud.dungeon.debugHelp": "D: zapisz debug do pliku",

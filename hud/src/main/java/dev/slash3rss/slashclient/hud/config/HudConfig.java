@@ -203,6 +203,8 @@ public final class HudConfig {
 	public boolean dungeonChests = true, dungeonBarrels = true, dungeonPots = true, dungeonFlowerPots = true, dungeonOres = true;
 	/** Counters under the dungeon map, one per kind of loot. */
 	public boolean dungeonCounters = true;
+	/** The dungeon's XP as a number on its boss bar ("52/125 xp"). */
+	public boolean dungeonXp = true;
 	/** Where the counters are: "below" the map, "above" it, "inside" it, along its bottom edge, or "apart" (a module of their own). */
 	public String dungeonCountersAt = "below";
 	/** Deepslate ores not counted ("coal,copper"), the rest are. */
@@ -941,6 +943,7 @@ public final class HudConfig {
 		lootHighlightRange = Math.max(8, Math.min(64, other.lootHighlightRange));
 		dungeonOres = other.dungeonOres;
 		dungeonCounters = other.dungeonCounters;
+		dungeonXp = other.dungeonXp;
 		dungeonCountersAt = java.util.List.of("below", "above", "inside", "apart").contains(other.dungeonCountersAt) ? other.dungeonCountersAt : "below";
 		dungeonOresOff = other.dungeonOresOff;
 		dungeonCleared = other.dungeonCleared;

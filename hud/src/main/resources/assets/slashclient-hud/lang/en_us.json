@@ -1396,6 +1396,7 @@
 	"slashclient-hud.dungeon.countersAt.inside": "On the map",
 	"slashclient-hud.dungeon.countersAt.apart": "Apart (move it in the editor)",
 	"slashclient-hud.dungeon.counters": "The room's loot counters",
+	"slashclient-hud.dungeon.xp": "Dungeon XP on the boss bar",
 	"slashclient-hud.dungeon.debug": "Debug: the grid and signs on the full map (M), D saves a file for the developers",
 	"slashclient-hud.dungeon.debugSaved": "Saved: %s",
 	"slashclient-hud.dungeon.debugHelp": "D: save debug to a file",

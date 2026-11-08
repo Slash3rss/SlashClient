@@ -25,6 +25,7 @@
 		"PackDownloadMixin",
 		"BenchCameraMixin",
 		"BossHealthOverlayAccessor",
+		"DungeonXpBarMixin",
 		"BlockOutlineMixin",
 		"BrandingMixin",
 		"CameraMixin",

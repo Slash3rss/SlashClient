@@ -497,6 +497,30 @@ public final class DungeonMap implements HudModule {
 		return g > r + 30 && g > b + 30 ? 0xFF3E8E52 : 0xFF4B5563;
 	}
 
+	/**
+	 * The XP a dungeon level takes to the next, as SkyUp counts it: 130·L − 9·L² + L³/5 (whole numbers, the
+	 * division too). The boss bar only says how full it is, so the XP is that part of it.
+	 */
+	public static int xpNeeded(int level) {
+		long l = Math.max(1, level);
+		return (int) Math.max(1, 130 * l - 9 * l * l + l * l * l / 5);
+	}
+
+	/** The dungeon's boss bar as drawn: its name and the XP as a number ("Dungeon poz. 3 · 52/125 xp"); any other bar as it is. */
+	public static Component withXp(Component name, float progress) {
+		if (name == null || SlashHud.config == null || !SlashHud.config.dungeonXp) return name;
+		Matcher m = LEVEL.matcher(name.getString());
+		if (!m.find()) return name;
+		int need;
+		try {
+			need = xpNeeded(Integer.parseInt(m.group(1)));
+		} catch (NumberFormatException e) {
+			return name;
+		}
+		int have = Math.round(Math.max(0f, Math.min(1f, progress)) * need);
+		return name.copy().append(Component.literal(" · " + have + "/" + need + " xp").withStyle(net.minecraft.ChatFormatting.GRAY));
+	}
+
 	/** "Dungeon poz. 2" on the boss bar: whether it is there, and the dungeon's level for the map's title. */
 	private static boolean readLevel(Minecraft mc) {
 		var overlay = Compat.bossOverlay(mc);

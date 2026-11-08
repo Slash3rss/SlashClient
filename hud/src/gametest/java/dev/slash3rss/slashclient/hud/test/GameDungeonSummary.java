@@ -27,6 +27,17 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			server.runCommand("bossbar set dungeon players @a");
 			context.waitTicks(40);
 			if (!context.computeOnClient(mc -> DungeonRun.running())) throw new AssertionError("No trip began with the boss bar");
+			// the bar 40% full: of level 2's 225 xp (130·2 − 9·4 + 8/5), 90
+			server.runCommand("bossbar set dungeon max 100");
+			server.runCommand("bossbar set dungeon value 40");
+			context.waitTicks(20);
+			String bar = context.computeOnClient(mc -> {
+				var overlay = dev.slash3rss.slashclient.hud.Compat.bossOverlay(mc);
+				var event = ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values().iterator().next();
+				return dev.slash3rss.slashclient.hud.skyup.DungeonMap.withXp(event.getName(), 0.4f).getString();
+			});
+			if (!bar.equals("Dungeon poz. 2 · 90/225 xp")) throw new AssertionError("The dungeon's boss bar: " + bar);
+			context.takeScreenshot("dungeon-xp");
 
 			// given by a command: not the dungeon's
 			server.runCommand("item replace entity @a hotbar.0 with cobblestone 5");
