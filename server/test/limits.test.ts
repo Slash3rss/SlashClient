@@ -90,6 +90,25 @@ describe('per-address limits and IPv6', () => {
     assert.equal((await call('GET', '/v1/logs/abcdefghij', { ip: '198.51.100.1' })).status, 404);
   });
 
+  it('behind Cloudflare: each player by CF-Connecting-IP, the header ignored from anyone else (security.trustedProxies)', async () => {
+    set({ 'logs.viewsPerMinute': 1 });
+    const open = async (peer: string, player?: string) => (await fetch(`${base}/v1/logs/abcdefghij`, {
+      headers: { 'X-Forwarded-For': peer, ...(player ? { 'CF-Connecting-IP': player } : {}) },
+    })).status;
+    // two players reaching the site through the same Cloudflare server have a limit each
+    assert.equal(await open('162.158.1.1', '203.0.113.10'), 404);
+    assert.equal(await open('162.158.1.1', '203.0.113.11'), 404);
+    assert.equal(await open('162.158.1.1', '203.0.113.10'), 429);
+    // a peer that is not Cloudflare cannot pick another address for itself
+    assert.equal(await open('198.51.100.20', '203.0.113.12'), 404);
+    assert.equal(await open('198.51.100.20', '203.0.113.13'), 429);
+    // a list without Cloudflare: its servers count as they are
+    set({ 'security.trustedProxies': [] });
+    assert.equal(await open('162.158.2.2', '203.0.113.14'), 404);
+    assert.equal(await open('162.158.2.2', '203.0.113.15'), 429);
+    set({ 'security.trustedProxies': null, 'logs.viewsPerMinute': null });
+  });
+
   it('partner backgrounds (partners.picturesPerMinute)', async () => {
     set({ 'partners.picturesPerMinute': 2 });
     const ip = '198.51.100.20';

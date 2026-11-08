@@ -65,6 +65,7 @@ import { popularRoutes } from './friendsPopular.ts';
 import { fishAtlasRoutes } from './fishAtlas.ts';
 import { OFFLINE_NAME, offlineSkinRoutes } from './offlineSkins.ts';
 import { createPush } from './push.ts';
+import { behindProxies, proxyList } from './proxies.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -373,7 +374,18 @@ export function createApp(cfg: Config) {
     // port straight from outside could write any address there and dodge every per-address limit
     const viaProxy = direct === '127.0.0.1' || direct === '::1' || direct === '::ffff:127.0.0.1';
     const forwarded = cfg.trustProxy && viaProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
-    return forwarded || direct;
+    // Caddy's peer is Cloudflare's server: the player is the one it names (proxies.ts)
+    return forwarded ? behindProxies(forwarded, req.headers['cf-connecting-ip'], trustedProxies()) : direct;
+  };
+  let proxyRanges: string | undefined;
+  let proxyBlocks = proxyList([]);
+  const trustedProxies = () => {
+    const now = settings.list('security.trustedProxies').join('\n');
+    if (now !== proxyRanges) {
+      proxyRanges = now;
+      proxyBlocks = proxyList(now.split('\n'));
+    }
+    return proxyBlocks;
   };
   /** The same for the per-address limits: one IPv6 /64 is one visitor (requests.ts). */
   const clientIp = (req: http.IncomingMessage): string => limitAddress(clientAddress(req));

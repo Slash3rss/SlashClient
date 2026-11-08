@@ -1,4 +1,5 @@
 import { KEEP as REQUESTS_KEPT } from './requests.ts';
+import { CLOUDFLARE_RANGES } from './proxies.ts';
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { REFERRAL_SETTING_DEFS } from './referrals.ts';
@@ -205,6 +206,7 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'lan.tunnelKbps', label: 'Prędkość jednego połączenia LAN', labelEn: 'Speed of one LAN connection', description: 'Najwyżej tyle KB na sekundę w każdą stronę przez przekaźnik LAN (gra po prostu czeka, nic nie ginie).', type: 'int', default: 4096, min: 64, max: 1_000_000, unit: 'KB/s' },
     rate('lan.joinsPerMinute', 'Dołączanie przez LAN na minutę', 'LAN joins per minute', 30, 'Na konto: ile razy na minutę można dołączyć do świata znajomego przez przekaźnik LAN (też te, na które host jeszcze nie odpowiedział).', 1000),
     { key: 'lan.dailyMb', label: 'Przekaźnik LAN na dobę', labelEn: 'LAN relay a day', description: 'Ile MB jedno konto może przesłać przez przekaźnik LAN w ciągu doby; potem połączenie się kończy do następnej doby.', type: 'int', default: 20_480, min: 1, max: 10_000_000, unit: 'MB' },
+    { key: 'security.trustedProxies', label: 'Adresy Cloudflare (zaufane pośredniki)', labelEn: 'Cloudflare addresses (trusted proxies)', description: 'Gdy zapytanie przychodzi z tych adresów, adres gracza bierzemy z nagłówka CF-Connecting-IP (dziennik zapytań w panelu, limity na adres IP). Z innych adresów nagłówek jest pomijany. Jeden zakres na linię, np. 173.245.48.0/20; aktualna lista: cloudflare.com/ips.', descriptionEn: 'When a request comes from these addresses, the player’s address is taken from the CF-Connecting-IP header (the panel’s request log, per-address limits). From other addresses the header is ignored. One range per line, e.g. 173.245.48.0/20; the current list: cloudflare.com/ips.', type: 'list', default: [...CLOUDFLARE_RANGES], lower: true, maxItems: 200, maxLength: 50, risky: true },
     rate('security.loginsPerMinute', 'Logowania na minutę', 'Sign-ins per minute', 10, 'Na adres IP.', 1000),
     { key: 'security.sessionIdleDays', label: 'Wylogowanie po bezczynności', labelEn: 'Sign-out after idle', description: 'Sesja nieużywana tyle dni wygasa.', type: 'duration', default: 90, min: 1, max: 3650, unit: 'dni', risky: true },
     rate('security.gamePerMinute', 'Zapytania gry na minutę', 'Game requests per minute', 120, 'Logo SlashClient w grze (heartbeat, lookup, link), na adres IP (kilka gier z jednego domu dzieli limit).'),
