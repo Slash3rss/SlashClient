@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /**
  * The summary of a dungeon trip: the boss bar "Dungeon poz. 2" up, items picked up from the ground (one a
  * server's own, paper with a model), cobblestone given by a command and cobblestone thrown away and picked up
- * again (neither is loot); the boss bar gone, the card with the summary, and the list of trips kept.
+ * again (neither is loot), and kills: a normal mob, an elite and a mini boss; the boss bar gone, the card with the summary, and the list of trips kept.
  */
 public class GameDungeonSummary implements FabricClientGameTest {
 	@Override
@@ -50,10 +50,16 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			int back = context.computeOnClient(mc -> mc.player.getInventory().countItem(net.minecraft.world.item.Items.COBBLESTONE));
 			if (back != 5) throw new AssertionError("The cobblestone did not come back: " + back);
 
+			// kills, by the mob's class: a normal one, an elite and two mini bosses
+			context.runOnClient(mc -> {
+				DungeonRun.killed(1, 1);
+				DungeonRun.killed(1, 2);
+				DungeonRun.killed(2, 3);
+			});
 			server.runCommand("bossbar remove dungeon");
 			context.waitTicks(25);
 			String last = context.computeOnClient(mc -> DungeonRun.lastForTest());
-			if (!last.equals("poz. 2, loot 0, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
+			if (!last.equals("poz. 2, loot 0, kills 4/1/2, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
 			// the list keeps the server's model on its items
 			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());

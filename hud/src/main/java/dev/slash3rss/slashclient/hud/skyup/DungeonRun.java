@@ -30,7 +30,7 @@ import java.util.Set;
 /**
  * One trip through a SkyUp dungeon, from its boss bar showing to the player leaving: how long it took, the
  * highest level, the rooms walked through, the spawners beaten (each time again), the loot opened and the ores
- * mined, the mobs killed and what the player got. When it is over, a card with all that slides down under the
+ * mined, the mobs killed (and how many of them elites and mini bosses) and what the player got. When it is over, a card with all that slides down under the
  * boss bars, and the trip is kept in a list (the dungeon map's settings, "Historia dungeonów").
  *
  * SkyUp does not say on the chat what drops, so what the player got is read from the game itself: items picked
@@ -47,8 +47,11 @@ public final class DungeonRun {
 	 */
 	public record Gain(String id, String look, String name, int count, String stack) {}
 
-	/** One trip, as shown and kept (`spawners`: each spawner beaten, its room emptied of mobs, every time again). */
-	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains) {}
+	/**
+	 * One trip, as shown and kept (`spawners`: each spawner beaten, its room emptied of mobs, every time again;
+	 * `elites` and `bosses`: of the kills, the elites and the mini bosses; 0 in trips kept before they were counted).
+	 */
+	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses) {}
 
 	/** Shorter than this (a hint that came, a peek in): no card, nothing kept. */
 	static long minMs = 20_000;
@@ -60,7 +63,7 @@ public final class DungeonRun {
 	private static boolean running;
 	private static long startedAt;
 	private static String level = "";
-	private static int rooms, spawners, loot, ores, kills;
+	private static int rooms, spawners, loot, ores, kills, elites, bosses;
 	private static final Set<Long> cleared = new HashSet<>();
 	private static final Map<String, Integer> gained = new LinkedHashMap<>();
 	private static final Map<String, ItemStack> looks = new HashMap<>();
@@ -85,7 +88,7 @@ public final class DungeonRun {
 		running = true;
 		startedAt = System.currentTimeMillis();
 		level = "";
-		rooms = spawners = loot = ores = kills = 0;
+		rooms = spawners = loot = ores = kills = elites = bosses = 0;
 		cleared.clear();
 		gained.clear();
 		looks.clear();
@@ -121,7 +124,7 @@ public final class DungeonRun {
 			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue(), encode(s)));
 		}
 		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
-		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains));
+		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses);
 		List<Summary> list = new ArrayList<>(history());
 		list.add(0, s);
 		while (list.size() > KEPT) list.remove(list.size() - 1);
@@ -155,9 +158,12 @@ public final class DungeonRun {
 		else loot++;
 	}
 
-	/** A mob the player killed (SkyCounters, 26.3). */
-	public static void killed(int amount) {
-		if (running) kills += amount;
+	/** Mobs the player killed (SkyCounters), of their class as the dungeon map tells it (DungeonMap.kind: 2 elite, 3 mini boss). */
+	public static void killed(int amount, int kind) {
+		if (!running) return;
+		kills += amount;
+		if (kind == 2) elites += amount;
+		if (kind == 3) bosses += amount;
 	}
 
 	// ---------- what the player got ----------
@@ -312,6 +318,8 @@ public final class DungeonRun {
 		out.add(Map.entry(Items.CHEST, Ui.tr("slashclient-hud.dungeon.sum.loot", s.loot())));
 		out.add(Map.entry(Items.DEEPSLATE_IRON_ORE, Ui.tr("slashclient-hud.dungeon.sum.ores", s.ores())));
 		out.add(Map.entry(Items.IRON_SWORD, Ui.tr("slashclient-hud.dungeon.sum.kills", s.kills())));
+		out.add(Map.entry(Items.GOLDEN_SWORD, Ui.tr("slashclient-hud.dungeon.sum.elites", s.elites())));
+		out.add(Map.entry(Items.WITHER_SKELETON_SKULL, Ui.tr("slashclient-hud.dungeon.sum.bosses", s.bosses())));
 		return out;
 	}
 
@@ -462,7 +470,7 @@ public final class DungeonRun {
 	public static String lastForTest() {
 		if (history().isEmpty()) return "";
 		Summary s = history().get(0);
-		StringBuilder out = new StringBuilder("poz. " + s.level() + ", loot " + s.loot() + ", got");
+		StringBuilder out = new StringBuilder("poz. " + s.level() + ", loot " + s.loot() + ", kills " + s.kills() + "/" + s.elites() + "/" + s.bosses() + ", got");
 		for (Gain g : s.gains()) out.append(' ').append(g.id().replace("minecraft:", "")).append(g.look().isEmpty() ? "" : "*").append(' ').append(g.count());
 		return out.toString();
 	}

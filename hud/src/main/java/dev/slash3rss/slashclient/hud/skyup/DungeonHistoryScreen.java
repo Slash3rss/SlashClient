@@ -97,7 +97,7 @@ public class DungeonHistoryScreen extends Screen {
 		Ui.draw(g, DungeonRun.title(s, false), x + 8, y + 6, 0xFFFFA94D);
 		Component date = Ui.text(when.format(new Date(s.at())) + " · " + DungeonRun.time(s.ms()));
 		Ui.draw(g, date, x + w - 8 - Ui.width(date), y + 6, Ui.MUTED);
-		// the numbers on one line: rooms, spawners, loot, ores, mobs (the time is by the date)
+		// the numbers on one line: rooms, spawners, loot, ores, mobs, elites, mini bosses (the time is by the date)
 		List<Map.Entry<net.minecraft.world.item.Item, Component>> lines = DungeonRun.lines(s);
 		int cx = x + 8;
 		for (int i = 1; i < lines.size(); i++) {

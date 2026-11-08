@@ -708,7 +708,7 @@ public final class SkyCounters {
 	private static void killed(LivingEntity living, int amount) {
 		// the dungeon's mobs are no task's: SkyUp does not count them (the dungeon's summary does)
 		if (DungeonMap.active()) {
-			DungeonRun.killed(amount);
+			DungeonRun.killed(amount, DungeonMap.kind(living));
 			return;
 		}
 		killedForTest += amount;
