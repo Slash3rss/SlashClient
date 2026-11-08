@@ -33,15 +33,16 @@ import java.util.regex.Pattern;
  * picture of a dungeon with its level.
  * Variants (server 0.9.74+) give another status for a while, e.g. a job from the boss bar: a variant's
  * value counts only once it has been on screen its `hold` seconds on end, so a boss bar shown for a
- * moment does not swap the status, and none takes the place of the dungeon's small picture.
+ * moment does not swap the status; it stays `keep` seconds after it is gone (a pause between two
+ * blocks), and none takes the place of the dungeon's small picture.
  */
 public final class TabStatus {
 	private TabStatus() {}
 
 	/** `source`: 0 the header, 1 the footer, 2 the boss bars' titles (one per line). */
 	public record Extractor(int source, int line, Pattern pattern, List<String> groups) {}
-	/** Another status while the value `when` is known and has been for `hold` seconds; `template` "" keeps the rule's. */
-	public record Variant(String when, int hold, String template) {}
+	/** Another status while the value `when` is known and has been for `hold` seconds (and `keep` seconds after); `template` "" keeps the rule's. */
+	public record Variant(String when, int hold, int keep, String template) {}
 	public record Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template, List<Variant> variants, String badgeWhen) {
 		public Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template) {
 			this(server, name, strip, extractors, map, template, List.of(), "");
@@ -104,7 +105,7 @@ public final class TabStatus {
 					if (!e.isJsonObject()) continue;
 					JsonObject v = e.getAsJsonObject();
 					String when = str(v, "when");
-					if (!when.isEmpty()) variants.add(new Variant(when, v.has("hold") ? Math.max(0, Math.min(300, v.get("hold").getAsInt())) : 10, str(v, "template")));
+					if (!when.isEmpty()) variants.add(new Variant(when, seconds(v, "hold"), seconds(v, "keep"), str(v, "template")));
 				}
 			}
 			String badgeWhen = o.has("discord") && o.get("discord").isJsonObject() ? str(o.getAsJsonObject("discord"), "badgeWhen") : "";
@@ -125,6 +126,11 @@ public final class TabStatus {
 			}
 		}
 		return List.copyOf(out);
+	}
+
+	/** A variant's time: 0 to 300 seconds, 5 when it is not given. */
+	private static int seconds(JsonObject o, String key) {
+		return o.has(key) && o.get(key).isJsonPrimitive() ? Math.max(0, Math.min(300, o.get(key).getAsInt())) : 5;
 	}
 
 	private static String str(JsonObject o, String key) {
@@ -292,10 +298,17 @@ public final class TabStatus {
 
 	/**
 	 * The values of variants counted only once they have been there `hold` seconds on end: a boss bar
-	 * for a moment leaves the status as it was. A value that changes (another job) starts again.
+	 * for a moment leaves the status as it was. A value counted stays `keep` seconds after it is gone,
+	 * with the other values read with it (the job's level), and another value only takes its place once
+	 * that one has been there its `hold` seconds.
 	 */
 	static final class Holds {
-		private final Map<String, String> value = new java.util.HashMap<>();
+		/** Per variant value: the one counted, since when it is off screen (0: on), the values read with it. */
+		private final Map<String, String> current = new java.util.HashMap<>();
+		private final Map<String, Long> lostAt = new java.util.HashMap<>();
+		private final Map<String, Map<String, String>> with = new java.util.HashMap<>();
+		/** Per variant value: the one waiting for its time, and since when. */
+		private final Map<String, String> candidate = new java.util.HashMap<>();
 		private final Map<String, Long> since = new java.util.HashMap<>();
 
 		Map<String, String> apply(Rule rule, Map<String, String> values, long now) {
@@ -303,33 +316,66 @@ public final class TabStatus {
 			Map<String, String> out = new LinkedHashMap<>(values);
 			java.util.Set<String> watched = new java.util.HashSet<>();
 			for (Variant v : rule.variants()) {
-				if (!watched.add(v.when())) continue;
-				String got = values.get(v.when());
-				if (got == null) {
-					value.remove(v.when());
-					since.remove(v.when());
-					continue;
+				String key = v.when();
+				if (!watched.add(key)) continue;
+				String got = values.get(key);
+				String cur = current.get(key);
+				if (got != null && got.equals(cur)) {
+					lostAt.put(key, 0L);
+					with.put(key, new LinkedHashMap<>(values));
+					candidate.remove(key);
+				} else {
+					if (got == null) candidate.remove(key);
+					else if (!got.equals(candidate.get(key))) {
+						candidate.put(key, got);
+						since.put(key, now);
+					}
+					if (got != null && now - since.get(key) >= v.hold() * 1000L) {
+						current.put(key, got);
+						lostAt.put(key, 0L);
+						with.put(key, new LinkedHashMap<>(values));
+						candidate.remove(key);
+					} else if (cur != null) {
+						if (lostAt.getOrDefault(key, 0L) == 0L) lostAt.put(key, now);
+						if (now - lostAt.get(key) >= v.keep() * 1000L) {
+							current.remove(key);
+							with.remove(key);
+							lostAt.remove(key);
+						}
+					}
 				}
-				if (!got.equals(value.get(v.when()))) {
-					value.put(v.when(), got);
-					since.put(v.when(), now);
+				out.remove(key);
+				String shown = current.get(key);
+				if (shown == null) continue;
+				// gone from the screen for a moment: the values its pattern read with it (the job's level) come back too
+				if (lostAt.getOrDefault(key, 0L) != 0L) {
+					Map<String, String> then = with.getOrDefault(key, Map.of());
+					for (Extractor x : rule.extractors()) {
+						if (!x.groups().contains(key)) continue;
+						for (String g : x.groups()) {
+							if (then.containsKey(g)) out.put(g, then.get(g));
+							else out.remove(g);
+						}
+					}
 				}
-				if (now - since.get(v.when()) < v.hold() * 1000L) out.remove(v.when());
+				out.put(key, shown);
 			}
 			return out;
 		}
 
-		/** Whether a value is still waiting for its time (the status may change on its own later). */
+		/** Whether a value waits for its time or is kept a while (the status may change on its own later). */
 		boolean waiting(Rule rule, Map<String, String> values, long now) {
 			for (Variant v : rule.variants()) {
-				Long at = since.get(v.when());
-				if (at != null && values.containsKey(v.when()) && now - at < v.hold() * 1000L) return true;
+				if (candidate.containsKey(v.when()) || lostAt.getOrDefault(v.when(), 0L) != 0L) return true;
 			}
 			return false;
 		}
 
 		void clear() {
-			value.clear();
+			current.clear();
+			lostAt.clear();
+			with.clear();
+			candidate.clear();
 			since.clear();
 		}
 	}

@@ -17,7 +17,7 @@ const ERRORS = {
   bad_map: 'Tabela nazw: do 50 par, każda strona do 40 znaków.', bad_template: 'Szablon (do 64 znaków) z co najmniej jednym {nazwa} z grup odczytów.',
   bad_discord: 'Zły opis Discorda.', bad_discord_text: 'Teksty Discorda do 128 znaków; w szablonach tylko {server}, {detail} i nazwy grup.',
   bad_badge: 'Mała ikonka na czas: nazwa grupy z odczytów i obrazek.',
-  bad_variant: 'Warianty: do 6, każdy z nazwą grupy z odczytów.', bad_variant_hold: 'Czas trzymania: od 0 do 300 s.',
+  bad_variant: 'Warianty: do 6, każdy z nazwą grupy z odczytów.', bad_variant_hold: 'Czasy wariantu: od 0 do 300 s.',
   bad_variant_empty: 'Wariant potrzebuje statusu, linii Discorda albo obrazka.',
   bad_image: 'Obrazek: adres https (do 256 znaków) albo klucz zasobu aplikacji Discord.', exists: 'Ten serwer ma już regułę.',
 };
@@ -91,14 +91,16 @@ function card(r) {
   // statuses for a while: the first whose group is known (and held long enough in the game) wins
   const variantRows = el('div', { class: 'sr-variants' });
   const variantRow = (v) => {
-    const when = text(v.when, 'job', 32), hold = el('input', { type: 'number', min: 0, max: 300, value: v.hold ?? 10, title: 'Sekundy', class: 'sr-line' });
+    const when = text(v.when, 'job', 32), hold = el('input', { type: 'number', min: 0, max: 300, value: v.hold ?? 5, title: 'Sekundy', class: 'sr-line' });
+    const keep = el('input', { type: 'number', min: 0, max: 300, value: v.keep ?? 5, title: 'Sekundy', class: 'sr-line' });
     const vTemplate = text(v.template, '{sector} · {job}', 64), vState = text(v.state, 'Pracuje: {job}', 128), image = text(v.image, 'https://…/praca.png'), vText = text(v.text, '{job}', 128);
     const row = el('div', { class: 'glass card sr-variant' },
       el('div', { class: 'sr-grid' }, field('Gdy jest grupa', when, 'nazwa grupy z odczytów, np. job'), field('Po ilu sekundach', hold, 'tyle musi być widoczna bez przerwy; krótsze mignięcie nie zmienia statusu'),
+        field('Zostaje po zniknięciu (s)', keep, 'np. przerwa między blokami; inna praca na chwilę jej nie zastąpi'),
         field('Status u znajomych', vTemplate, 'puste: szablon reguły'), field('Discord: dolna linia', vState, 'puste: jak w regule'),
         field('Discord: mała ikonka', image, 'https://… albo klucz zasobu; {job} wstawia nazwę małymi literami bez polskich znaków: praca_{job} → praca_gornik; puste: jak w regule'), field('Tekst ikonki', vText)),
       el('div', { class: 'row' }, el('div', { class: 'grow' }), el('button', { type: 'button', class: 'icon-btn danger', title: 'Usuń wariant', onclick: () => row.remove() }, icon('fa-solid fa-xmark'))));
-    row.read = () => ({ when: when.value, hold: Number(hold.value), template: vTemplate.value, state: vState.value, image: image.value, text: vText.value });
+    row.read = () => ({ when: when.value, hold: Number(hold.value), keep: Number(keep.value), template: vTemplate.value, state: vState.value, image: image.value, text: vText.value });
     return row;
   };
   for (const v of r.variants ?? []) variantRows.append(variantRow(v));
@@ -150,7 +152,7 @@ function card(r) {
     el('h4', { textContent: 'Warianty statusu' }),
     el('p', { class: 'muted small', textContent: 'Inny status na czas, np. pracy z paska bossa: wygrywa pierwszy wariant, którego grupa jest odczytana, i to dopiero gdy była widoczna bez przerwy przez podaną liczbę sekund (pasek na chwilę nie zmienia statusu). Starsze mody i launchery pomijają warianty.' }),
     variantRows,
-    el('button', { type: 'button', class: 'sr-add', onclick: () => variantRows.children.length < 6 && variantRows.append(variantRow({ hold: 10 })) }, icon('fa-solid fa-plus'), 'Wariant'),
+    el('button', { type: 'button', class: 'sr-add', onclick: () => variantRows.children.length < 6 && variantRows.append(variantRow({ hold: 5, keep: 5 })) }, icon('fa-solid fa-plus'), 'Wariant'),
     el('details', { class: 'sr-preview' }, el('summary', { textContent: 'Sprawdź na przykładzie' }), header, footer, bossbar, preview, result),
     el('div', { class: 'row' }, save, el('div', { class: 'grow' }), remove));
 }

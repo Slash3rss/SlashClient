@@ -32,9 +32,9 @@ export interface DiscordLook {
  * status friends see is `template` and Discord's state line `state`, with the small picture `image` and
  * its `text`; the first variant whose value is known wins, before the rule's own template. The game
  * counts a value only once it has been there `hold` seconds on end, so a boss bar shown for a moment
- * does not swap the status. Games and launchers from before 0.9.74 do not know variants and leave them out.
+ * does not swap the status, and keeps it `keep` seconds after it is gone (a pause between two blocks). Games and launchers from before 0.9.74 do not know variants and leave them out.
  */
-export interface Variant { when: string; hold: number; template: string; state: string; image: string; text: string }
+export interface Variant { when: string; hold: number; keep: number; template: string; state: string; image: string; text: string }
 export interface StatusRule {
   id: string; server: string; name: string; enabled: boolean;
   /** Characters cut from both ends of every line (with spaces), e.g. SkyUp's "»« ". */
@@ -55,14 +55,28 @@ const LINE_MAX = 256;
 const NAME = /^[a-zA-Z][a-zA-Z0-9]{0,31}$/;
 const PLACEHOLDER = /\{([a-zA-Z][a-zA-Z0-9]{0,31})\}/g;
 export const VARIANTS_MAX = 6;
-/** Seconds a value must be there before a variant counts it (default, most). */
-export const HOLD_DEFAULT = 10;
+/** Seconds a value must be there before a variant counts it, and it stays after it is gone (defaults, most). */
+export const HOLD_DEFAULT = 5;
+export const KEEP_DEFAULT = 5;
 const HOLD_MAX = 300;
 const EMPTY_DISCORD: DiscordLook = { details: '', state: '', largeImage: '', largeText: '', smallImage: '', smallText: '' };
 
 /** The extractor and Discord badge for SkyUp's dungeons: the boss bar says "Dungeon poz. 3" there. */
 export const SKYUP_DUNGEON_EXTRACTOR: Extractor = { source: 'bossbar', line: 0, pattern: 'Dungeon\\s+poz\\.?\\s*(?<dungeon>\\d{1,3})' };
 export const SKYUP_DUNGEON_BADGE = { badgeWhen: 'dungeon', badgeImage: 'https://slashclient.pl/img/discord/dungeon.png', badgeText: 'Dungeon poz. {dungeon}' };
+/**
+ * SkyUp's jobs: while working the boss bar says "Górnik (poziom 2) 744/3 599 xp (+3 xp)". The job shows
+ * after 5 s of it (a log broken while mining does not make a woodcutter) and stays 5 s after the bar
+ * goes (a pause between blocks), with its picture
+ * (server/web/img/discord/praca_<job>.png).
+ */
+/** SkyUp's logo as this server keeps it, so no Discord app (the launcher's, the beta's, the dev one) needs it uploaded. */
+export const SKYUP_LOGO = 'https://slashclient.pl/img/discord/skyup.png';
+export const SKYUP_JOB_EXTRACTOR: Extractor = { source: 'bossbar', line: 0, pattern: '(?<job>Górnik|Farmer|Drwal|Łowca|Rybak|Budowniczy|Czarodziej) \\(poziom (?<jobLevel>\\d{1,3})\\)' };
+export const SKYUP_JOB_VARIANT: Variant = {
+  when: 'job', hold: HOLD_DEFAULT, keep: KEEP_DEFAULT, template: '{sector} · {job} poz. {jobLevel}', state: '{sector} · {job} poz. {jobLevel}',
+  image: 'https://slashclient.pl/img/discord/praca_{job}.png', text: '{job}, poziom {jobLevel}',
+};
 
 /** SkyUp.pl as its tab list looks (26.3): "» SkyUP - AnyBlock «" over "» S0 (Spawn) «" or "» LOBBY «". AnyBlock is its only server, so only the sector is shown. */
 export const SKYUP_RULE: Omit<StatusRule, 'id' | 'updatedAt' | 'variants'> & { variants?: Variant[] } = {
@@ -71,10 +85,12 @@ export const SKYUP_RULE: Omit<StatusRule, 'id' | 'updatedAt' | 'variants'> & { v
     { source: 'header', line: 1, pattern: '^Sky[Uu][Pp] - (?<mode>[^»«]{1,32})$' },
     { source: 'header', line: 2, pattern: '^(?<sector>LOBBY|Lobby|S\\d{1,2}(?: \\([^()]{1,24}\\))?)$' },
     SKYUP_DUNGEON_EXTRACTOR,
+    SKYUP_JOB_EXTRACTOR,
   ],
   map: { LOBBY: 'Lobby' },
   template: '{sector}',
-  discord: { ...EMPTY_DISCORD, details: 'Gra na {server}', state: '{sector}', largeText: 'SkyUp.pl', ...SKYUP_DUNGEON_BADGE },
+  discord: { ...EMPTY_DISCORD, details: 'Gra na {server}', state: '{sector}', largeImage: SKYUP_LOGO, largeText: 'SkyUp.pl', ...SKYUP_DUNGEON_BADGE },
+  variants: [SKYUP_JOB_VARIANT],
 };
 
 // ---------- checking what the admin typed ----------
@@ -279,6 +295,8 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
     if (!when || !groups.has(when)) bad('bad_variant');
     const hold = v.hold === undefined || v.hold === '' ? HOLD_DEFAULT : Number(v.hold);
     if (!Number.isInteger(hold) || hold < 0 || hold > HOLD_MAX) bad('bad_variant_hold');
+    const keep = v.keep === undefined || v.keep === '' ? KEEP_DEFAULT : Number(v.keep);
+    if (!Number.isInteger(keep) || keep < 0 || keep > HOLD_MAX) bad('bad_variant_hold');
     const vTemplate = cleanTemplate(v.template, 64, 'bad_template', groups);
     const state = cleanTemplate(v.state, 128, 'bad_discord_text', discordKnown);
     // the picture may take values ("praca_{job}"): checked with them filled in
@@ -287,7 +305,7 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
     const image = imageTemplate;
     const text = cleanTemplate(v.text, 128, 'bad_discord_text', discordKnown);
     if (!vTemplate && !state && !image) bad('bad_variant_empty');
-    return { when, hold, template: vTemplate, state, image, text };
+    return { when, hold, keep, template: vTemplate, state, image, text };
   });
   return { server, name, enabled, strip, extractors, map, template, discord, variants };
 }
@@ -422,11 +440,26 @@ export class StatusRuleStore {
    */
   private upgrade() {
     this.sql.exec('CREATE TABLE IF NOT EXISTS status_rule_upgrades (name TEXT PRIMARY KEY, at INTEGER NOT NULL)');
-    const done = this.sql.prepare('INSERT OR IGNORE INTO status_rule_upgrades (name, at) VALUES (?, ?)').run('skyup_dungeon', Date.now());
-    if (!done.changes) return;
-    const sky = this.all().find((r) => r.server === SKYUP_RULE.server);
-    if (!sky || sky.extractors.length >= 6 || sky.extractors.some((x) => x.source === 'bossbar') || sky.discord.badgeWhen) return;
-    this.save({ ...sky, extractors: [...sky.extractors, SKYUP_DUNGEON_EXTRACTOR], discord: { ...sky.discord, ...SKYUP_DUNGEON_BADGE }, updatedAt: Date.now() });
+    const once = (name: string) => !!this.sql.prepare('INSERT OR IGNORE INTO status_rule_upgrades (name, at) VALUES (?, ?)').run(name, Date.now()).changes;
+    const sky = () => this.all().find((r) => r.server === SKYUP_RULE.server);
+    if (once('skyup_dungeon')) {
+      const r = sky();
+      if (r && r.extractors.length < 6 && !r.extractors.some((x) => x.source === 'bossbar') && !r.discord.badgeWhen) {
+        this.save({ ...r, extractors: [...r.extractors, SKYUP_DUNGEON_EXTRACTOR], discord: { ...r.discord, ...SKYUP_DUNGEON_BADGE }, updatedAt: Date.now() });
+      }
+    }
+    // the logo uploaded to the Discord app before: the same picture from this server
+    if (once('skyup_logo')) {
+      const r = sky();
+      if (r && (r.discord.largeImage === '' || r.discord.largeImage === 'skyup_logo_big')) this.save({ ...r, discord: { ...r.discord, largeImage: SKYUP_LOGO }, updatedAt: Date.now() });
+    }
+    if (once('skyup_jobs')) {
+      const r = sky();
+      const reads = (name: string) => r?.extractors.some((x) => x.pattern.includes(`(?<${name}>`));
+      if (r && r.extractors.length < 6 && r.variants.length < VARIANTS_MAX && !reads('job') && !reads('jobLevel') && !r.variants.some((v) => v.when === 'job')) {
+        this.save({ ...r, extractors: [...r.extractors, SKYUP_JOB_EXTRACTOR], variants: [...r.variants, SKYUP_JOB_VARIANT], updatedAt: Date.now() });
+      }
+    }
   }
 
   all(): StatusRule[] {

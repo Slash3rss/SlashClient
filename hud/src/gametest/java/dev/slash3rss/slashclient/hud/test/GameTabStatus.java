@@ -21,8 +21,9 @@ import java.util.List;
  * and another server. Then the friends window with a friend on SkyUp in sector S3, on the list and in
  * the chat's header ("Gra na SkyUp.pl · S3 (Wyspy)"). The layout audit runs over it.
  * A dungeon's level comes from the boss bar ("Dungeon poz. 3"), for Discord's small picture.
- * A job from the boss bar is a variant: it changes the status only after its 10 seconds on screen, a job
- * shown for a moment does not, and in a dungeon the dungeon stays.
+ * A job from the boss bar ("Górnik (poziom 7) 744/3 599 xp") is a variant: it changes the status only
+ * after its 5 seconds on screen and stays 5 seconds after the bar goes; a job shown for a moment does
+ * not take its place, and in a dungeon the dungeon stays.
  */
 public class GameTabStatus implements FabricClientGameTest {
 	private static final String ALA = "ala-sky", BOB = "bob-menu";
@@ -39,7 +40,7 @@ public class GameTabStatus implements FabricClientGameTest {
 		JsonObject dungeon = extractor(0, "Dungeon\\s+poz\\.?\\s*(?<dungeon>\\d{1,3})");
 		dungeon.addProperty("source", "bossbar");
 		ex.add(dungeon);
-		JsonObject job = extractor(0, "Praca: (?<job>\\w{1,20})(?: poz\\. (?<jobLevel>\\d{1,3}))?");
+		JsonObject job = extractor(0, "(?<job>Górnik|Farmer|Drwal|Łowca|Rybak|Budowniczy|Czarodziej) \\(poziom (?<jobLevel>\\d{1,3})\\)");
 		job.addProperty("source", "bossbar");
 		ex.add(job);
 		rule.add("extractors", ex);
@@ -48,7 +49,8 @@ public class GameTabStatus implements FabricClientGameTest {
 		rule.add("discord", discord);
 		JsonObject working = new JsonObject();
 		working.addProperty("when", "job");
-		working.addProperty("hold", 10);
+		working.addProperty("hold", 5);
+		working.addProperty("keep", 5);
 		working.addProperty("template", "{sector} · {job} poz. {jobLevel}");
 		JsonArray variants = new JsonArray();
 		variants.add(working);
@@ -114,17 +116,23 @@ public class GameTabStatus implements FabricClientGameTest {
 			String other = context.computeOnClient(mc -> TabStatus.readForTest("mc.example.com", "» SkyUP - AnyBlock «\n» S3 (Wyspy) «", ""));
 			if (!other.isEmpty()) throw new AssertionError("Another server gave '" + other + "'");
 
-			// a job from the boss bar: only after 10 s on screen, a moment of it changes nothing
+			// a job from the boss bar: only after 5 s on screen, kept 5 s after; a moment of it changes nothing
 			String isles = "» SkyUP - AnyBlock «\n» S3 (Wyspy) «", dng = "» SkyUP - AnyBlock «\n» S8 (Dungeon) «";
+			String miner = "Górnik (poziom 7) 744/3 599 xp (+3 xp)", wood = "Drwal (poziom 2) 10/50 xp (+1 xp)";
+			String mining = "S3 (Wyspy) · Górnik poz. 7";
 			long t = 1_000_000;
 			String[][] steps = {
-				{isles, "", "0", "S3 (Wyspy)"}, {isles, "Praca: Gornik poz. 7", "1", "S3 (Wyspy)"}, {isles, "", "3", "S3 (Wyspy)"},
-				{isles, "Praca: Gornik poz. 7", "4", "S3 (Wyspy)"}, {isles, "Praca: Gornik poz. 7", "13", "S3 (Wyspy)"},
-				{isles, "Praca: Gornik poz. 7", "14", "S3 (Wyspy) · Gornik poz. 7"},
-				// another job starts its time again
-				{isles, "Praca: Drwal poz. 2", "15", "S3 (Wyspy)"}, {isles, "Praca: Drwal poz. 2", "25", "S3 (Wyspy) · Drwal poz. 2"},
+				{isles, "", "0", "S3 (Wyspy)"}, {isles, miner, "1", "S3 (Wyspy)"}, {isles, "", "3", "S3 (Wyspy)"},
+				{isles, miner, "4", "S3 (Wyspy)"}, {isles, miner, "8", "S3 (Wyspy)"}, {isles, miner, "9", mining},
+				// a pause between blocks: the job stays
+				{isles, "", "11", mining}, {isles, miner, "13", mining},
+				// a log broken while mining: still the miner, with the miner's level
+				{isles, wood, "14", mining}, {isles, "", "16", mining},
+				// 5 s without the bar: gone
+				{isles, "", "19", "S3 (Wyspy)"},
+				{isles, wood, "20", "S3 (Wyspy)"}, {isles, wood, "25", "S3 (Wyspy) · Drwal poz. 2"},
 				// in a dungeon the job does not take its place
-				{dng, "Praca: Drwal poz. 2\nDungeon poz. 3", "26", "S8 (Dungeon)"}};
+				{dng, wood + "\nDungeon poz. 3", "26", "S8 (Dungeon)"}};
 			for (int i = 0; i < steps.length; i++) {
 				String[] st = steps[i];
 				boolean first = i == 0;

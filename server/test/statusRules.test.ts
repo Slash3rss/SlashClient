@@ -8,7 +8,7 @@ import WebSocket from 'ws';
 import { createApp } from '../src/app.ts';
 import { cleanPresence, publicPresence } from '../src/presence.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { SKYUP_RULE, StatusRuleStore, checkPattern, cleanDefaults, cleanRule, evaluate, matches, render, sanitizeDetail, RuleError } from '../src/statusRules.ts';
+import { SKYUP_RULE, StatusRuleStore, checkPattern, cleanDefaults, cleanRule, evaluate, matches, render, sanitizeDetail, variantImage, RuleError } from '../src/statusRules.ts';
 
 // SkyUp.pl's tab list as the game gets it (26.3): colours, the decorative » «, the lines under one another
 const SKYUP_HEADER = (sector: string) => `§8» §b§lSkyUP §7- §fAnyBlock §8«\n§8» §e${sector} §8«\n`;
@@ -59,7 +59,8 @@ describe('status rules: reading the tab list', () => {
       { when: 'dungeon', template: '{sector} · Dungeon {dungeon}', state: 'Dungeon poz. {dungeon}' },
       { when: 'job', hold: 15, template: '{sector} · {job}', state: 'Pracuje: {job}', image: 'https://slashclient.pl/img/discord/job.png', text: '{job}' },
     ] });
-    assert.equal(rule.variants[0].hold, 10);
+    assert.equal(rule.variants[0].hold, 5);
+    assert.equal(rule.variants[0].keep, 5);
     assert.equal(rule.variants[1].hold, 15);
     const working = evaluate(rule, SKYUP_HEADER('S3 (Wyspy)'), '', 'Praca: Gornik');
     assert.equal(working.detail, 'S3 (Wyspy) · Gornik');
@@ -78,12 +79,41 @@ describe('status rules: reading the tab list', () => {
     assert.equal(plain.detail, 'S3 (Wyspy)');
     assert.equal(plain.variant, undefined);
     // a variant needs a group the rule reads, a sane hold, and something to show
-    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'job', template: '{sector}' }] })), 'bad_variant');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'floor', template: '{sector}' }] })), 'bad_variant');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector', keep: -1, template: '{sector}' }] })), 'bad_variant_hold');
     assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector', hold: 999, template: '{sector}' }] })), 'bad_variant_hold');
     assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector' }] })), 'bad_variant_empty');
     assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector', template: '{nope}' }] })), 'bad_template');
     // kept when the admin saves other parts
     assert.equal(cleanRule({ name: 'SkyUp' }, { ...rule, id: 'x', updatedAt: 0 }).variants.length, 2);
+  });
+
+  it("reads SkyUp's jobs from the boss bar, with the job's picture", () => {
+    const bar = 'Górnik (poziom 2) 744/3 599 xp (+3 xp)';
+    const r = evaluate(cleanRule({ ...SKYUP_RULE }), SKYUP_HEADER('S3 (Wyspy)'), '', bar);
+    assert.deepEqual([r.values.job, r.values.jobLevel, r.detail], ['Górnik', '2', 'S3 (Wyspy) · Górnik poz. 2']);
+    assert.equal(evaluate(SKYUP_RULE, SKYUP_HEADER('S3 (Wyspy)'), '', 'Łowca (poziom 14) 1/2 xp').values.job, 'Łowca');
+    assert.equal(variantImage(SKYUP_RULE.variants![0].image, { job: 'Łowca' }), 'https://slashclient.pl/img/discord/praca_lowca.png');
+    // in a dungeon the dungeon stays
+    assert.equal(evaluate(SKYUP_RULE, SKYUP_HEADER('S8 (Dungeon)'), '', `${bar}\nDungeon poz. 3`).detail, 'S8 (Dungeon)');
+  });
+
+  it("a SkyUp rule kept from before gets the jobs once, unless it reads jobs already", () => {
+    const sql = new DatabaseSync(':memory:');
+    sql.exec('CREATE TABLE status_rules (id TEXT PRIMARY KEY, server TEXT NOT NULL UNIQUE, data TEXT NOT NULL, updated_at INTEGER NOT NULL)');
+    const { variants, ...rest } = SKYUP_RULE;
+    const old = { ...rest, extractors: SKYUP_RULE.extractors.filter((x) => !x.pattern.includes('?<job>')), discord: { ...rest.discord, largeImage: 'skyup_logo_big' } };
+    sql.prepare('INSERT INTO status_rules (id, server, data, updated_at) VALUES (?, ?, ?, ?)').run('sky', 'skyup.pl', JSON.stringify(old), 1);
+    const store = new StatusRuleStore(sql);
+    const sky = store.all()[0];
+    assert.equal(sky.variants.length, 1);
+    // the logo from the Discord app becomes this server's picture
+    assert.equal(sky.discord.largeImage, 'https://slashclient.pl/img/discord/skyup.png');
+    assert.ok(sky.extractors.some((x) => x.pattern.includes('?<job>')));
+    // the admin takes the job out: it stays out
+    store.save({ ...sky, variants: [], extractors: old.extractors });
+    assert.equal(new StatusRuleStore(sql).all()[0].variants.length, 0);
+    assert.equal(variants?.length, 1);
   });
 
   it("a SkyUp rule kept from before gets the dungeon once", () => {
