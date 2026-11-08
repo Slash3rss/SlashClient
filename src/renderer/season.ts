@@ -38,6 +38,10 @@ interface SeasonDeps {
   reduced: () => boolean;
   /** The window's (and the taskbar's) icon: a picture as a PNG data URL, or null for the usual one. */
   setWindowIcon?: (dataUrl: string | null) => unknown;
+  /** The usual logo: logo.png, or the one with a DEV or BETA tag. */
+  plainLogo?: () => string;
+  /** 'dev' or 'beta': the tag drawn over the season's logo too (logo-<tag>-tag.png), '' for none. */
+  logoTag?: () => string;
   /** Tells the game whether the look is allowed (the next game started gets it). */
   setAllowed?: (on: boolean) => unknown;
 }
@@ -179,6 +183,13 @@ export function initSeason(deps: SeasonDeps) {
       x.filter = 'none';
       whiteAndRed(x, size, plain);
     }
+    // a launcher run from the code or a beta keeps its tag in every season
+    const tag = deps.logoTag?.();
+    if (tag) {
+      const label = new Image();
+      label.src = `logo-${tag}-tag.png`;
+      await label.decode().then(() => x.drawImage(label, 0, 0, size, size)).catch(() => {});
+    }
     return c.toDataURL('image/png');
   };
   /**
@@ -208,7 +219,7 @@ export function initSeason(deps: SeasonDeps) {
     }
     // switched again while the picture was being made: the later call decides
     if (logoShown !== season) return;
-    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo, .season-logo')) img.src = url ?? 'logo.png';
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo, .season-logo')) img.src = url ?? deps.plainLogo?.() ?? 'logo.png';
     deps.setWindowIcon?.(url ?? null);
   }
 
@@ -484,5 +495,11 @@ export function initSeason(deps: SeasonDeps) {
   setInterval(apply, 60 * 60_000);
   // and its logo
   if (today && root.classList.contains(`season-${today}`)) void logo(today);
-  return { apply };
+  /** The DEV or BETA tag became known: the logos are drawn again with it. */
+  function retag() {
+    logos.clear();
+    void logo(logoShown);
+  }
+
+  return { apply, retag };
 }

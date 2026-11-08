@@ -60,6 +60,7 @@
       "dist/**/*",
       "!dist/**/*.map",
       "build/icon.png",
+      "build/icon-beta.png",
       "package.json"
     ],
     "mac": {

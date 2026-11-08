@@ -106,6 +106,9 @@ let currentTheme: Theme = applyRememberedTheme();
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
 let store: PublicStore;
+/** The usual logo of the side bar and the splash: with a DEV or BETA tag (season.ts goes back to it and puts the tag on its own). */
+let plainLogo = 'logo.png';
+let logoTag = '';
 let versions: VersionInfo[] = [];
 let editingId: string | undefined;
 let launching = false;
@@ -1262,6 +1265,14 @@ function renderSettings() {
   notifications.onchange = () => (sound.disabled = !notifications.checked);
   $('#data-dir').textContent = store.dataDir;
   api.appVersion().then((v: string) => ($('#app-version').textContent = v));
+  // a launcher run from the code or a beta: the logo with a DEV or BETA tag, told apart from the usual one at a glance
+  api.launcherTag?.().then((tag: string) => {
+    if (tag !== 'dev' && tag !== 'beta') return;
+    logoTag = tag;
+    plainLogo = `logo-${tag}.png`;
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) if (img.getAttribute('src') === 'logo.png') img.src = plainLogo;
+    season.retag();
+  }).catch(() => {});
 }
 
 // ---------- play ----------
@@ -5476,6 +5487,8 @@ let wakeStars = () => {};
 const season = initSeason({
   settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => (featuresKnown() ? featureOn('seasonal') : undefined), reduced: motionReduced,
   setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
+  plainLogo: () => plainLogo,
+  logoTag: () => logoTag,
   setAllowed: (on) => api.setSeasonAllowed?.(on),
 });
 onFeatures(() => season.apply());

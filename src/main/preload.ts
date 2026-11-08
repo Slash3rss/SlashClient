@@ -153,6 +153,8 @@ const api = {
   rollback: (version: string) => invoke('update:rollback', version),
   resumeUpdates: () => invoke('update:resume'),
   appVersion: () => invoke('app:version'),
+  /** 'dev' run from the code (development, a test launcher), 'beta' a beta version, '' the usual launcher. */
+  launcherTag: () => invoke('app:tag') as Promise<string>,
   newsArticle: (id: string) => invoke('news:article', id),
   listWorlds: (profileId: string) => invoke('worlds:list', profileId),
   backupWorld: (profileId: string, folder: string) => invoke('worlds:backup', profileId, folder),
