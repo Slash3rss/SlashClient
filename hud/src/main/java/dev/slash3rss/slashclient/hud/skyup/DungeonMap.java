@@ -254,6 +254,7 @@ public final class DungeonMap implements HudModule {
 			// the boss bar: in a dungeon (a map starts, or goes on); gone: out, unless the hint just came
 			if (bossBar && !active) start();
 			if (bossBar) DungeonRun.begin();
+			if (bossBar) DungeonRun.sample(mc, bossBarTexts(mc));
 			// the boss bar shows once the player is in the start room: its floor is the ground the
 			// rooms' heights count from (a map started by the hint was still in the lobby)
 			if (bossBar && active && !grounded) {
@@ -519,6 +520,15 @@ public final class DungeonMap implements HudModule {
 		}
 		int have = Math.round(Math.max(0f, Math.min(1f, progress)) * need);
 		return name.copy().append(Component.literal(" · " + have + "/" + need + " xp").withStyle(net.minecraft.ChatFormatting.GRAY));
+	}
+
+	/** The boss bars' texts, colours left out. */
+	private static java.util.List<String> bossBarTexts(Minecraft mc) {
+		java.util.List<String> out = new java.util.ArrayList<>();
+		var overlay = Compat.bossOverlay(mc);
+		if (overlay == null) return out;
+		for (var event : ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values()) out.add(uncoloured(event.getName().getString()));
+		return out;
 	}
 
 	/** "Dungeon poz. 2" on the boss bar: whether it is there, and the dungeon's level for the map's title. */

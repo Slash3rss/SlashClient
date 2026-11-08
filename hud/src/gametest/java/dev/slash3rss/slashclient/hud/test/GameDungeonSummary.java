@@ -67,6 +67,18 @@ public class GameDungeonSummary implements FabricClientGameTest {
 				DungeonRun.killed(1, 2);
 				DungeonRun.killed(2, 3);
 			});
+			// the player's own XP (spent XP does not count) and a job's boss bar, its XP growing and a level going up
+			server.runCommand("xp add @p 7 points");
+			server.runCommand("bossbar add job \"Górnik (poziom 2) 744/3 599 xp (+3 xp)\"");
+			server.runCommand("bossbar set job players @a");
+			context.waitTicks(15);
+			server.runCommand("bossbar set job name \"Górnik (poziom 2) 3 590/3 599 xp (+3 xp)\"");
+			context.waitTicks(15);
+			server.runCommand("bossbar set job name \"Górnik (poziom 3) 3/5 000 xp (+12 xp)\"");
+			server.runCommand("xp add @p -3 points");
+			context.waitTicks(15);
+			context.takeScreenshot("dungeon-xp-live");
+			server.runCommand("bossbar remove job");
 			// a level up on the way: all of level 2 (225, from an empty bar) and a tenth of level 3's 314 (130·3 − 81 + 27/5)
 			server.runCommand("bossbar set dungeon name \"Dungeon poz. 3\"");
 			server.runCommand("bossbar set dungeon value 10");
@@ -76,6 +88,9 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			String last = context.computeOnClient(mc -> DungeonRun.lastForTest());
 			if (!last.equals("poz. 3, loot 0, kills 4/1/2, xp 256, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
+			// 7 of the player's own; the miner's 2 846 to 3 590, then 9 to its level's end and 3 into the next
+			String xp = context.computeOnClient(mc -> DungeonRun.xpForTest());
+			if (!xp.equals("player 7, Górnik 2858")) throw new AssertionError("The trip's XP: " + xp);
 			// the list keeps the server's model on its items
 			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());
 			if (!kept.equals("diamond paper*")) throw new AssertionError("The list's items: " + kept);

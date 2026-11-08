@@ -30,7 +30,8 @@ import java.util.Set;
 /**
  * One trip through a SkyUp dungeon, from its boss bar showing to the player leaving: how long it took, the
  * highest level, the rooms walked through, the spawners beaten (each time again), the loot opened and the ores
- * mined, the mobs killed (and how many of them elites and mini bosses), the dungeon XP got and what the player got. When it is over, a card with all that slides down under the
+ * mined, the mobs killed (and how many of them elites and mini bosses), the XP got (the dungeon's, the player's own
+ * and each job's) and what the player got. When it is over, a card with all that slides down under the
  * boss bars, and the trip is kept in a list (the dungeon map's settings, "Historia dungeonów").
  *
  * SkyUp does not say on the chat what drops, so what the player got is read from the game itself: items picked
@@ -50,9 +51,11 @@ public final class DungeonRun {
 	/**
 	 * One trip, as shown and kept (`spawners`: each spawner beaten, its room emptied of mobs, every time again;
 	 * `elites` and `bosses`: of the kills, the elites and the mini bosses; `xp`: the dungeon XP got, from its boss
-	 * bar; 0 in trips kept before they were counted).
+	 * bar; `playerXp`: the player's own (the green bar); `jobXp`: each job's, from its boss bar; 0 or null in trips
+	 * kept before they were counted).
 	 */
-	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses, int xp) {}
+	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses, int xp,
+		int playerXp, Map<String, Integer> jobXp) {}
 
 	/** Shorter than this (a hint that came, a peek in): no card, nothing kept. */
 	static long minMs = 20_000;
@@ -67,6 +70,11 @@ public final class DungeonRun {
 	private static int rooms, spawners, loot, ores, kills, elites, bosses;
 	/** The dungeon XP from level 1 when the trip began and now (-1: not read yet). */
 	private static double xpFirst = -1, xpNow = -1;
+	/** The player's own XP when last read (-1: not yet) and what came in; each job's XP got. */
+	private static int playerXpLast = -1, playerXp;
+	private static final Map<String, Double> jobXp = new LinkedHashMap<>();
+	/** Each job's boss bar when last read: its level, the XP in it and the XP the level takes. */
+	private static final Map<String, double[]> jobLast = new HashMap<>();
 	private static final Set<Long> cleared = new HashSet<>();
 	private static final Map<String, Integer> gained = new LinkedHashMap<>();
 	private static final Map<String, ItemStack> looks = new HashMap<>();
@@ -93,6 +101,10 @@ public final class DungeonRun {
 		level = "";
 		rooms = spawners = loot = ores = kills = elites = bosses = 0;
 		xpFirst = xpNow = -1;
+		playerXpLast = -1;
+		playerXp = 0;
+		jobXp.clear();
+		jobLast.clear();
 		cleared.clear();
 		gained.clear();
 		looks.clear();
@@ -114,13 +126,13 @@ public final class DungeonRun {
 		}
 	}
 
-	/** The player left (or the boss bar went): the card, and the trip kept. Out of a world, nothing is shown. */
+	/** The player left (or the boss bar went): the card, and the trip kept. Out of a world (left the server) only kept. */
 	static void end(boolean inWorld) {
 		if (!running) return;
 		running = false;
 		lootScreen = null;
 		long ms = System.currentTimeMillis() - startedAt;
-		if (!inWorld || ms < minMs) return;
+		if (ms < minMs) return;
 		List<Gain> gains = new ArrayList<>();
 		for (var e : gained.entrySet()) {
 			ItemStack s = looks.get(e.getKey());
@@ -128,13 +140,14 @@ public final class DungeonRun {
 			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue(), encode(s)));
 		}
 		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
-		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses, xpFirst < 0 ? 0 : (int) Math.max(0, Math.round(xpNow - xpFirst)));
+		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses, dungeonXp(),
+			playerXp, jobsGot());
 		List<Summary> list = new ArrayList<>(history());
 		list.add(0, s);
 		while (list.size() > KEPT) list.remove(list.size() - 1);
 		history = list;
 		save();
-		if (SlashHud.config.dungeonSummary) {
+		if (inWorld && SlashHud.config.dungeonSummary) {
 			shown = s;
 			shownAt = System.currentTimeMillis();
 		}
@@ -151,6 +164,54 @@ public final class DungeonRun {
 		all += Math.max(0f, Math.min(1f, progress)) * DungeonMap.xpNeeded(level);
 		if (xpFirst < 0) xpFirst = all;
 		xpNow = all;
+	}
+
+	/** The dungeon XP got so far in the trip. */
+	static int dungeonXp() {
+		return xpFirst < 0 ? 0 : (int) Math.max(0, Math.round(xpNow - xpFirst));
+	}
+
+	/** Each job's XP got so far in the trip, whole, those with some. */
+	static Map<String, Integer> jobsGot() {
+		Map<String, Integer> out = new LinkedHashMap<>();
+		for (var e : jobXp.entrySet()) if (Math.round(e.getValue()) > 0) out.put(e.getKey(), (int) Math.round(e.getValue()));
+		return out;
+	}
+
+	/** A job's boss bar: "Górnik (poziom 2) 744/3 599 xp (+3 xp)" (spaces in the numbers, a comma for the decimals). */
+	private static final java.util.regex.Pattern JOB_BAR = java.util.regex.Pattern.compile(
+		"^\\s*(\\p{L}[\\p{L} ]*?)\\s*\\(poziom\\s+(\\d+)\\)\\s*([\\d\\s\u00a0\u202f.,]+?)\\s*/\\s*([\\d\\s\u00a0\u202f.,]+?)\\s*xp");
+
+	private static double number(String s) {
+		return Double.parseDouble(s.replaceAll("[\\s\u00a0\u202f]", "").replace(',', '.'));
+	}
+
+	/**
+	 * Read now and then in a trip: the player's own XP (only what comes in counts, not what is spent) and each
+	 * job's boss bar (what its XP grew by since last read; a level gone up counts the rest of the one before).
+	 */
+	static void sample(Minecraft mc, Iterable<String> bossBars) {
+		if (!running || mc.player == null) return;
+		int total = mc.player.totalExperience;
+		if (playerXpLast >= 0 && total > playerXpLast) playerXp += total - playerXpLast;
+		playerXpLast = total;
+		for (String bar : bossBars) {
+			java.util.regex.Matcher m = JOB_BAR.matcher(bar);
+			if (!m.find()) continue;
+			double level, have, need;
+			try {
+				level = Double.parseDouble(m.group(2));
+				have = number(m.group(3));
+				need = number(m.group(4));
+			} catch (NumberFormatException e) {
+				continue;
+			}
+			String job = m.group(1).strip();
+			double[] last = jobLast.put(job, new double[] { level, have, need });
+			if (last == null) continue;
+			double got = level == last[0] ? have - last[1] : level > last[0] ? Math.max(0, last[2] - last[1]) + have : 0;
+			if (got > 0) jobXp.merge(job, got, Double::sum);
+		}
 	}
 
 	/** Rooms walked through so far (the start room not counted): the most seen in the trip. */
@@ -337,8 +398,26 @@ public final class DungeonRun {
 		line(out, Items.IRON_SWORD, "kills", s.kills());
 		line(out, Items.GOLDEN_SWORD, "elites", s.elites());
 		line(out, Items.WITHER_SKELETON_SKULL, "bosses", s.bosses());
-		line(out, Items.EXPERIENCE_BOTTLE, "xp", s.xp());
+		line(out, Items.NETHER_STAR, "xp", s.xp());
+		line(out, Items.EXPERIENCE_BOTTLE, "playerXp", s.playerXp());
+		if (s.jobXp() != null) for (var e : s.jobXp().entrySet()) {
+			if (e.getValue() != null && e.getValue() > 0) out.add(Map.entry(jobIcon(e.getKey()), Ui.tr("slashclient-hud.dungeon.sum.job", e.getKey(), e.getValue())));
+		}
 		return out;
+	}
+
+	/** A job's picture, by its name on SkyUp. */
+	static Item jobIcon(String job) {
+		return switch (job.toLowerCase(java.util.Locale.ROOT)) {
+			case "górnik" -> Items.IRON_PICKAXE;
+			case "farmer" -> Items.WHEAT;
+			case "drwal" -> Items.IRON_AXE;
+			case "łowca" -> Items.BOW;
+			case "rybak" -> Items.FISHING_ROD;
+			case "budowniczy" -> Items.BRICKS;
+			case "czarodziej" -> Items.ENCHANTED_BOOK;
+			default -> Items.EXPERIENCE_BOTTLE;
+		};
 	}
 
 	private static void line(List<Map.Entry<Item, Component>> out, Item item, String key, int n) {
@@ -464,6 +543,59 @@ public final class DungeonRun {
 		return 1f - u * u * u;
 	}
 
+	// ---------- on the HUD ----------
+
+	/** The XP got in the trip so far, on the HUD while in a dungeon: the dungeon's, the player's own, each job's. */
+	public static final class Live implements dev.slash3rss.slashclient.hud.modules.HudModule {
+		@Override
+		public String id() {
+			return "dungeonxp";
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return running;
+		}
+
+		private static List<Component> lines() {
+			List<Component> out = new ArrayList<>();
+			out.add(Ui.tr("slashclient-hud.dungeonXp.title"));
+			if (!running) {
+				// made-up numbers for the editor
+				out.add(Ui.tr("slashclient-hud.dungeonXp.dungeon", 256));
+				out.add(Ui.tr("slashclient-hud.dungeonXp.player", 40));
+				out.add(Ui.tr("slashclient-hud.dungeonXp.job", "Górnik", 120));
+				return out;
+			}
+			out.add(Ui.tr("slashclient-hud.dungeonXp.dungeon", dungeonXp()));
+			out.add(Ui.tr("slashclient-hud.dungeonXp.player", playerXp));
+			for (var e : jobsGot().entrySet()) out.add(Ui.tr("slashclient-hud.dungeonXp.job", e.getKey(), e.getValue()));
+			return out;
+		}
+
+		@Override
+		public int width(Minecraft mc) {
+			int w = 0;
+			for (Component c : lines()) w = Math.max(w, mc.font.width(c));
+			return w + dev.slash3rss.slashclient.hud.modules.Modules.PAD * 2;
+		}
+
+		@Override
+		public int height(Minecraft mc) {
+			return lines().size() * 10 + dev.slash3rss.slashclient.hud.modules.Modules.PAD * 2 - 1;
+		}
+
+		@Override
+		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			int pad = dev.slash3rss.slashclient.hud.modules.Modules.PAD;
+			List<Component> lines = lines();
+			for (int i = 0; i < lines.size(); i++) {
+				int color = i == 0 ? 0xFFFFA94D : dev.slash3rss.slashclient.hud.modules.Modules.textColor();
+				dev.slash3rss.slashclient.hud.modules.Modules.text(g, mc, lines.get(i), x + pad, y + pad + i * 10, color);
+			}
+		}
+	}
+
 	// ---------- for the tests ----------
 
 	/** For the test: a trip counts from any length, and the list in memory starts empty. */
@@ -480,6 +612,15 @@ public final class DungeonRun {
 			ItemStack s = stackOf(g);
 			out.append(out.isEmpty() ? "" : " ").append(BuiltInRegistries.ITEM.getKey(s.getItem()).getPath()).append(Ui.look(s).isEmpty() ? "" : "*");
 		}
+		return out.toString();
+	}
+
+	/** For the test: the last trip's own XP and jobs' XP, "player 7, Górnik 12". */
+	public static String xpForTest() {
+		if (history().isEmpty()) return "";
+		Summary s = history().get(0);
+		StringBuilder out = new StringBuilder("player " + s.playerXp());
+		if (s.jobXp() != null) for (var e : s.jobXp().entrySet()) out.append(", ").append(e.getKey()).append(' ').append(e.getValue());
 		return out.toString();
 	}
 

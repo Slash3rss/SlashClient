@@ -54,6 +54,8 @@ public final class Modules {
 		out.add(new DungeonMap());
 		// its loot counters, when the player wants them apart from it
 		out.add(new DungeonMap.Loot());
+		// the XP got in a dungeon so far
+		out.add(new dev.slash3rss.slashclient.hud.skyup.DungeonRun.Live());
 		// the ground around, from above (no entities)
 		out.add(new Minimap());
 		//#if MC >= 26.3

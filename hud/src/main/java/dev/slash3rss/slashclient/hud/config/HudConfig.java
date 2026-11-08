@@ -738,6 +738,8 @@ public final class HudConfig {
 		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 80, 0));
 		// its loot counters on their own (only when set apart from the map), over it
 		c.modules.put("dungeonloot", new Placement(true, 0f, 0.5f, 80, 0));
+		// the XP got in a dungeon, on the right a quarter down (the map and the counters are on the left)
+		c.modules.put("dungeonxp", new Placement(true, 1f, 0.25f, -2, 0));
 		// SkyUp's tasks on the left, under the usual top-left modules and above the dungeon map (the right side has
 		// the effects, CPU/GPU and the scoreboard); shown only with tasks to show
 		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
