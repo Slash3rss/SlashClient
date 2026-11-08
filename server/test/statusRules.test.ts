@@ -93,7 +93,7 @@ describe('status rules: reading the tab list', () => {
     const r = evaluate(cleanRule({ ...SKYUP_RULE }), SKYUP_HEADER('S3 (Wyspy)'), '', bar);
     assert.deepEqual([r.values.job, r.values.jobLevel, r.detail], ['Górnik', '2', 'S3 (Wyspy) · Górnik poz. 2']);
     assert.equal(evaluate(SKYUP_RULE, SKYUP_HEADER('S3 (Wyspy)'), '', 'Łowca (poziom 14) 1/2 xp').values.job, 'Łowca');
-    assert.equal(variantImage(SKYUP_RULE.variants![0].image, { job: 'Łowca' }), 'https://slashclient.pl/img/discord/praca_lowca.png');
+    assert.equal(variantImage(SKYUP_RULE.variants![0].image, { job: 'Łowca' }), 'https://slashclient.pl/img/discord/praca_lowca.png?v=2');
     // in a dungeon the dungeon stays
     assert.equal(evaluate(SKYUP_RULE, SKYUP_HEADER('S8 (Dungeon)'), '', `${bar}\nDungeon poz. 3`).detail, 'S8 (Dungeon)');
   });

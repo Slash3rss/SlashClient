@@ -75,7 +75,7 @@ export const SKYUP_LOGO = 'https://slashclient.pl/img/discord/skyup.png';
 export const SKYUP_JOB_EXTRACTOR: Extractor = { source: 'bossbar', line: 0, pattern: '(?<job>Górnik|Farmer|Drwal|Łowca|Rybak|Budowniczy|Czarodziej) \\(poziom (?<jobLevel>\\d{1,3})\\)' };
 export const SKYUP_JOB_VARIANT: Variant = {
   when: 'job', hold: HOLD_DEFAULT, keep: KEEP_DEFAULT, template: '{sector} · {job} poz. {jobLevel}', state: '{sector} · {job} poz. {jobLevel}',
-  image: 'https://slashclient.pl/img/discord/praca_{job}.png', text: '{job}, poziom {jobLevel}',
+  image: 'https://slashclient.pl/img/discord/praca_{job}.png?v=2', text: '{job}, poziom {jobLevel}',
 };
 
 /** SkyUp.pl as its tab list looks (26.3): "» SkyUP - AnyBlock «" over "» S0 (Spawn) «" or "» LOBBY «". AnyBlock is its only server, so only the sector is shown. */
