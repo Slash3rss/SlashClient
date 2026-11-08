@@ -326,19 +326,23 @@ public final class DungeonRun {
 		return known ? Ui.trBold("slashclient-hud.dungeon.sum.title", s.level()) : Ui.trBold("slashclient-hud.dungeon.sum.titleNoLevel");
 	}
 
-	/** The lines under the title, each with its item. */
+	/** The lines under the title, each with its item: the time, then only the numbers that are not 0. */
 	public static List<Map.Entry<Item, Component>> lines(Summary s) {
 		List<Map.Entry<Item, Component>> out = new ArrayList<>();
 		out.add(Map.entry(Items.CLOCK, Ui.tr("slashclient-hud.dungeon.sum.time", time(s.ms()))));
-		out.add(Map.entry(Items.MOSSY_STONE_BRICKS, Ui.tr("slashclient-hud.dungeon.sum.rooms", s.rooms())));
-		out.add(Map.entry(Items.SPAWNER, Ui.tr("slashclient-hud.dungeon.sum.spawners", s.spawners())));
-		out.add(Map.entry(Items.CHEST, Ui.tr("slashclient-hud.dungeon.sum.loot", s.loot())));
-		out.add(Map.entry(Items.DEEPSLATE_IRON_ORE, Ui.tr("slashclient-hud.dungeon.sum.ores", s.ores())));
-		out.add(Map.entry(Items.IRON_SWORD, Ui.tr("slashclient-hud.dungeon.sum.kills", s.kills())));
-		out.add(Map.entry(Items.GOLDEN_SWORD, Ui.tr("slashclient-hud.dungeon.sum.elites", s.elites())));
-		out.add(Map.entry(Items.WITHER_SKELETON_SKULL, Ui.tr("slashclient-hud.dungeon.sum.bosses", s.bosses())));
-		out.add(Map.entry(Items.EXPERIENCE_BOTTLE, Ui.tr("slashclient-hud.dungeon.sum.xp", s.xp())));
+		line(out, Items.MOSSY_STONE_BRICKS, "rooms", s.rooms());
+		line(out, Items.SPAWNER, "spawners", s.spawners());
+		line(out, Items.CHEST, "loot", s.loot());
+		line(out, Items.DEEPSLATE_IRON_ORE, "ores", s.ores());
+		line(out, Items.IRON_SWORD, "kills", s.kills());
+		line(out, Items.GOLDEN_SWORD, "elites", s.elites());
+		line(out, Items.WITHER_SKELETON_SKULL, "bosses", s.bosses());
+		line(out, Items.EXPERIENCE_BOTTLE, "xp", s.xp());
 		return out;
+	}
+
+	private static void line(List<Map.Entry<Item, Component>> out, Item item, String key, int n) {
+		if (n != 0) out.add(Map.entry(item, Ui.tr("slashclient-hud.dungeon.sum." + key, n)));
 	}
 
 	private static final Map<String, ItemStack> decoded = new HashMap<>();
