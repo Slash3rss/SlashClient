@@ -59,6 +59,11 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("fill %d %d %d %d %d %d polished_deepslate", x0 - 15, y - 5, z0 + 9, x0 - 9, y - 5, z0 + 15));
 			// the start room's floor is green
 			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0 - 5, y - 1, z0 + 7, x0 + 5, y - 1, z0 + 17));
+			// a room's floor of other blocks, for the map in its blocks' colours: logs, bricks, sand, cobblestone
+			server.runCommand(String.format("fill %d %d %d %d %d %d oak_log", x0 - 17, y - 1, z0 - 17, x0 - 13, y - 1, z0 - 13));
+			server.runCommand(String.format("fill %d %d %d %d %d %d bricks", x0 - 11, y - 1, z0 - 17, x0 - 7, y - 1, z0 - 13));
+			server.runCommand(String.format("fill %d %d %d %d %d %d sand", x0 - 17, y - 1, z0 - 11, x0 - 13, y - 1, z0 - 7));
+			server.runCommand(String.format("fill %d %d %d %d %d %d mossy_cobblestone", x0 - 11, y - 1, z0 - 11, x0 - 7, y - 1, z0 - 7));
 			// as on SkyUp: the hint while still in the lobby, then the teleport, then the boss bar
 			// the lobby close by and higher: the map starts there, the teleport does not start it anew,
 			// and the dungeon's ground must come from where the player is when the boss bar shows
@@ -81,6 +86,11 @@ public class GameDungeon implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.dungeonRound(true));
 			context.waitTicks(30);
 			context.takeScreenshot("dungeon-map-round");
+			// the floor in its blocks' colours, as their textures look from above
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonBlockColors = true);
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-map-block-colors");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonBlockColors = false);
 			context.runOnClient(mc -> TestHooks.dungeonRound(false));
 			// rooms: three containers in three rooms, one broken; a mob killed in the room next door
 			// the chest at the bottom of the pit, 4 blocks under the floor: still counted, in its room
@@ -210,6 +220,10 @@ public class GameDungeon implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-full");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonBlockColors = true);
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-full-block-colors");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonBlockColors = false);
 			context.runOnClient(mc -> TestHooks.dungeonFull(false));
 			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");

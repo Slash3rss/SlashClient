@@ -603,7 +603,7 @@ public final class DungeonMap implements HudModule {
 		for (int dy = -2; dy <= 2; dy++) {
 			int y = near + dy;
 			if (solid(world, pos.set(x, y - 1, z)) && !solid(world, pos.set(x, y, z)) && !solid(world, pos.set(x, y + 1, z))) {
-				color = floorColor(world.getBlockState(pos.set(x, y - 1, z)).getMapColor(world, pos).col);
+				color = floorColor(blockColor(world, world.getBlockState(pos.set(x, y - 1, z)), pos));
 				break;
 			}
 		}
@@ -631,6 +631,78 @@ public final class DungeonMap implements HudModule {
 
 	private static boolean solid(ClientLevel world, BlockPos pos) {
 		return !world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
+	}
+
+	/** Each block's colour as seen from above: its texture's average (0xRRGGBB), or -1 when it has no texture found. */
+	private static final java.util.Map<net.minecraft.world.level.block.Block, Integer> textureColors = new java.util.HashMap<>();
+
+	/**
+	 * A block's colour on the map as it looks in the game: its texture from above (a log's end, the grass's top)
+	 * averaged, tinted as the game tints it (grass and leaves by the biome); a block without a texture of its
+	 * own name, its map colour.
+	 */
+	static int blockColor(ClientLevel world, BlockState state, BlockPos pos) {
+		int base = textureColors.computeIfAbsent(state.getBlock(), DungeonMap::textureColor);
+		if (base == -1) return state.getMapColor(world, pos).col;
+		int tint = -1;
+		try {
+			//#if MC >= 26.1
+			var source = Minecraft.getInstance().getBlockColors().getTintSource(state, 0);
+			if (source != null) tint = source.colorInWorld(state, world, pos);
+			//#else
+			//$ tint = Minecraft.getInstance().getBlockColors().getColor(state, world, pos, 0);
+			//#endif
+		} catch (RuntimeException e) {
+			tint = -1;
+		}
+		if (tint == -1 || (tint & 0xFFFFFF) == 0xFFFFFF) return base;
+		int r = (base >> 16 & 0xFF) * (tint >> 16 & 0xFF) / 255, g = (base >> 8 & 0xFF) * (tint >> 8 & 0xFF) / 255, b = (base & 0xFF) * (tint & 0xFF) / 255;
+		return r << 16 | g << 8 | b;
+	}
+
+	/**
+	 * The average colour of a block's texture from above, read from the game's resources (resource packs too):
+	 * "<name>_top" first (logs, grass, pumpkins), then "<name>"; stairs, slabs and walls by the block they are
+	 * made of ("stone_brick_stairs": stone_bricks, "oak_slab": oak_planks). -1 when none is found.
+	 */
+	private static int textureColor(net.minecraft.world.level.block.Block block) {
+		var key = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block);
+		String name = key.getPath();
+		java.util.List<String> tries = new java.util.ArrayList<>(java.util.List.of(name + "_top", name));
+		String base = name.replaceFirst("_(stairs|slab|wall|pressure_plate|carpet)$", "");
+		if (!base.equals(name)) tries.addAll(java.util.List.of(base, base + "s", base + "_planks", base.replace("_brick", "_bricks"), base + "_block"));
+		for (String t : tries) {
+			int c = averageColor(Identifier.fromNamespaceAndPath(key.getNamespace(), "textures/block/" + t + ".png"));
+			if (c != -1) return c;
+		}
+		return -1;
+	}
+
+	/** The average of a texture's seen pixels (its first frame: an animated one is frames one under another), or -1. */
+	private static int averageColor(Identifier texture) {
+		try {
+			var resource = Minecraft.getInstance().getResourceManager().getResource(texture);
+			if (resource.isEmpty()) return -1;
+			java.awt.image.BufferedImage image;
+			try (var in = resource.get().open()) {
+				image = javax.imageio.ImageIO.read(in);
+			}
+			if (image == null) return -1;
+			int side = Math.min(image.getWidth(), image.getHeight());
+			long r = 0, g = 0, b = 0, n = 0;
+			for (int y = 0; y < side; y++) for (int x = 0; x < side; x++) {
+				int p = image.getRGB(x, y);
+				if ((p >>> 24) < 128) continue;
+				r += p >> 16 & 0xFF;
+				g += p >> 8 & 0xFF;
+				b += p & 0xFF;
+				n++;
+			}
+			if (n == 0) return -1;
+			return (int) (r / n) << 16 | (int) (g / n) << 8 | (int) (b / n);
+		} catch (Exception e) {
+			return -1;
+		}
 	}
 
 	/** The floor's map colour, a little lighter so floor and walls stand apart; never too dark to see. */
