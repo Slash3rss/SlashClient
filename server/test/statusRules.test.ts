@@ -261,6 +261,9 @@ describe('status rules: the endpoints', () => {
     // a picture per job: "praca_{job}" with the job's name in it
     const perJob = await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'praca_{job}' }] }, header: SKYUP_HEADER('S3 (Wyspy)'), bossbar: 'Praca: Drwal' });
     assert.equal(perJob.body.discord.badge, 'Drwal (praca_drwal)');
+    // or the pictures this server keeps, like the dungeon's gate
+    const hosted = await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'https://slashclient.pl/img/discord/praca_{job}.png' }] }, header: SKYUP_HEADER('S3 (Wyspy)'), bossbar: 'Praca: Drwal' });
+    assert.equal(hosted.body.discord.badge, 'Drwal (https://slashclient.pl/img/discord/praca_drwal.png)');
     assert.equal((await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'praca_{nope}' }] } })).body.error, 'bad_image');
     assert.equal((await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'zły {job}' }] } })).body.error, 'bad_image');
     assert.equal((await call('POST', `/v1/admin/status-rules/${sky.id}`, admin.token, withJob)).status, 200);
