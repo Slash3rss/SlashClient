@@ -193,6 +193,14 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.waitTicks(5);
 			String model = context.computeOnClient(mc -> SkyCaseTestHooks.lookModel("Nowa", "Złota rybka"));
 			check(model.equals("[4242.0]"), "the look from the inventory", model);
+			// a reward known by name only, never won here: its look from the same item in the inventory
+			context.runOnClient(mc -> {
+				SkyCaseTestHooks.poolOnly("Nowa", "Moneta Testowa", "minecraft:paper");
+				SkyCaseTestHooks.receive("minecraft:paper", "Moneta Testowa", 5151f);
+			});
+			context.waitTicks(45);
+			String coin = context.computeOnClient(mc -> SkyCaseTestHooks.lookModel("Nowa", "Moneta Testowa"));
+			check(coin.equals("[5151.0]"), "a reward's look from the inventory", coin);
 			context.runOnClient(mc -> SkyCaseTestHooks.forget());
 
 			// saved: read back, the pools from the windows and the wins are there

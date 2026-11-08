@@ -554,6 +554,7 @@ public final class SkyCase {
 	public static void tick(Minecraft mc) {
 		if (dirty && System.currentTimeMillis() - savedAt > SAVE_MS) saveNow();
 		if (received != null) learnLook(mc);
+		if (++learnTick % 40 == 0 && mc.player != null && SkyTasks.onSkyUp(mc)) learnFromInventory(mc);
 		if (!SkyTasks.onSkyUp(mc) || !(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return;
 		String type = caseType(screen.getTitle().getString());
 		if (type == null) return;
@@ -562,6 +563,36 @@ public final class SkyCase {
 		contextFromWindow = true;
 		// what it holds: read a few times a second (the items come after the window)
 		if (++tick % 5 == 0) readPreview(type, screen, contextAt);
+	}
+
+	private static int learnTick;
+
+	/**
+	 * Rewards no preview showed and no win brought (only their names are known, from the pools that come with the
+	 * mod) take their look from the same item anywhere in the inventory, every two seconds: a server's coin is then
+	 * not drawn as plain paper. A look the preview showed is never replaced.
+	 */
+	static void learnFromInventory(Minecraft mc) {
+		Map<String, List<Map.Entry<Stats, String>>> missing = new HashMap<>();
+		for (Stats s : lifetime().cases.values()) {
+			for (String reward : s.pool.keySet()) {
+				String k = key(base(reward));
+				boolean known = builtInLooks().containsKey(key(reward));
+				for (String has : s.looks.keySet()) if (key(has).equals(key(reward))) known = true;
+				if (!known) missing.computeIfAbsent(k, x -> new ArrayList<>()).add(Map.entry(s, reward));
+			}
+		}
+		if (missing.isEmpty()) return;
+		boolean changed = false;
+		Inventory inv = mc.player.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack stack = inv.getItem(i);
+			if (stack.isEmpty() || !stack.has(DataComponents.CUSTOM_NAME)) continue;
+			var found = missing.remove(key(base(plain(stack.getHoverName().getString()))));
+			if (found == null) continue;
+			for (var e : found) changed |= keepLooks(e.getKey(), Map.of(e.getValue(), stack));
+		}
+		if (changed) save();
 	}
 
 	/** The last win whose look is not known yet, while its item may still come into the inventory. */

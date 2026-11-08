@@ -149,6 +149,11 @@ public final class SkyCaseTestHooks {
 		Minecraft.getInstance().player.getInventory().add(stack);
 	}
 
+	/** A reward in a case's pool by its name only (as the pools that come with the mod have them), with no look. */
+	public static void poolOnly(String type, String reward, String id) {
+		SkyCase.lifetime().of(type).pool.put(reward, id);
+	}
+
 	/** The model a reward is shown with ("[4242.0]"), or "-" without one. */
 	public static String lookModel(String type, String reward) {
 		ItemStack stack = SkyCase.look(type, reward);
