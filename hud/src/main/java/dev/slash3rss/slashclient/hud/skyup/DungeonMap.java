@@ -530,6 +530,11 @@ public final class DungeonMap implements HudModule {
 			if (m.find()) {
 				dungeonLevel = m.group(1);
 				DungeonRun.level(dungeonLevel);
+				try {
+					DungeonRun.xp(Integer.parseInt(dungeonLevel), event.getProgress());
+				} catch (NumberFormatException e) {
+					// a level too long for a number: no XP
+				}
 				// how far the player got, for SkyUp's task "Dotrzyj do poziomu w dungeonach" (the tasks are on 26.3)
 				//#if MC >= 26.3
 				SkyCounters.dungeonLevel(Long.parseLong(dungeonLevel));

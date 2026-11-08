@@ -67,10 +67,14 @@ public class GameDungeonSummary implements FabricClientGameTest {
 				DungeonRun.killed(1, 2);
 				DungeonRun.killed(2, 3);
 			});
+			// a level up on the way: all of level 2 (225, from an empty bar) and a tenth of level 3's 314 (130·3 − 81 + 27/5)
+			server.runCommand("bossbar set dungeon name \"Dungeon poz. 3\"");
+			server.runCommand("bossbar set dungeon value 10");
+			context.waitTicks(30);
 			server.runCommand("bossbar remove dungeon");
 			context.waitTicks(25);
 			String last = context.computeOnClient(mc -> DungeonRun.lastForTest());
-			if (!last.equals("poz. 2, loot 0, kills 4/1/2, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
+			if (!last.equals("poz. 3, loot 0, kills 4/1/2, xp 256, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
 			// the list keeps the server's model on its items
 			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());

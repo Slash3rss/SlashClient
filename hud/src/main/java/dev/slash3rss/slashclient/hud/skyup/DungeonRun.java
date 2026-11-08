@@ -30,7 +30,7 @@ import java.util.Set;
 /**
  * One trip through a SkyUp dungeon, from its boss bar showing to the player leaving: how long it took, the
  * highest level, the rooms walked through, the spawners beaten (each time again), the loot opened and the ores
- * mined, the mobs killed (and how many of them elites and mini bosses) and what the player got. When it is over, a card with all that slides down under the
+ * mined, the mobs killed (and how many of them elites and mini bosses), the dungeon XP got and what the player got. When it is over, a card with all that slides down under the
  * boss bars, and the trip is kept in a list (the dungeon map's settings, "Historia dungeonów").
  *
  * SkyUp does not say on the chat what drops, so what the player got is read from the game itself: items picked
@@ -49,9 +49,10 @@ public final class DungeonRun {
 
 	/**
 	 * One trip, as shown and kept (`spawners`: each spawner beaten, its room emptied of mobs, every time again;
-	 * `elites` and `bosses`: of the kills, the elites and the mini bosses; 0 in trips kept before they were counted).
+	 * `elites` and `bosses`: of the kills, the elites and the mini bosses; `xp`: the dungeon XP got, from its boss
+	 * bar; 0 in trips kept before they were counted).
 	 */
-	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses) {}
+	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses, int xp) {}
 
 	/** Shorter than this (a hint that came, a peek in): no card, nothing kept. */
 	static long minMs = 20_000;
@@ -64,6 +65,8 @@ public final class DungeonRun {
 	private static long startedAt;
 	private static String level = "";
 	private static int rooms, spawners, loot, ores, kills, elites, bosses;
+	/** The dungeon XP from level 1 when the trip began and now (-1: not read yet). */
+	private static double xpFirst = -1, xpNow = -1;
 	private static final Set<Long> cleared = new HashSet<>();
 	private static final Map<String, Integer> gained = new LinkedHashMap<>();
 	private static final Map<String, ItemStack> looks = new HashMap<>();
@@ -89,6 +92,7 @@ public final class DungeonRun {
 		startedAt = System.currentTimeMillis();
 		level = "";
 		rooms = spawners = loot = ores = kills = elites = bosses = 0;
+		xpFirst = xpNow = -1;
 		cleared.clear();
 		gained.clear();
 		looks.clear();
@@ -124,7 +128,7 @@ public final class DungeonRun {
 			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue(), encode(s)));
 		}
 		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
-		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses);
+		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses, xpFirst < 0 ? 0 : (int) Math.max(0, Math.round(xpNow - xpFirst)));
 		List<Summary> list = new ArrayList<>(history());
 		list.add(0, s);
 		while (list.size() > KEPT) list.remove(list.size() - 1);
@@ -134,6 +138,19 @@ public final class DungeonRun {
 			shown = s;
 			shownAt = System.currentTimeMillis();
 		}
+	}
+
+	/**
+	 * The dungeon's boss bar: its level and how full it is. The XP counts from level 1 (every level before taken
+	 * whole, DungeonMap.xpNeeded), so a level gone up on the way counts what it took.
+	 */
+	static void xp(int level, float progress) {
+		if (!running || level < 1) return;
+		double all = 0;
+		for (int l = 1; l < level; l++) all += DungeonMap.xpNeeded(l);
+		all += Math.max(0f, Math.min(1f, progress)) * DungeonMap.xpNeeded(level);
+		if (xpFirst < 0) xpFirst = all;
+		xpNow = all;
 	}
 
 	/** Rooms walked through so far (the start room not counted): the most seen in the trip. */
@@ -320,6 +337,7 @@ public final class DungeonRun {
 		out.add(Map.entry(Items.IRON_SWORD, Ui.tr("slashclient-hud.dungeon.sum.kills", s.kills())));
 		out.add(Map.entry(Items.GOLDEN_SWORD, Ui.tr("slashclient-hud.dungeon.sum.elites", s.elites())));
 		out.add(Map.entry(Items.WITHER_SKELETON_SKULL, Ui.tr("slashclient-hud.dungeon.sum.bosses", s.bosses())));
+		out.add(Map.entry(Items.EXPERIENCE_BOTTLE, Ui.tr("slashclient-hud.dungeon.sum.xp", s.xp())));
 		return out;
 	}
 
@@ -470,7 +488,7 @@ public final class DungeonRun {
 	public static String lastForTest() {
 		if (history().isEmpty()) return "";
 		Summary s = history().get(0);
-		StringBuilder out = new StringBuilder("poz. " + s.level() + ", loot " + s.loot() + ", kills " + s.kills() + "/" + s.elites() + "/" + s.bosses() + ", got");
+		StringBuilder out = new StringBuilder("poz. " + s.level() + ", loot " + s.loot() + ", kills " + s.kills() + "/" + s.elites() + "/" + s.bosses() + ", xp " + s.xp() + ", got");
 		for (Gain g : s.gains()) out.append(' ').append(g.id().replace("minecraft:", "")).append(g.look().isEmpty() ? "" : "*").append(' ').append(g.count());
 		return out.toString();
 	}
