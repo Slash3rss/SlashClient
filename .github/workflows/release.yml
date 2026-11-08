@@ -69,6 +69,18 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # Windows signing is optional too: with the Certum secrets the launcher, its installer and uninstaller
+      # are signed (scripts/win-sign.cjs), so Smart App Control and SmartScreen do not block them
+      - name: Certum SimplySign login (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
+          CERTUM_TOTP: ${{ secrets.CERTUM_TOTP }}
+          WIN_CERT_SHA1: ${{ secrets.WIN_CERT_SHA1 }}
+        run: |
+          if (-not $env:CERTUM_TOTP) { Write-Host 'No Certum secrets: the Windows build stays unsigned'; exit 0 }
+          ./scripts/certum-login.ps1
       - name: Build and publish
         shell: bash
         env:
