@@ -41,6 +41,8 @@ export interface HeldRank {
   /** The custom icon's address, when the rank has one. */
   icon?: string;
   source: RankSource;
+  /** Not held: an admin may only pick its badge (choosable). */
+  pickOnly?: boolean;
   grantedAt?: number;
   expiresAt?: number | null;
 }
@@ -63,6 +65,8 @@ const LEGACY_RANKS = ['support', 'partner', 'friend', 'friend_pink'];
 export const RANK_SETTING_DEFS: SettingDef[] = [
   { key: 'ranks.defaultBadge', category: 'profiles', label: 'Odznaka rangi bez wyboru gracza', labelEn: 'Rank badge without a choice',
     description: 'Co jest przy nicku gracza, który nie wybrał rangi sam: highest — odznaka najważniejszej rangi, none — żadna (tylko białe logo).', type: 'enum', options: ['highest', 'none'], default: 'highest' },
+  { key: 'ranks.adminAnyBadge', category: 'profiles', label: 'Admini wybierają odznakę dowolnej rangi', labelEn: 'Admins pick any rank badge',
+    description: 'Admin może wybrać przy nicku odznakę każdej włączonej rangi, także takiej, której nie ma (na stronie konta i w launcherze). Profil publiczny dalej pokazuje tylko rangi, które ma.', type: 'bool', default: true },
   { key: 'ranks.profileMax', category: 'profiles', label: 'Rang na profilu', labelEn: 'Ranks on a profile', description: 'Najwięcej rang pokazanych na profilu publicznym (najważniejsze pierwsze).', type: 'int', default: 20, min: 1, max: 100 },
 ];
 
@@ -301,10 +305,23 @@ export function createRanks(deps: RankDeps) {
   }
 
   /**
+   * The ranks whose badge the player may put next to their nick: the ones held, and for admins (unless switched
+   * off) every other enabled rank after them, marked pickOnly. The launcher and the account page list what /v1/me
+   * gives as ranks, so they offer these without an update.
+   */
+  function choosable(user: RankUser, list = held(user)): HeldRank[] {
+    if (!deps.isAdmin(user) || deps.setting?.('ranks.adminAnyBadge') === false) return list;
+    const extra = store.defs().filter((d) => d.enabled && !list.some((h) => h.id === d.id))
+      .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
+      .map((d): HeldRank => ({ id: d.id, name: d.name, nameEn: d.nameEn || d.name, color: d.color, priority: d.priority, ...(iconUrl(d) ? { icon: iconUrl(d) } : {}), source: 'role', pickOnly: true }));
+    return [...list, ...extra];
+  }
+
+  /**
    * The rank whose badge goes next to the nick: the one picked, else the most important; undefined for none.
    * In game, as one Minecraft account (`character`), that account's own pick comes first.
    */
-  function shown(user: RankUser, list = held(user), character?: string): HeldRank | undefined {
+  function shown(user: RankUser, list = choosable(user), character?: string): HeldRank | undefined {
     if (user.banned) return undefined;
     const own = character ? store.characterChoice(user.id, character) : undefined;
     // an account's own pick of a rank the player no longer holds goes back to the account's pick
@@ -332,7 +349,7 @@ export function createRanks(deps: RankDeps) {
 
   /** What /v1/me adds: the ranks held, the choice and the rank shown, and the picks of single Minecraft accounts. */
   function forMe(user: RankUser) {
-    const list = held(user);
+    const list = choosable(user);
     const s = shown(user, list);
     const mine = new Set(deps.characters?.(user.id) ?? []);
     const characterBadges = Object.fromEntries(Object.entries(store.characterChoices(user.id)).filter(([c]) => mine.has(c)));
@@ -391,7 +408,7 @@ export function createRanks(deps: RankDeps) {
     const list = held(u, true);
     return {
       grants: store.grants(id).map((g) => ({ ...g, grantedByHandle: g.grantedBy ? deps.user(g.grantedBy)?.handle ?? '' : '', expired: g.expiresAt !== null && g.expiresAt <= now() })),
-      held: list, shown: shown(u, held(u))?.id ?? '', choice: store.choice(id),
+      held: list, shown: shown(u)?.id ?? '', choice: store.choice(id),
     };
   }
 
@@ -405,7 +422,7 @@ export function createRanks(deps: RankDeps) {
       const { rank, character } = await deps.body(req);
       if (typeof rank !== 'string') fail(400, 'bad_request');
       const u = userOr404(me);
-      if (rank && rank !== 'none' && !held(u).some((h) => h.id === rank)) fail(400, 'not_your_rank');
+      if (rank && rank !== 'none' && !choosable(u).some((h) => h.id === rank)) fail(400, 'not_your_rank');
       if (character !== undefined) {
         const subject = typeof character === 'string' ? character.toLowerCase().replace(/-/g, '') : '';
         if (!(deps.characters?.(me) ?? []).includes(subject)) fail(400, 'not_linked');
@@ -515,7 +532,7 @@ export function createRanks(deps: RankDeps) {
   ];
 
   return {
-    store, routes, held, shown, wear, forMe, setOnly,
+    store, routes, held, choosable, shown, wear, forMe, setOnly,
     /** The ids of a player's ranks, for the panel's list. */
     ids: (user: RankUser) => held(user).map((h) => h.id),
     /** GET /v1/ranks/<id>/logo.png for anyone; true when the request was this. */

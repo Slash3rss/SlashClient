@@ -512,7 +512,7 @@ export function createApp(cfg: Config) {
     const owner = db.user(link.user);
     let value: LookupEntry | null = null;
     if (owner && !owner.banned) {
-      const held = ranks.held(owner);
+      const held = ranks.choosable(owner);
       // the Minecraft account played as may show a badge of its own
       const badge = gameBadge(ranks.shown(owner, held, link.character), held, known);
       // only what the player may still wear: the admin may have switched it off, or the rank may be gone

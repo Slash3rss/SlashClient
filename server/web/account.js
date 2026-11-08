@@ -160,8 +160,8 @@ function renderAccount(reload = false) {
     el('div', { class: 'row' }, avatarEl(me, true),
       el('div', { class: 'grow' }, el('h3', { textContent: me.name }), el('span', { class: 'muted', textContent: `@${me.handle}` }))),
     el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
-      // every rank held (ranks.ts); the supporter's is the tier chip below
-      ...(me.ranks ?? []).filter((r) => r.id !== 'supporter').map((r) => rankChip(r, EN)),
+      // every rank held (ranks.ts; not the ones an admin may only pick the badge of); the supporter's is the tier chip below
+      ...(me.ranks ?? []).filter((r) => r.id !== 'supporter' && !r.pickOnly).map((r) => rankChip(r, EN)),
       // sparks from achievements, spent on cosmetics in the shop (sparks.js)
       cosmetics.wallet ? el('span', { class: 'chip gold', title: L('Iskry z osiągnięć', 'Sparks from achievements') }, el('span', { class: 'spark-sign', textContent: '✦' }), sparks(cosmetics.wallet.balance)) : '',
       // supporting the project (supportCard.js): the tier in its colour

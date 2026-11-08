@@ -309,6 +309,28 @@ describe('ranks', () => {
     assert.deepEqual(friend.badgeRank, { id: 'friend', name: 'Przyjaciel', nameEn: 'Friend', color: '#22c55e' });
   });
 
+  it('lets admins pick the badge of any enabled rank, without holding it', async () => {
+    const mine = await me(boss.token);
+    assert.equal(mine.ranks[0].id, 'admin');
+    const friend = mine.ranks.find((r: any) => r.id === 'friend');
+    assert.equal(friend.pickOnly, true);
+    assert.equal((await call('POST', '/v1/me/badge', boss.token, { rank: 'friend' })).status, 200);
+    assert.equal((await me(boss.token)).badgeRank.id, 'friend');
+    // the game draws it, the public profile still lists only the ranks held
+    const uuid = await inGame(boss.token, boss.user.id, 7);
+    assert.equal((await lookup(uuid, NEW_HUD)).ranks[uuid], 'friend');
+    const profile = (await call('GET', '/v1/profiles/Szef')).body.profile;
+    assert.equal(profile.badge, 'friend');
+    assert.deepEqual(profile.ranks.map((r: any) => r.id), ['admin']);
+    // switched off in the panel: back to the ranks held
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.adminAnyBadge': false } });
+    assert.deepEqual((await me(boss.token)).ranks.map((r: any) => r.id), ['admin']);
+    assert.equal((await me(boss.token)).badgeRank.id, 'admin');
+    assert.equal((await call('POST', '/v1/me/badge', boss.token, { rank: 'partner' })).body.error, 'not_your_rank');
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.adminAnyBadge': true } });
+    await call('POST', '/v1/me/badge', boss.token, { rank: '' });
+  });
+
   it('follows the panel settings: no badge without a choice, fewer ranks on the profile', async () => {
     const lena = await login('Lena');
     for (const r of ['support', 'partner', 'friend']) await call('POST', `/v1/admin/users/${lena.user.id}/ranks`, boss.token, { rank: r });
