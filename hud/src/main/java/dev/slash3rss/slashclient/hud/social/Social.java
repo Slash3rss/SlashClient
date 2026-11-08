@@ -249,6 +249,9 @@ public final class Social {
 		while (true) {
 			try {
 				if (!reachable) {
+					// the game just started: the launcher still keeps its last events (friends coming online, playing,
+					// messages) from before, which the lists below already show; replayed, they came back as old toasts
+					if (seq == 0) seq = skipToNow();
 					refreshState();
 					if (signedIn) refreshFriends();
 					// group chats and the clan (an older launcher has neither: nothing happens)
@@ -258,6 +261,8 @@ public final class Social {
 					// whether we share our position with friends (an older launcher or server: nothing happens)
 					if (signedIn) FriendPositions.refresh();
 					reachable = true;
+					// only the first failure is logged, so say it works again (a server restart is a few failed tries)
+					if (failures > 0) SlashHud.LOG.info("SlashClient: launcher bridge reachable again");
 				}
 				JsonObject res = request("GET", "/events?after=" + seq, null, 35);
 				long newSeq = res.get("seq").getAsLong();
@@ -272,6 +277,11 @@ public final class Social {
 				sleep(Math.min(30_000, 2_000L * failures));
 			}
 		}
+	}
+
+	/** The launcher's newest event number, without its events (asking for events after any number it has answers at once). */
+	private static long skipToNow() throws Exception {
+		return request("GET", "/events?after=" + Long.MAX_VALUE, null, 5).get("seq").getAsLong();
 	}
 
 	private static void sleep(long ms) {
