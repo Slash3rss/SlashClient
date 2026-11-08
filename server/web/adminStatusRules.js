@@ -96,7 +96,7 @@ function card(r) {
     const row = el('div', { class: 'glass card sr-variant' },
       el('div', { class: 'sr-grid' }, field('Gdy jest grupa', when, 'nazwa grupy z odczytów, np. job'), field('Po ilu sekundach', hold, 'tyle musi być widoczna bez przerwy; krótsze mignięcie nie zmienia statusu'),
         field('Status u znajomych', vTemplate, 'puste: szablon reguły'), field('Discord: dolna linia', vState, 'puste: jak w regule'),
-        field('Discord: mała ikonka', image, 'https://… albo klucz zasobu; puste: jak w regule'), field('Tekst ikonki', vText)),
+        field('Discord: mała ikonka', image, 'https://… albo klucz zasobu; {job} wstawia nazwę małymi literami bez polskich znaków: praca_{job} → praca_gornik; puste: jak w regule'), field('Tekst ikonki', vText)),
       el('div', { class: 'row' }, el('div', { class: 'grow' }), el('button', { type: 'button', class: 'icon-btn danger', title: 'Usuń wariant', onclick: () => row.remove() }, icon('fa-solid fa-xmark'))));
     row.read = () => ({ when: when.value, hold: Number(hold.value), template: vTemplate.value, state: vState.value, image: image.value, text: vText.value });
     return row;

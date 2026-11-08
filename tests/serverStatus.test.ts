@@ -71,6 +71,10 @@ describe('server statuses from the tab list', () => {
     assert.equal(p.state, 'Pracuje: Górnik (poz. 7)');
     assert.equal(p.smallImageKey, 'kilof');
     assert.equal(p.smallImageText, 'Górnik');
+    // one picture per job: the job's name goes into the asset's key without Polish letters
+    const perJob: PublishedRules = { rules: [{ ...rules.rules[0], variants: [{ when: 'job', image: 'praca_{job}', text: '{job}' }] }] };
+    assert.equal(decorate(BASE, { server: 'skyup.pl', status: job, rules: perJob, hideServer: false }).smallImageKey, 'praca_gornik');
+    assert.equal(decorate(BASE, { server: 'skyup.pl', status: { ...job, values: { ...job.values, job: 'Łowca Skarbów' } }, rules: perJob, hideServer: false }).smallImageKey, 'praca_lowca_skarbow');
     // in a dungeon while the job's bar is on too: the dungeon stays
     const dng = decorate(BASE, { server: 'skyup.pl', status: { ...job, values: { ...job.values, dungeon: '3' } }, rules, hideServer: false });
     assert.equal(dng.smallImageKey, 'dng');

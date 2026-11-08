@@ -25,6 +25,16 @@ export interface PublishedRules { version?: string; rules: PublishedRule[]; disc
 /** What the game said last: the server it is on, the status, and the values behind it. */
 export interface GameStatus { server: string; detail?: string; values: Record<string, string>; /** HUD 0.9.74+: the values went through the variants' hold */ held?: boolean }
 
+/**
+ * A variant's picture with the values in it: `praca_{job}` with "Górnik" is `praca_gornik`, one asset per
+ * job in the Discord app. A value goes in as lowercase letters, digits and "_" (no Polish letters);
+ * '' when a value is missing.
+ */
+export function variantImage(template: string | undefined, values: Record<string, string>): string {
+  const slug = (s: string) => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return render(template, Object.fromEntries(Object.entries(values).map(([k, v]) => [k, slug(v)])));
+}
+
 /** The variant in use: the first whose value is known; while the small picture is on, only one of its own value (a job does not replace the dungeon). */
 export function variantFor(rule: PublishedRule, values: Record<string, string>): Variant | undefined {
   const badgeWhen = rule.discord?.badgeWhen;
@@ -130,8 +140,9 @@ export function decorate(base: Presence, o: DecorateOptions): Presence {
   const variant = status?.held ? variantFor(rule, values) : undefined;
   if (variant) {
     out.state = discordText(render(variant.state, values)) ?? out.state;
-    if (variant.image) {
-      out.smallImageKey = variant.image;
+    const image = variantImage(variant.image, values);
+    if (image) {
+      out.smallImageKey = image;
       out.smallImageText = discordText(render(variant.text, values));
     }
   }

@@ -257,7 +257,12 @@ describe('status rules: the endpoints', () => {
     assert.equal(working.body.detail, 'S3 (Wyspy) · Drwal');
     assert.equal(working.body.variant, 0);
     assert.equal(working.body.discord.state, 'Pracuje: Drwal');
-    assert.equal(working.body.discord.badge, 'Drwal');
+    assert.equal(working.body.discord.badge, 'Drwal (kilof)');
+    // a picture per job: "praca_{job}" with the job's name in it
+    const perJob = await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'praca_{job}' }] }, header: SKYUP_HEADER('S3 (Wyspy)'), bossbar: 'Praca: Drwal' });
+    assert.equal(perJob.body.discord.badge, 'Drwal (praca_drwal)');
+    assert.equal((await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'praca_{nope}' }] } })).body.error, 'bad_image');
+    assert.equal((await call('POST', '/v1/admin/status-preview', admin.token, { rule: { ...withJob, variants: [{ ...withJob.variants[0], image: 'zły {job}' }] } })).body.error, 'bad_image');
     assert.equal((await call('POST', `/v1/admin/status-rules/${sky.id}`, admin.token, withJob)).status, 200);
     assert.equal((await call('GET', '/v1/status-rules')).body.rules.find((r: any) => r.server === 'skyup.pl').variants[0].hold, 5);
     assert.equal((await call('POST', '/v1/admin/status-defaults', admin.token, { largeImage: 'ftp://x' })).body.error, 'bad_image');

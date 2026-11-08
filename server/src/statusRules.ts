@@ -281,7 +281,10 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
     if (!Number.isInteger(hold) || hold < 0 || hold > HOLD_MAX) bad('bad_variant_hold');
     const vTemplate = cleanTemplate(v.template, 64, 'bad_template', groups);
     const state = cleanTemplate(v.state, 128, 'bad_discord_text', discordKnown);
-    const image = cleanImage(v.image);
+    // the picture may take values ("praca_{job}"): checked with them filled in
+    const imageTemplate = cleanTemplate(v.image, 256, 'bad_image', groups);
+    if (imageTemplate) cleanImage(imageTemplate.replace(PLACEHOLDER, 'x'));
+    const image = imageTemplate;
     const text = cleanTemplate(v.text, 128, 'bad_discord_text', discordKnown);
     if (!vTemplate && !state && !image) bad('bad_variant_empty');
     return { when, hold, template: vTemplate, state, image, text };
@@ -338,6 +341,16 @@ export function render(template: string, values: Record<string, string>): string
 
 /** `variant`: the index of the variant in use, when one is. */
 export interface Reading { detail?: string; values: Record<string, string>; variant?: number }
+
+/**
+ * A variant's picture with the values in it: `praca_{job}` with "Górnik" is `praca_gornik`, one asset per
+ * job in the Discord app. A value goes in as lowercase letters, digits and "_" (no Polish letters);
+ * '' when a value is missing.
+ */
+export function variantImage(template: string, values: Record<string, string>): string {
+  const slug = (s: string) => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return render(template, Object.fromEntries(Object.entries(values).map(([k, v]) => [k, slug(v)])));
+}
 
 /**
  * The first variant whose value is known (the game passes only the values held long enough); while the
@@ -557,7 +570,8 @@ export function createStatusRules(ctx: StatusRuleContext) {
       const values: Record<string, string> = { ...reading.values, server: rule.name || rule.server, ...(reading.detail ? { detail: reading.detail } : {}) };
       const variant = reading.variant !== undefined ? rule.variants[reading.variant] : undefined;
       let badge = rule.discord.badgeWhen && values[rule.discord.badgeWhen] ? render(rule.discord.badgeText ?? '', values) || rule.discord.badgeWhen : '';
-      if (variant?.image) badge = render(variant.text, values) || variant.when;
+      const image = variant?.image ? variantImage(variant.image, values) : '';
+      if (image) badge = `${render(variant!.text, values) || variant!.when} (${image})`;
       const state = (variant?.state && render(variant.state, values)) || render(rule.discord.state, values);
       return { detail: reading.detail ?? null, values: reading.values, variant: reading.variant ?? null, discord: { details: render(rule.discord.details, values), state, badge } };
     }],
