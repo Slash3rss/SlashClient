@@ -317,11 +317,6 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobMinion", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobMinion, v -> cfg.dungeonMobMinion = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
-					settings.add(new Toggle("slashclient-hud.dungeon.summary", () -> cfg.dungeonSummary, v -> cfg.dungeonSummary = v));
-					settings.add(new Action("slashclient-hud.dungeon.history", "slashclient-hud.dungeon.history.open", () -> {
-						var mc = net.minecraft.client.Minecraft.getInstance();
-						mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.DungeonHistoryScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
-					}));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
 					settings.add(new Choice("slashclient-hud.dungeon.countersAt", new String[] { "below", "above", "inside", "apart" }, "slashclient-hud.dungeon.countersAt.",
 						() -> cfg.dungeonCountersAt, v -> {
@@ -532,6 +527,13 @@ public final class Catalog {
 			new Toggle("slashclient-hud.lootHighlight.limit", () -> cfg.lootHighlightLimit, v -> cfg.lootHighlightLimit = v),
 			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.skyup.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.skyup.LootHighlight.MAX_RANGE, 4f, "%.0f",
 				() -> (float) cfg.lootHighlightRange, v -> cfg.lootHighlightRange = Math.round(v))), null));
+		// the summary of each trip through a dungeon (a card after leaving it), and the list of trips kept
+		out.add(new Entry("dungeonSummary", "slashclient-hud.dungeon.summaryModule", "skyup", "m-dungeonsummary", () -> cfg.dungeonSummary, v -> cfg.dungeonSummary = v, List.of(
+			new Note("slashclient-hud.dungeon.summaryNote", () -> new Object[0]),
+			new Action("slashclient-hud.dungeon.history", "slashclient-hud.dungeon.history.open", () -> {
+				var mc = net.minecraft.client.Minecraft.getInstance();
+				mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.DungeonHistoryScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			})), null));
 		// the XP calculator of slash3rss.dev
 		out.add(new Entry("xpCalc", "slashclient-hud.xp.title", "extras", "m-xpcalc", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();

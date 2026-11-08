@@ -55,11 +55,17 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			String last = context.computeOnClient(mc -> DungeonRun.lastForTest());
 			if (!last.equals("poz. 2, loot 0, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
+			// the list keeps the server's model on its items
+			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());
+			if (!kept.equals("diamond paper*")) throw new AssertionError("The list's items: " + kept);
 			context.takeScreenshot("dungeon-summary");
 
 			context.setScreen(() -> new DungeonHistoryScreen(null));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-history");
+			context.runOnClient(mc -> ((DungeonHistoryScreen) dev.slash3rss.slashclient.hud.Compat.screen(mc)).openNewestForTest());
+			context.waitTicks(5);
+			context.takeScreenshot("dungeon-history-whole");
 			context.setScreen(() -> null);
 		}
 	}

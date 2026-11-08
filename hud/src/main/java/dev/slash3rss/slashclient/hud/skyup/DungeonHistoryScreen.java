@@ -16,7 +16,8 @@ import java.util.Map;
 
 /**
  * The trips through SkyUp's dungeons kept so far (DungeonRun), newest first: each its level, when and how long,
- * the rooms, spawners, loot, ores and mobs, and the items got. Scrolls with the wheel.
+ * the rooms, loot, ores and mobs, and the items got. Scrolls with the wheel; a trip clicked shows all of its
+ * summary, every item got with its name and how many.
  */
 public class DungeonHistoryScreen extends Screen {
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
@@ -25,6 +26,9 @@ public class DungeonHistoryScreen extends Screen {
 	private final Screen parent;
 	private final List<Hit> hits = new ArrayList<>();
 	private int px, py, pw, ph, scroll, maxScroll;
+	/** The trip shown whole, or null for the list (and the list's scroll to come back to). */
+	private DungeonRun.Summary open;
+	private int listScroll;
 
 	public DungeonHistoryScreen(Screen parent) {
 		super(Component.translatable("slashclient-hud.dungeon.history"));
@@ -61,7 +65,9 @@ public class DungeonHistoryScreen extends Screen {
 		g.fill(px + 1, py + 31, px + pw - 1, py + 32, Ui.BORDER);
 
 		int top = py + 36, bottom = py + ph - 6;
-		if (list.isEmpty()) {
+		if (open != null) {
+			whole(g, open, top, bottom, mx, my);
+		} else if (list.isEmpty()) {
 			Ui.wrapped(g, Ui.tr("slashclient-hud.dungeon.history.empty"), px + 14, top + 10, pw - 28, Ui.MUTED);
 		} else {
 			maxScroll = Math.max(0, list.size() * (ROW_H + 4) - (bottom - top));
@@ -71,7 +77,14 @@ public class DungeonHistoryScreen extends Screen {
 			for (int i = 0; i < list.size(); i++) {
 				int y = top + i * (ROW_H + 4) - scroll;
 				if (y + ROW_H < top || y > bottom) continue;
-				row(g, list.get(i), px + 8, y, pw - 16, when);
+				DungeonRun.Summary s = list.get(i);
+				boolean over = my >= top && my < bottom && Ui.inside(mx, my, px + 8, y, pw - 16, ROW_H);
+				row(g, s, px + 8, y, pw - 16, when, over);
+				if (y + ROW_H > top && y < bottom) hits.add(new Hit(px + 8, Math.max(top, y), pw - 16, Math.min(bottom, y + ROW_H) - Math.max(top, y), () -> {
+					open = s;
+					listScroll = scroll;
+					scroll = 0;
+				}));
 			}
 			g.disableScissor();
 		}
@@ -79,8 +92,8 @@ public class DungeonHistoryScreen extends Screen {
 		super.extractRenderState(g, mx, my, delta);
 	}
 
-	private void row(GuiGraphicsExtractor g, DungeonRun.Summary s, int x, int y, int w, SimpleDateFormat when) {
-		Ui.round(g, x, y, w, ROW_H, 5, Ui.CARD);
+	private void row(GuiGraphicsExtractor g, DungeonRun.Summary s, int x, int y, int w, SimpleDateFormat when, boolean over) {
+		Ui.round(g, x, y, w, ROW_H, 5, over ? Ui.CARD_HOVER : Ui.CARD);
 		Ui.draw(g, DungeonRun.title(s, false), x + 8, y + 6, 0xFFFFA94D);
 		Component date = Ui.text(when.format(new Date(s.at())) + " · " + DungeonRun.time(s.ms()));
 		Ui.draw(g, date, x + w - 8 - Ui.width(date), y + 6, Ui.MUTED);
@@ -95,6 +108,70 @@ public class DungeonHistoryScreen extends Screen {
 		}
 		if (s.gains().isEmpty()) Ui.draw(g, Ui.tr("slashclient-hud.dungeon.sum.nothing"), x + 8, y + 40, Ui.MUTED);
 		else DungeonRun.items(g, s.gains(), x + 8, y + 36, w - 16, false);
+	}
+
+	/** One trip whole: its numbers with their items, then every item got, its picture, how many and its name. */
+	private void whole(GuiGraphicsExtractor g, DungeonRun.Summary s, int top, int bottom, int mx, int my) {
+		Component back = Ui.tr("slashclient-hud.dungeon.history.back");
+		int bw = Ui.buttonWidth(back, "back", 18, 4);
+		Ui.button(g, "dh:back", px + 8, top, bw, 18, "back", back, false, mx, my);
+		hits.add(new Hit(px + 8, top, bw, 18, () -> {
+			open = null;
+			scroll = listScroll;
+		}));
+		Component date = Ui.text(new SimpleDateFormat("d.MM.yyyy HH:mm").format(new Date(s.at())));
+		Ui.draw(g, date, px + pw - 10 - Ui.width(date), top + 5, Ui.MUTED);
+		int areaTop = top + 24;
+		g.enableScissor(px + 1, areaTop, px + pw - 1, bottom);
+		int y = areaTop - scroll;
+		Ui.draw(g, DungeonRun.title(s, true), px + 12, y, 0xFFFFA94D);
+		y += 14;
+		var lines = DungeonRun.lines(s);
+		int colW = (pw - 24) / 2;
+		for (int i = 0; i < lines.size(); i++) {
+			int cx = px + 12 + (i % 2) * colW, cy = y + (i / 2) * 18;
+			g.item(new ItemStack(lines.get(i).getKey()), cx, cy);
+			Ui.draw(g, Ui.fit(lines.get(i).getValue(), colW - 22), cx + 19, cy + 4, Ui.TEXT);
+		}
+		y += (lines.size() + 1) / 2 * 18 + 6;
+		Ui.draw(g, Ui.trBold(s.gains().isEmpty() ? "slashclient-hud.dungeon.sum.nothing" : "slashclient-hud.dungeon.sum.gained"), px + 12, y, Ui.TEXT_2);
+		y += 13;
+		for (int i = 0; i < s.gains().size(); i++) {
+			DungeonRun.Gain gain = s.gains().get(i);
+			int cx = px + 12 + (i % 2) * colW, cy = y + (i / 2) * 19;
+			ItemStack st = DungeonRun.stackOf(gain);
+			if (!st.isEmpty()) g.item(st, cx, cy);
+			Ui.draw(g, Ui.fit(Ui.text(gain.count() + "× " + gain.name()), colW - 24), cx + 20, cy + 4, Ui.TEXT);
+		}
+		y += (s.gains().size() + 1) / 2 * 19;
+		g.disableScissor();
+		maxScroll = Math.max(0, y + scroll - bottom + 4);
+		scroll = Math.min(scroll, maxScroll);
+	}
+
+	@Override
+	//#if MC >= 1.21.9
+	public boolean keyPressed(net.minecraft.client.input.KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	net.minecraft.client.input.KeyEvent e = new net.minecraft.client.input.KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
+		// Esc in a trip goes back to the list
+		if (open != null && e.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
+			open = null;
+			scroll = listScroll;
+			return true;
+		}
+		//#if MC >= 1.21.9
+		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
+	}
+
+	/** For the test: the newest trip shown whole. */
+	public void openNewestForTest() {
+		if (!DungeonRun.history().isEmpty()) open = DungeonRun.history().get(0);
 	}
 
 	@Override

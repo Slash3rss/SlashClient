@@ -41,8 +41,11 @@ import java.util.Set;
 public final class DungeonRun {
 	private DungeonRun() {}
 
-	/** An item got: its id, its look (a server's own model, Ui.look), the name it had and how many. */
-	public record Gain(String id, String look, String name, int count) {}
+	/**
+	 * An item got: its id, its look (a server's own model, Ui.look), the name it had and how many, and the item
+	 * itself as the game saves it (`stack`, with the server's model on it; null in trips kept before it was).
+	 */
+	public record Gain(String id, String look, String name, int count, String stack) {}
 
 	/** One trip, as shown and kept (`spawners` is no more counted: SkyUp's spawners cannot be broken; kept for the list's file). */
 	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains) {}
@@ -115,7 +118,7 @@ public final class DungeonRun {
 		for (var e : gained.entrySet()) {
 			ItemStack s = looks.get(e.getKey());
 			if (s == null || e.getValue() <= 0) continue;
-			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue()));
+			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue(), encode(s)));
 		}
 		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
 		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains));
@@ -306,11 +309,55 @@ public final class DungeonRun {
 		return out;
 	}
 
-	/** A kept item as a stack to draw (the plain item: a server's model is not kept). */
+	private static final Map<String, ItemStack> decoded = new HashMap<>();
+
+	/** A kept item as a stack to draw: as it was got (a server's model on it), or the plain item when that cannot be read. */
 	public static ItemStack stackOf(Gain g) {
+		if (g.stack() != null) {
+			ItemStack s = decoded.get(g.stack());
+			if (s == null) {
+				s = decode(g.stack());
+				if (!s.isEmpty()) decoded.put(g.stack(), s);
+			}
+			if (!s.isEmpty()) return s;
+		}
 		var id = net.minecraft.resources.Identifier.tryParse(g.id());
 		Item item = id == null ? Items.AIR : BuiltInRegistries.ITEM.getOptional(id).orElse(Items.AIR);
 		return item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+	}
+
+	/** One of the item as the game saves it (with its components: the server's model, its name), without its lore. */
+	static String encode(ItemStack stack) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null || stack.isEmpty()) return null;
+		try {
+			ItemStack plain = one(stack);
+			//#if MC >= 1.20.5
+			plain.remove(net.minecraft.core.component.DataComponents.LORE);
+			var ops = mc.level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+			return ItemStack.CODEC.encodeStart(ops, plain).result().map(Object::toString).orElse(null);
+			//#else
+			//$ return plain.save(new net.minecraft.nbt.CompoundTag()).toString();
+			//#endif
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	/** The item back from `encode`; empty out of a world (the game's registries are needed) or when it cannot be read. */
+	static ItemStack decode(String saved) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) return ItemStack.EMPTY;
+		try {
+			//#if MC >= 1.20.5
+			var ops = mc.level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+			return ItemStack.CODEC.parse(ops, com.google.gson.JsonParser.parseString(saved)).result().orElse(ItemStack.EMPTY);
+			//#else
+			//$ return ItemStack.of(net.minecraft.nbt.TagParser.parseTag(saved));
+			//#endif
+		} catch (Exception e) {
+			return ItemStack.EMPTY;
+		}
 	}
 
 	/** The item the trip got, as it looked (in the card) or as kept (in the list). */
@@ -387,6 +434,17 @@ public final class DungeonRun {
 	public static void quickForTest() {
 		minMs = 0;
 		history = new ArrayList<>();
+	}
+
+	/** For the test: the last trip's items as the list draws them (read back from the file's form), "*" with a server's model. */
+	public static String keptLooksForTest() {
+		decoded.clear();
+		StringBuilder out = new StringBuilder();
+		for (Gain g : history().get(0).gains()) {
+			ItemStack s = stackOf(g);
+			out.append(out.isEmpty() ? "" : " ").append(BuiltInRegistries.ITEM.getKey(s.getItem()).getPath()).append(Ui.look(s).isEmpty() ? "" : "*");
+		}
+		return out.toString();
 	}
 
 	/** For the test: the last trip kept, "level rooms loot gains". */
