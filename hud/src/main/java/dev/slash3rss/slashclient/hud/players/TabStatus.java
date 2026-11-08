@@ -31,13 +31,22 @@ import java.util.regex.Pattern;
  * changes. The launcher passes it to friends (only when they may see the server) and to Discord.
  * A rule may read the boss bars' titles too (SkyUp's "Dungeon poz. 3"): Discord then shows a small
  * picture of a dungeon with its level.
+ * Variants (server 0.9.74+) give another status for a while, e.g. a job from the boss bar: a variant's
+ * value counts only once it has been on screen its `hold` seconds on end, so a boss bar shown for a
+ * moment does not swap the status, and none takes the place of the dungeon's small picture.
  */
 public final class TabStatus {
 	private TabStatus() {}
 
 	/** `source`: 0 the header, 1 the footer, 2 the boss bars' titles (one per line). */
 	public record Extractor(int source, int line, Pattern pattern, List<String> groups) {}
-	public record Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template) {}
+	/** Another status while the value `when` is known and has been for `hold` seconds; `template` "" keeps the rule's. */
+	public record Variant(String when, int hold, String template) {}
+	public record Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template, List<Variant> variants, String badgeWhen) {
+		public Rule(String server, String name, String strip, List<Extractor> extractors, Map<String, String> map, String template) {
+			this(server, name, strip, extractors, map, template, List.of(), "");
+		}
+	}
 	public record Reading(String detail, Map<String, String> values) {}
 
 	static final int DETAIL_MAX = 48;
@@ -60,6 +69,8 @@ public final class TabStatus {
 
 	// what was read and told last
 	private static String lastText;
+	private static Rule lastRule;
+	private static Map<String, String> lastValues;
 	private static String lastServer;
 	private static String sentKey;
 	private static String pendingKey;
@@ -87,7 +98,17 @@ public final class TabStatus {
 			}
 			Map<String, String> map = new LinkedHashMap<>();
 			if (o.has("map") && o.get("map").isJsonObject()) for (var en : o.getAsJsonObject("map").entrySet()) map.put(en.getKey(), en.getValue().getAsString());
-			return new Rule(o.get("server").getAsString().toLowerCase(Locale.ROOT), str(o, "name"), str(o, "strip"), List.copyOf(list), map, str(o, "template"));
+			List<Variant> variants = new ArrayList<>();
+			if (o.has("variants") && o.get("variants").isJsonArray()) {
+				for (JsonElement e : o.getAsJsonArray("variants")) {
+					if (!e.isJsonObject()) continue;
+					JsonObject v = e.getAsJsonObject();
+					String when = str(v, "when");
+					if (!when.isEmpty()) variants.add(new Variant(when, v.has("hold") ? Math.max(0, Math.min(300, v.get("hold").getAsInt())) : 10, str(v, "template")));
+				}
+			}
+			String badgeWhen = o.has("discord") && o.get("discord").isJsonObject() ? str(o.getAsJsonObject("discord"), "badgeWhen") : "";
+			return new Rule(o.get("server").getAsString().toLowerCase(Locale.ROOT), str(o, "name"), str(o, "strip"), List.copyOf(list), map, str(o, "template"), List.copyOf(variants), badgeWhen);
 		} catch (Exception e) {
 			SlashHud.LOG.debug("SlashClient: tab status rule: {}", e.toString());
 			return null;
@@ -249,8 +270,74 @@ public final class TabStatus {
 		return evaluate(rule, header, footer, "");
 	}
 
-	/** What a rule makes of a header, footer and the boss bars' titles (one per line). */
+	/** What a rule makes of a header, footer and the boss bars' titles (one per line), every value counted at once. */
 	public static Reading evaluate(Rule rule, String header, String footer, String bossbar) {
+		return finish(rule, values(rule, header, footer, bossbar));
+	}
+
+	/**
+	 * The status from the values: the first variant whose value is known (while the rule's small picture
+	 * is on, only a variant of that value: a job does not replace the dungeon), else the rule's template.
+	 */
+	static Reading finish(Rule rule, Map<String, String> values) {
+		String badge = !rule.badgeWhen().isEmpty() && values.containsKey(rule.badgeWhen()) ? rule.badgeWhen() : null;
+		String template = rule.template();
+		for (Variant v : rule.variants()) {
+			if (!values.containsKey(v.when()) || (badge != null && !badge.equals(v.when()))) continue;
+			if (!v.template().isEmpty()) template = v.template();
+			break;
+		}
+		return new Reading(sanitize(render(template, values)), values);
+	}
+
+	/**
+	 * The values of variants counted only once they have been there `hold` seconds on end: a boss bar
+	 * for a moment leaves the status as it was. A value that changes (another job) starts again.
+	 */
+	static final class Holds {
+		private final Map<String, String> value = new java.util.HashMap<>();
+		private final Map<String, Long> since = new java.util.HashMap<>();
+
+		Map<String, String> apply(Rule rule, Map<String, String> values, long now) {
+			if (rule.variants().isEmpty()) return values;
+			Map<String, String> out = new LinkedHashMap<>(values);
+			java.util.Set<String> watched = new java.util.HashSet<>();
+			for (Variant v : rule.variants()) {
+				if (!watched.add(v.when())) continue;
+				String got = values.get(v.when());
+				if (got == null) {
+					value.remove(v.when());
+					since.remove(v.when());
+					continue;
+				}
+				if (!got.equals(value.get(v.when()))) {
+					value.put(v.when(), got);
+					since.put(v.when(), now);
+				}
+				if (now - since.get(v.when()) < v.hold() * 1000L) out.remove(v.when());
+			}
+			return out;
+		}
+
+		/** Whether a value is still waiting for its time (the status may change on its own later). */
+		boolean waiting(Rule rule, Map<String, String> values, long now) {
+			for (Variant v : rule.variants()) {
+				Long at = since.get(v.when());
+				if (at != null && values.containsKey(v.when()) && now - at < v.hold() * 1000L) return true;
+			}
+			return false;
+		}
+
+		void clear() {
+			value.clear();
+			since.clear();
+		}
+	}
+
+	private static final Holds HOLDS = new Holds();
+
+	/** The values a rule reads from a header, footer and the boss bars' titles. */
+	static Map<String, String> values(Rule rule, String header, String footer, String bossbar) {
 		Map<String, String> values = new LinkedHashMap<>();
 		for (Extractor x : rule.extractors()) {
 			String text = source(x.source() == 1 ? footer : x.source() == 2 ? bossbar : header, x.line(), rule.strip());
@@ -272,7 +359,7 @@ public final class TabStatus {
 				SlashHud.LOG.debug("SlashClient: tab status: {}", e.toString());
 			}
 		}
-		return new Reading(sanitize(render(rule.template(), values)), values);
+		return values;
 	}
 
 	// ---------- each second in the game ----------
@@ -289,6 +376,8 @@ public final class TabStatus {
 			if (lastServer != null) {
 				lastServer = null;
 				lastText = null;
+				lastRule = null;
+				HOLDS.clear();
 				queue(null, null);
 			}
 			flush();
@@ -302,9 +391,14 @@ public final class TabStatus {
 		String text = server + "\u0000" + header + "\u0000" + footer + "\u0000" + bars + "\u0000" + System.identityHashCode(list);
 		if (!text.equals(lastText)) {
 			lastText = text;
+			if (!server.equals(lastServer)) HOLDS.clear();
 			lastServer = server;
-			Rule rule = ruleFor(list, server);
-			queue(server, rule == null ? null : evaluate(rule, header, footer, bars));
+			lastRule = ruleFor(list, server);
+			lastValues = lastRule == null ? null : values(lastRule, header, footer, bars);
+			queue(server, lastRule == null ? null : finish(lastRule, HOLDS.apply(lastRule, lastValues, now)));
+		} else if (lastRule != null && HOLDS.waiting(lastRule, lastValues, now)) {
+			// nothing new on screen, but a job held long enough now counts
+			queue(server, finish(lastRule, HOLDS.apply(lastRule, lastValues, now)));
 		}
 		flush();
 	}
@@ -327,6 +421,8 @@ public final class TabStatus {
 		if (server == null) body.add("server", com.google.gson.JsonNull.INSTANCE);
 		else {
 			body.addProperty("server", server);
+			// the values went through the variants' hold: the launcher may show a variant on Discord at once
+			body.addProperty("held", true);
 			// the values go even without a status: a dungeon's level shows on Discord wherever the tab list is
 			if (reading != null && reading.detail() != null) body.addProperty("detail", reading.detail());
 			if (reading != null && !reading.values().isEmpty()) {
@@ -411,6 +507,17 @@ public final class TabStatus {
 		Component h = parts.slashclient$header(), f = parts.slashclient$footer();
 		Rule rule = ruleFor(rules, server);
 		return rule == null ? "" : evaluate(rule, h == null ? "" : h.getString(), f == null ? "" : f.getString(), bossBars(mc)).values().toString();
+	}
+
+	/** For the test: the status over time, with its own holds (`reset` starts them again), as if on `server`. */
+	private static final Holds TEST_HOLDS = new Holds();
+
+	public static String heldForTest(String server, String header, String footer, String bossbar, long now, boolean reset) {
+		if (reset) TEST_HOLDS.clear();
+		Rule rule = ruleFor(rules, server);
+		if (rule == null) return "";
+		Reading r = finish(rule, TEST_HOLDS.apply(rule, values(rule, header, footer, bossbar), now));
+		return r.detail() == null ? "" : r.detail();
 	}
 
 	/** For the test: what the rules make of a tab list on a server ("" for nothing). */

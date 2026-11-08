@@ -13,11 +13,24 @@ export interface DiscordLook {
   details?: string; state?: string; largeImage?: string; largeText?: string; smallImage?: string; smallText?: string;
   badgeWhen?: string; badgeImage?: string; badgeText?: string;
 }
-export interface PublishedRule { server: string; name?: string; discord?: DiscordLook }
+/**
+ * A status for a while (server 0.9.74+, statusRules.ts there), e.g. a job from the boss bar: Discord's
+ * state line and small picture while the value `when` is known. The game holds the value back until it
+ * has been on screen long enough, so only a game that says so (`held`) gets variants on Discord.
+ */
+export interface Variant { when: string; hold?: number; template?: string; state?: string; image?: string; text?: string }
+export interface PublishedRule { server: string; name?: string; discord?: DiscordLook; variants?: Variant[] }
 export interface PublishedRules { version?: string; rules: PublishedRule[]; discord?: DiscordLook }
 
 /** What the game said last: the server it is on, the status, and the values behind it. */
-export interface GameStatus { server: string; detail?: string; values: Record<string, string> }
+export interface GameStatus { server: string; detail?: string; values: Record<string, string>; /** HUD 0.9.74+: the values went through the variants' hold */ held?: boolean }
+
+/** The variant in use: the first whose value is known; while the small picture is on, only one of its own value (a job does not replace the dungeon). */
+export function variantFor(rule: PublishedRule, values: Record<string, string>): Variant | undefined {
+  const badgeWhen = rule.discord?.badgeWhen;
+  const badge = badgeWhen && values[badgeWhen] ? badgeWhen : undefined;
+  return (Array.isArray(rule.variants) ? rule.variants : []).find((v) => v && typeof v.when === 'string' && !!values[v.when] && (!badge || v.when === badge));
+}
 
 export const DETAIL_MAX = 48;
 
@@ -112,6 +125,15 @@ export function decorate(base: Presence, o: DecorateOptions): Presence {
   if (look.badgeWhen && look.badgeImage && values[look.badgeWhen]) {
     out.smallImageKey = look.badgeImage;
     out.smallImageText = discordText(render(look.badgeText, values));
+  }
+  // a status for a while (a job): its own state line and small picture
+  const variant = status?.held ? variantFor(rule, values) : undefined;
+  if (variant) {
+    out.state = discordText(render(variant.state, values)) ?? out.state;
+    if (variant.image) {
+      out.smallImageKey = variant.image;
+      out.smallImageText = discordText(render(variant.text, values));
+    }
   }
   return out;
 }

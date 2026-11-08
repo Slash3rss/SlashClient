@@ -17,12 +17,14 @@ const ERRORS = {
   bad_map: 'Tabela nazw: do 50 par, każda strona do 40 znaków.', bad_template: 'Szablon (do 64 znaków) z co najmniej jednym {nazwa} z grup odczytów.',
   bad_discord: 'Zły opis Discorda.', bad_discord_text: 'Teksty Discorda do 128 znaków; w szablonach tylko {server}, {detail} i nazwy grup.',
   bad_badge: 'Mała ikonka na czas: nazwa grupy z odczytów i obrazek.',
+  bad_variant: 'Warianty: do 6, każdy z nazwą grupy z odczytów.', bad_variant_hold: 'Czas trzymania: od 0 do 300 s.',
+  bad_variant_empty: 'Wariant potrzebuje statusu, linii Discorda albo obrazka.',
   bad_image: 'Obrazek: adres https (do 256 znaków) albo klucz zasobu aplikacji Discord.', exists: 'Ten serwer ma już regułę.',
 };
 const fail = (err) => toast(ERRORS[err?.code] ?? errorText(err), true);
 const call = (...args) => api(...args).catch((err) => { fail(err); return undefined; });
 
-const EMPTY = { server: '', name: '', enabled: true, strip: '»« ', extractors: [{ source: 'header', line: 1, pattern: '' }], map: {}, template: '', discord: {} };
+const EMPTY = { server: '', name: '', enabled: true, strip: '»« ', extractors: [{ source: 'header', line: 1, pattern: '' }], map: {}, template: '', discord: {}, variants: [] };
 const SAMPLE = '§8» §b§lSkyUP §7- §fAnyBlock §8«\n§8» §eS3 (Wyspy) §8«';
 
 let data;
@@ -86,9 +88,25 @@ function card(r) {
   const largeImage = text(d.largeImage, 'https://…/logo.png'), largeText = text(d.largeText, 'SkyUp.pl', 128), smallImage = text(d.smallImage, ''), smallText = text(d.smallText, '', 128);
   const badgeWhen = text(d.badgeWhen, 'dungeon', 32), badgeImage = text(d.badgeImage, 'https://…/dungeon.png'), badgeText = text(d.badgeText, 'Dungeon poz. {dungeon}', 128);
 
+  // statuses for a while: the first whose group is known (and held long enough in the game) wins
+  const variantRows = el('div', { class: 'sr-variants' });
+  const variantRow = (v) => {
+    const when = text(v.when, 'job', 32), hold = el('input', { type: 'number', min: 0, max: 300, value: v.hold ?? 10, title: 'Sekundy', class: 'sr-line' });
+    const vTemplate = text(v.template, '{sector} · {job}', 64), vState = text(v.state, 'Pracuje: {job}', 128), image = text(v.image, 'https://…/praca.png'), vText = text(v.text, '{job}', 128);
+    const row = el('div', { class: 'glass card sr-variant' },
+      el('div', { class: 'sr-grid' }, field('Gdy jest grupa', when, 'nazwa grupy z odczytów, np. job'), field('Po ilu sekundach', hold, 'tyle musi być widoczna bez przerwy; krótsze mignięcie nie zmienia statusu'),
+        field('Status u znajomych', vTemplate, 'puste: szablon reguły'), field('Discord: dolna linia', vState, 'puste: jak w regule'),
+        field('Discord: mała ikonka', image, 'https://… albo klucz zasobu; puste: jak w regule'), field('Tekst ikonki', vText)),
+      el('div', { class: 'row' }, el('div', { class: 'grow' }), el('button', { type: 'button', class: 'icon-btn danger', title: 'Usuń wariant', onclick: () => row.remove() }, icon('fa-solid fa-xmark'))));
+    row.read = () => ({ when: when.value, hold: Number(hold.value), template: vTemplate.value, state: vState.value, image: image.value, text: vText.value });
+    return row;
+  };
+  for (const v of r.variants ?? []) variantRows.append(variantRow(v));
+
   const read = () => ({
     server: server.value, name: name.value, enabled: enabled.checked, strip: strip.value, template: template.value,
     extractors: [...rows.children].map((row) => row.read()),
+    variants: [...variantRows.children].map((row) => row.read()),
     map: map.value.split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2 && p[0].trim()).map(([k, ...v]) => [k.trim(), v.join('=').trim()]),
     discord: { details: details.value, state: state.value, largeImage: largeImage.value, largeText: largeText.value, smallImage: smallImage.value, smallText: smallText.value, badgeWhen: badgeWhen.value, badgeImage: badgeImage.value, badgeText: badgeText.value },
   });
@@ -103,7 +121,7 @@ function card(r) {
     const vals = Object.entries(res.values).map(([k, v]) => `${k} = ${v}`).join(', ') || 'nic';
     result.replaceChildren(
       el('div', {}, 'Status: ', el('b', { textContent: res.detail ?? '(brak — nic nie pasuje)' })),
-      el('div', { class: 'muted', textContent: `Grupy: ${vals}` }),
+      el('div', { class: 'muted', textContent: `Grupy: ${vals}${res.variant != null ? ` · wariant ${res.variant + 1}` : ''}` }),
       el('div', { class: 'muted', textContent: `Discord: ${res.discord.details || '(domyślnie)'} · ${res.discord.state || '(domyślnie)'}${res.discord.badge ? ` · mała ikonka: ${res.discord.badge}` : ''}` }));
   } }, icon('fa-solid fa-flask'), 'Sprawdź');
 
@@ -129,6 +147,10 @@ function card(r) {
     el('div', { class: 'sr-grid' }, field('Górna linia (details)', details, '{server}, {detail}, grupy; puste: wersja gry'), field('Dolna linia (state)', state, 'puste: „Na serwerze …”'),
       field('Duży obrazek', largeImage, 'https://… albo klucz zasobu'), field('Tekst dużego obrazka', largeText), field('Mały obrazek', smallImage), field('Tekst małego obrazka', smallText),
       field('Mała ikonka, gdy jest grupa', badgeWhen, 'np. dungeon: tylko wtedy, zamiast małego obrazka'), field('Obrazek tej ikonki', badgeImage, 'https://… albo klucz zasobu'), field('Tekst tej ikonki', badgeText, 'np. Dungeon poz. {dungeon}')),
+    el('h4', { textContent: 'Warianty statusu' }),
+    el('p', { class: 'muted small', textContent: 'Inny status na czas, np. pracy z paska bossa: wygrywa pierwszy wariant, którego grupa jest odczytana, i to dopiero gdy była widoczna bez przerwy przez podaną liczbę sekund (pasek na chwilę nie zmienia statusu). Starsze mody i launchery pomijają warianty.' }),
+    variantRows,
+    el('button', { type: 'button', class: 'sr-add', onclick: () => variantRows.children.length < 6 && variantRows.append(variantRow({ hold: 10 })) }, icon('fa-solid fa-plus'), 'Wariant'),
     el('details', { class: 'sr-preview' }, el('summary', { textContent: 'Sprawdź na przykładzie' }), header, footer, bossbar, preview, result),
     el('div', { class: 'row' }, save, el('div', { class: 'grow' }), remove));
 }

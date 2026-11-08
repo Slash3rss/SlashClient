@@ -339,7 +339,7 @@ export class GameBridge {
 
     // the tab list's status on a server (HUD 0.9.25+): for friends and Discord; null when there is none
     if (method === 'POST' && url === '/status') {
-      const { server, detail, values } = ((await this.body(req)) ?? {}) as { server?: unknown; detail?: unknown; values?: unknown };
+      const { server, detail, values, held } = ((await this.body(req)) ?? {}) as { server?: unknown; detail?: unknown; values?: unknown; held?: unknown };
       if (!this.opts.gameStatus) return this.send(res, 404, { error: 'not_found' });
       const game = gameOf(req);
       if (server === null || server === undefined) {
@@ -347,7 +347,7 @@ export class GameBridge {
         return this.send(res, 200, { ok: true });
       }
       if (typeof server !== 'string' || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(server)) return this.send(res, 400, { error: 'bad_request' });
-      this.opts.gameStatus({ server, detail: cleanDetail(detail), values: cleanValues(values) }, game);
+      this.opts.gameStatus({ server, detail: cleanDetail(detail), values: cleanValues(values), ...(held === true ? { held: true } : {}) }, game);
       return this.send(res, 200, { ok: true });
     }
 

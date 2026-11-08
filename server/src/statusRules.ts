@@ -27,6 +27,14 @@ export interface DiscordLook {
   details: string; state: string; largeImage: string; largeText: string; smallImage: string; smallText: string;
   badgeWhen?: string; badgeImage?: string; badgeText?: string;
 }
+/**
+ * A status for a while (server 0.9.74+): while the value `when` is known (a job from the boss bar), the
+ * status friends see is `template` and Discord's state line `state`, with the small picture `image` and
+ * its `text`; the first variant whose value is known wins, before the rule's own template. The game
+ * counts a value only once it has been there `hold` seconds on end, so a boss bar shown for a moment
+ * does not swap the status. Games and launchers from before 0.9.74 do not know variants and leave them out.
+ */
+export interface Variant { when: string; hold: number; template: string; state: string; image: string; text: string }
 export interface StatusRule {
   id: string; server: string; name: string; enabled: boolean;
   /** Characters cut from both ends of every line (with spaces), e.g. SkyUp's "»« ". */
@@ -37,6 +45,7 @@ export interface StatusRule {
   /** The status from the values: "{sector}", "{mode} · {sector}". */
   template: string;
   discord: DiscordLook;
+  variants: Variant[];
   updatedAt: number;
 }
 
@@ -45,6 +54,10 @@ const PATTERN_MAX = 200;
 const LINE_MAX = 256;
 const NAME = /^[a-zA-Z][a-zA-Z0-9]{0,31}$/;
 const PLACEHOLDER = /\{([a-zA-Z][a-zA-Z0-9]{0,31})\}/g;
+export const VARIANTS_MAX = 6;
+/** Seconds a value must be there before a variant counts it (default, most). */
+export const HOLD_DEFAULT = 10;
+const HOLD_MAX = 300;
 const EMPTY_DISCORD: DiscordLook = { details: '', state: '', largeImage: '', largeText: '', smallImage: '', smallText: '' };
 
 /** The extractor and Discord badge for SkyUp's dungeons: the boss bar says "Dungeon poz. 3" there. */
@@ -52,7 +65,7 @@ export const SKYUP_DUNGEON_EXTRACTOR: Extractor = { source: 'bossbar', line: 0, 
 export const SKYUP_DUNGEON_BADGE = { badgeWhen: 'dungeon', badgeImage: 'https://slashclient.pl/img/discord/dungeon.png', badgeText: 'Dungeon poz. {dungeon}' };
 
 /** SkyUp.pl as its tab list looks (26.3): "» SkyUP - AnyBlock «" over "» S0 (Spawn) «" or "» LOBBY «". AnyBlock is its only server, so only the sector is shown. */
-export const SKYUP_RULE: Omit<StatusRule, 'id' | 'updatedAt'> = {
+export const SKYUP_RULE: Omit<StatusRule, 'id' | 'updatedAt' | 'variants'> & { variants?: Variant[] } = {
   server: 'skyup.pl', name: 'SkyUp.pl', enabled: true, strip: '»« ',
   extractors: [
     { source: 'header', line: 1, pattern: '^Sky[Uu][Pp] - (?<mode>[^»«]{1,32})$' },
@@ -257,7 +270,23 @@ export function cleanRule(input: Record<string, unknown>, old?: StatusRule): Omi
     if (!badgeImage) bad('bad_badge');
     Object.assign(discord, { badgeWhen, badgeImage, badgeText: cleanTemplate(d.badgeText, 128, 'bad_discord_text', discordKnown) });
   }
-  return { server, name, enabled, strip, extractors, map, template, discord };
+
+  const rawVariants = input.variants === undefined ? old?.variants ?? [] : input.variants;
+  if (!Array.isArray(rawVariants) || rawVariants.length > VARIANTS_MAX) bad('bad_variant');
+  const variants = (rawVariants as unknown[]).map((e): Variant => {
+    const v = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>;
+    const when = cleanText(v.when, 32, 'bad_variant');
+    if (!when || !groups.has(when)) bad('bad_variant');
+    const hold = v.hold === undefined || v.hold === '' ? HOLD_DEFAULT : Number(v.hold);
+    if (!Number.isInteger(hold) || hold < 0 || hold > HOLD_MAX) bad('bad_variant_hold');
+    const vTemplate = cleanTemplate(v.template, 64, 'bad_template', groups);
+    const state = cleanTemplate(v.state, 128, 'bad_discord_text', discordKnown);
+    const image = cleanImage(v.image);
+    const text = cleanTemplate(v.text, 128, 'bad_discord_text', discordKnown);
+    if (!vTemplate && !state && !image) bad('bad_variant_empty');
+    return { when, hold, template: vTemplate, state, image, text };
+  });
+  return { server, name, enabled, strip, extractors, map, template, discord, variants };
 }
 
 /** The look used where no rule matches (or a rule leaves a picture out). */
@@ -307,10 +336,22 @@ export function render(template: string, values: Record<string, string>): string
   return missing ? '' : out;
 }
 
-export interface Reading { detail?: string; values: Record<string, string> }
+/** `variant`: the index of the variant in use, when one is. */
+export interface Reading { detail?: string; values: Record<string, string>; variant?: number }
+
+/**
+ * The first variant whose value is known (the game passes only the values held long enough); while the
+ * rule's small picture is on, only a variant of its own value (in a SkyUp dungeon a job from the boss
+ * bar does not replace the dungeon).
+ */
+export function variantFor(rule: { variants?: Variant[]; discord?: Pick<DiscordLook, 'badgeWhen'> }, values: Record<string, string>): number | undefined {
+  const badge = rule.discord?.badgeWhen && values[rule.discord.badgeWhen] ? rule.discord.badgeWhen : undefined;
+  const i = (rule.variants ?? []).findIndex((v) => !!values[v.when] && (!badge || v.when === badge));
+  return i < 0 ? undefined : i;
+}
 
 /** What a rule makes of a tab list's header and footer (and the boss bars' titles, one per line). */
-export function evaluate(rule: Pick<StatusRule, 'strip' | 'extractors' | 'map' | 'template'>, header: string, footer: string, bossbar = ''): Reading {
+export function evaluate(rule: Pick<StatusRule, 'strip' | 'extractors' | 'map' | 'template'> & { variants?: Variant[]; discord?: Pick<DiscordLook, 'badgeWhen'> }, header: string, footer: string, bossbar = ''): Reading {
   const values: Record<string, string> = {};
   const lowerMap = new Map(Object.entries(rule.map).map(([k, v]) => [k.toLowerCase(), v]));
   for (const x of rule.extractors) {
@@ -329,7 +370,9 @@ export function evaluate(rule: Pick<StatusRule, 'strip' | 'extractors' | 'map' |
       if (mapped) values[k] = mapped;
     }
   }
-  return { detail: sanitizeDetail(render(rule.template, values)), values };
+  const variant = variantFor(rule, values);
+  const template = (variant !== undefined && rule.variants![variant].template) || rule.template;
+  return { detail: sanitizeDetail(render(template, values)), values, ...(variant !== undefined ? { variant } : {}) };
 }
 
 /** Whether an address ("play.SkyUp.pl:25565") is the rule's server or one of its subdomains. */
@@ -356,7 +399,7 @@ export class StatusRuleStore {
     const existed = !!sql.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'status_rules'").get();
     sql.exec(SCHEMA);
     // SkyUp's rule comes once, with the table; the admin may change or remove it for good
-    if (!existed) this.save({ ...SKYUP_RULE, id: randomBytes(6).toString('hex'), updatedAt: Date.now() });
+    if (!existed) this.save({ ...SKYUP_RULE, variants: SKYUP_RULE.variants ?? [], id: randomBytes(6).toString('hex'), updatedAt: Date.now() });
     this.upgrade();
   }
 
@@ -400,7 +443,7 @@ export class StatusRuleStore {
     this.sql.prepare('INSERT INTO status_defaults (id, data, updated_at) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at').run(JSON.stringify(d), Date.now());
   }
 }
-const EMPTY_RULE = { name: '', enabled: true, strip: '', extractors: [], map: {}, template: '', discord: EMPTY_DISCORD };
+const EMPTY_RULE = { name: '', enabled: true, strip: '', extractors: [], map: {}, template: '', discord: EMPTY_DISCORD, variants: [] as Variant[] };
 
 // ---------- routes ----------
 
@@ -424,7 +467,7 @@ export function createStatusRules(ctx: StatusRuleContext) {
   /** What games and launchers get: the enabled rules without ids, and the default Discord look. */
   function published() {
     if (cached) return cached;
-    const rules = store.all().filter((r) => r.enabled).map(({ server, name, strip, extractors, map, template, discord }) => ({ server, name, strip, extractors, map, template, discord }));
+    const rules = store.all().filter((r) => r.enabled).map(({ server, name, strip, extractors, map, template, discord, variants }) => ({ server, name, strip, extractors, map, template, discord, ...(variants.length ? { variants } : {}) }));
     const payload = { rules, discord: store.defaults() };
     const version = createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 16);
     cached = { body: JSON.stringify({ version, ...payload }), etag: `"${version}"` };
@@ -512,8 +555,11 @@ export function createStatusRules(ctx: StatusRuleContext) {
       const bossbar = typeof input.bossbar === 'string' ? input.bossbar.slice(0, 1024) : '';
       const reading = evaluate(rule, header, footer, bossbar);
       const values: Record<string, string> = { ...reading.values, server: rule.name || rule.server, ...(reading.detail ? { detail: reading.detail } : {}) };
-      const badge = rule.discord.badgeWhen && values[rule.discord.badgeWhen] ? render(rule.discord.badgeText ?? '', values) || rule.discord.badgeWhen : '';
-      return { detail: reading.detail ?? null, values: reading.values, discord: { details: render(rule.discord.details, values), state: render(rule.discord.state, values), badge } };
+      const variant = reading.variant !== undefined ? rule.variants[reading.variant] : undefined;
+      let badge = rule.discord.badgeWhen && values[rule.discord.badgeWhen] ? render(rule.discord.badgeText ?? '', values) || rule.discord.badgeWhen : '';
+      if (variant?.image) badge = render(variant.text, values) || variant.when;
+      const state = (variant?.state && render(variant.state, values)) || render(rule.discord.state, values);
+      return { detail: reading.detail ?? null, values: reading.values, variant: reading.variant ?? null, discord: { details: render(rule.discord.details, values), state, badge } };
     }],
   ];
 

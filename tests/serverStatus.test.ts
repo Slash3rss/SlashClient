@@ -62,6 +62,25 @@ describe('server statuses from the tab list', () => {
     assert.equal(decorate(BASE, { server: 'skyup.pl', status: { server: 'skyup.pl', values: { dungeon: '2' } }, rules, hideServer: false }).smallImageText, 'Dungeon poz. 2');
   });
 
+  it('shows a job from the boss bar as a variant, never over the dungeon, and only from a game that held it', () => {
+    const rules: PublishedRules = { rules: [{ ...RULES.rules[0],
+      discord: { ...RULES.rules[0].discord, badgeWhen: 'dungeon', badgeImage: 'dng', badgeText: 'Dungeon poz. {dungeon}' },
+      variants: [{ when: 'job', hold: 10, state: 'Pracuje: {job} (poz. {jobLevel})', image: 'kilof', text: '{job}' }] }] };
+    const job = { ...SKY, server: 'skyup.pl', held: true, values: { ...SKY.values, job: 'Górnik', jobLevel: '7' } };
+    const p = decorate(BASE, { server: 'skyup.pl', status: job, rules, hideServer: false });
+    assert.equal(p.state, 'Pracuje: Górnik (poz. 7)');
+    assert.equal(p.smallImageKey, 'kilof');
+    assert.equal(p.smallImageText, 'Górnik');
+    // in a dungeon while the job's bar is on too: the dungeon stays
+    const dng = decorate(BASE, { server: 'skyup.pl', status: { ...job, values: { ...job.values, dungeon: '3' } }, rules, hideServer: false });
+    assert.equal(dng.smallImageKey, 'dng');
+    assert.equal(dng.state, 'S3 (Wyspy)');
+    // an older game sends the values at once, without the hold: no variant
+    const old = decorate(BASE, { server: 'skyup.pl', status: { ...job, held: undefined }, rules, hideServer: false });
+    assert.equal(old.state, 'S3 (Wyspy)');
+    assert.equal(old.smallImageKey, undefined);
+  });
+
   it('keeps the server and its status off Discord when it is hidden from friends', () => {
     setLang('pl');
     const p = decorate(BASE, { server: 'play.skyup.pl', status: SKY, rules: RULES, hideServer: true });

@@ -53,6 +53,39 @@ describe('status rules: reading the tab list', () => {
     assert.equal(cleanRule({ ...SKYUP_RULE, discord: { ...SKYUP_RULE.discord, badgeWhen: '' } }).discord.badgeWhen, undefined);
   });
 
+  it('a variant gives another status while its value is known, the first one winning', () => {
+    const job = { source: 'bossbar' as const, line: 0, pattern: 'Praca: (?<job>\\w{1,20})(?: poz\\. (?<jobLevel>\\d{1,3}))?' };
+    const rule = cleanRule({ ...SKYUP_RULE, extractors: [...SKYUP_RULE.extractors, job], variants: [
+      { when: 'dungeon', template: '{sector} · Dungeon {dungeon}', state: 'Dungeon poz. {dungeon}' },
+      { when: 'job', hold: 15, template: '{sector} · {job}', state: 'Pracuje: {job}', image: 'https://slashclient.pl/img/discord/job.png', text: '{job}' },
+    ] });
+    assert.equal(rule.variants[0].hold, 10);
+    assert.equal(rule.variants[1].hold, 15);
+    const working = evaluate(rule, SKYUP_HEADER('S3 (Wyspy)'), '', 'Praca: Gornik');
+    assert.equal(working.detail, 'S3 (Wyspy) · Gornik');
+    assert.equal(working.variant, 1);
+    // the job's level, like a dungeon's
+    assert.equal(evaluate(rule, SKYUP_HEADER('S3 (Wyspy)'), '', 'Praca: Gornik poz. 7').values.jobLevel, '7');
+    // in a dungeon while working: the dungeon is first
+    assert.equal(evaluate(rule, SKYUP_HEADER('S8 (Dungeon)'), '', 'Praca: Gornik\nDungeon poz. 2').detail, 'S8 (Dungeon) · Dungeon 2');
+    // with the dungeon's small picture on, no variant at all: a job does not take the dungeon's place
+    const badged = { ...rule, variants: [rule.variants[1]] };
+    const inDungeon = evaluate(badged, SKYUP_HEADER('S8 (Dungeon)'), '', 'Praca: Gornik\nDungeon poz. 2');
+    assert.equal(inDungeon.detail, 'S8 (Dungeon)');
+    assert.equal(inDungeon.variant, undefined);
+    // nothing for a variant: the rule's own template
+    const plain = evaluate(rule, SKYUP_HEADER('S3 (Wyspy)'), '', '');
+    assert.equal(plain.detail, 'S3 (Wyspy)');
+    assert.equal(plain.variant, undefined);
+    // a variant needs a group the rule reads, a sane hold, and something to show
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'job', template: '{sector}' }] })), 'bad_variant');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector', hold: 999, template: '{sector}' }] })), 'bad_variant_hold');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector' }] })), 'bad_variant_empty');
+    assert.equal(codeOf(() => cleanRule({ ...SKYUP_RULE, variants: [{ when: 'sector', template: '{nope}' }] })), 'bad_template');
+    // kept when the admin saves other parts
+    assert.equal(cleanRule({ name: 'SkyUp' }, { ...rule, id: 'x', updatedAt: 0 }).variants.length, 2);
+  });
+
   it("a SkyUp rule kept from before gets the dungeon once", () => {
     const sql = new DatabaseSync(':memory:');
     const { extractors, discord, ...rest } = SKYUP_RULE;
@@ -218,6 +251,15 @@ describe('status rules: the endpoints', () => {
     const inDungeon = await call('POST', '/v1/admin/status-preview', admin.token, { rule: sky, header: SKYUP_HEADER('S8 (Dungeon)'), bossbar: 'Dungeon poz. 12' });
     assert.equal(inDungeon.body.values.dungeon, '12');
     assert.equal(inDungeon.body.discord.badge, 'Dungeon poz. 12');
+    const job = { source: 'bossbar', line: 0, pattern: 'Praca: (?<job>\\w{1,20})' };
+    const withJob = { ...sky, extractors: [...sky.extractors, job], variants: [{ when: 'job', hold: 5, template: '{sector} · {job}', state: 'Pracuje: {job}', image: 'kilof', text: '{job}' }] };
+    const working = await call('POST', '/v1/admin/status-preview', admin.token, { rule: withJob, header: SKYUP_HEADER('S3 (Wyspy)'), bossbar: 'Praca: Drwal' });
+    assert.equal(working.body.detail, 'S3 (Wyspy) · Drwal');
+    assert.equal(working.body.variant, 0);
+    assert.equal(working.body.discord.state, 'Pracuje: Drwal');
+    assert.equal(working.body.discord.badge, 'Drwal');
+    assert.equal((await call('POST', `/v1/admin/status-rules/${sky.id}`, admin.token, withJob)).status, 200);
+    assert.equal((await call('GET', '/v1/status-rules')).body.rules.find((r: any) => r.server === 'skyup.pl').variants[0].hold, 5);
     assert.equal((await call('POST', '/v1/admin/status-defaults', admin.token, { largeImage: 'ftp://x' })).body.error, 'bad_image');
     assert.equal((await call('POST', '/v1/admin/status-defaults', admin.token, { largeImage: 'logo', largeText: 'SlashClient' })).status, 200);
     assert.equal((await call('GET', '/v1/status-rules')).body.discord.largeText, 'SlashClient');
