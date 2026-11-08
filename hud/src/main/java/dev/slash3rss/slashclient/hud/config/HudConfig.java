@@ -311,6 +311,8 @@ public final class HudConfig {
 	public boolean skyCaseNewDrop = true;
 	/** SkyUp's resource pack kept up to date in the player's resource packs; switched on there, SkyUp's offer is not asked about (SkyPack). */
 	public boolean skyPackLocal = true;
+	/** The job hats inside SkyUp's "Kapelusz pracusia", with the XP left in each, in its tooltip (SkyHats). */
+	public boolean skyHats = true;
 	/** Seconds a case's preview (or a win only it gives) counts as the case being opened, for rewards more cases give. */
 	public int skyCaseWindow = 60;
 	/** Rewards summed by item ("4x Diament" counts as 4 Diament): the detail window grouped, the top rewards in pieces. */
@@ -1005,6 +1007,7 @@ public final class HudConfig {
 		skyXpGens = Math.max(1, Math.min(999, other.skyXpGens));
 		skyXpUnbreakingLevel = Math.max(0, Math.min(255, other.skyXpUnbreakingLevel));
 		skyPackLocal = other.skyPackLocal;
+		skyHats = other.skyHats;
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;
 		damageNumbers = other.damageNumbers;

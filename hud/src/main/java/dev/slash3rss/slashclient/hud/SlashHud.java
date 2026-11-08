@@ -212,6 +212,9 @@ public class SlashHud implements ClientModInitializer {
 		KeyPresets.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.keyPresetNext", InputConstants.UNKNOWN.getValue(), category));
 		// shulker boxes show what is inside in their tooltips
 		ShulkerPreview.register();
+		//#if MC >= 26.3
+		dev.slash3rss.slashclient.hud.skyup.SkyHats.register();
+		//#endif
 		FoodPreview.register();
 		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
 		//#if MC >= 1.21.2

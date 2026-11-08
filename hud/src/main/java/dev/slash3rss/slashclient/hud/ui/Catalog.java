@@ -550,6 +550,9 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.SkyXpScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		// the hats inside SkyUp's universal hat, in its tooltip
+		out.add(new Entry("skyHats", "slashclient-hud.skyHats", "skyup", "m-skyhats", () -> cfg.skyHats, v -> cfg.skyHats = v, List.of(
+			new Note("slashclient-hud.skyHats.note", () -> new Object[0])), null));
 		// SkyUp's pack in the player's own resource packs, kept up to date; switched on, the server does not ask
 		out.add(new Entry("skyPack", "slashclient-hud.skyPack", "skyup", "skyup", () -> cfg.skyPackLocal, v -> cfg.skyPackLocal = v, List.of(
 			new Note("slashclient-hud.skyPack.note", () -> new Object[0])), null));
