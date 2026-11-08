@@ -75,7 +75,14 @@ public final class DamageNumbers {
 			int[] at = Waypoints.project(mc, p.x(), p.y() + t * 0.7, p.z(), w, h);
 			if (at == null) continue;
 			int alpha = t < 0.6f ? 255 : Math.max(8, Math.round(255 * (1 - (t - 0.6f) / 0.4f)));
-			g.text(mc.font, p.text(), at[0] - mc.font.width(p.text()) / 2, at[1], (alpha << 24) | p.color(), true);
+			// as big as the player set them (1 to 4 times), from the point over the mob
+			float scale = Math.max(1f, Math.min(4f, SlashHud.config.damageNumbersScale));
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(at[0], at[1]);
+			pose.scale(scale, scale);
+			g.text(mc.font, p.text(), -mc.font.width(p.text()) / 2, 0, (alpha << 24) | p.color(), true);
+			pose.popMatrix();
 		}
 	}
 }

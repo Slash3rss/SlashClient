@@ -1163,6 +1163,7 @@
 	"slashclient-hud.caption.nether": "Nether",
 	"slashclient-hud.caption.end": "End",
 	"slashclient-hud.damageNumbers": "Wskaźniki obrażeń",
+	"slashclient-hud.damageNumbers.scale": "Wielkość",
 	"slashclient-hud.tntTimer": "Licznik TNT",
 	"slashclient-hud.nickHider": "Ukrywanie nicku",
 	"slashclient-hud.nickHider.as": "Zamiast nicku",

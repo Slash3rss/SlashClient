@@ -27,6 +27,12 @@ public class GameAids implements FabricClientGameTest {
 			context.waitTicks(3);
 			if (context.computeOnClient(mc -> TestHooks.damagePops()) < 1) throw new AssertionError("No damage number for the hit");
 			context.takeScreenshot("aids-damage");
+			// as big as set: two and a half times
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.damageNumbersScale = 2.5f);
+			world.getServer().runCommand("damage @e[type=zombie,limit=1] 5");
+			context.waitTicks(3);
+			context.takeScreenshot("aids-damage-big");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.damageNumbersScale = 1f);
 			world.getServer().runCommand("kill @e[type=zombie]");
 			// our nick written as "Ty" (the test plays in Polish or English: either word)
 			String hidden = context.computeOnClient(mc -> TestHooks.hiddenNick(true));

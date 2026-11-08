@@ -332,6 +332,8 @@ public final class HudConfig {
 	public String skyXpGenerators, skyXpUnbreaking;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
+	/** How big the damage numbers are (1: the game's text). */
+	public float damageNumbersScale = 1f;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
 	public boolean nickHider = false;
 	/** What it is written as: "you", "player", "hidden" or "stars". */
@@ -1018,6 +1020,7 @@ public final class HudConfig {
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;
 		damageNumbers = other.damageNumbers;
+		damageNumbersScale = other.damageNumbersScale == 0 ? 1f : other.damageNumbersScale;
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;
 		reconnect = other.reconnect;

@@ -492,7 +492,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.zoomCinematic", () -> cfg.zoomCinematic, v -> cfg.zoomCinematic = v),
 			new Toggle("slashclient-hud.zoomRemember", () -> cfg.zoomRemember, v -> cfg.zoomRemember = v)), null));
 		out.add(new Entry("dropGuard", "slashclient-hud.dropGuard", "combat", "m-dropguard", () -> cfg.dropGuard, v -> cfg.dropGuard = v, List.of(), null));
-		out.add(new Entry("damageNumbers", "slashclient-hud.damageNumbers", "combat", "m-damage", () -> cfg.damageNumbers, v -> cfg.damageNumbers = v, List.of(), null));
+		out.add(new Entry("damageNumbers", "slashclient-hud.damageNumbers", "combat", "m-damage", () -> cfg.damageNumbers, v -> cfg.damageNumbers = v, List.of(
+			new Slider("slashclient-hud.damageNumbers.scale", 1f, 4f, 0.25f, "%.2f×", () -> cfg.damageNumbersScale, v -> cfg.damageNumbersScale = v)), null));
 		out.add(new Entry("tntTimer", "slashclient-hud.tntTimer", "world", "m-tnt", () -> cfg.tntTimer, v -> cfg.tntTimer = v, List.of(), null));
 		out.add(new Entry("nickHider", "slashclient-hud.nickHider", "extras", "m-nickhider", () -> cfg.nickHider, v -> cfg.nickHider = v, List.of(
 			new Choice("slashclient-hud.nickHider.as", new String[] { "you", "player", "hidden", "stars" }, "slashclient-hud.nickHider.alias.",
