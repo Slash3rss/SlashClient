@@ -97,6 +97,22 @@ describe('legal Markdown', () => {
   });
 });
 
+describe('legal texts in the code', () => {
+  it('repeat no heading and no paragraph or list point', () => {
+    const seed = path.resolve(import.meta.dirname, '../src/legal/seed');
+    for (const file of ['terms', 'privacy', 'support-terms'].flatMap((d) => [`${d}.pl.md`, `${d}.en.md`])) {
+      const seen = new Set<string>();
+      for (const raw of readFileSync(path.join(seed, file), 'utf8').split(/\r?\n/)) {
+        // table rows repeat on purpose (the same data in the "what for" and the "how long" tables)
+        const line = raw.trim();
+        if (line.length < 30 || line.startsWith('|')) continue;
+        assert.ok(!seen.has(line), `${file} repeats: ${line.slice(0, 80)}`);
+        seen.add(line);
+      }
+    }
+  });
+});
+
 describe('legal pages', () => {
   it('serves every document in Polish and English with its contents list, footer links and the draft banner', async () => {
     for (const [url, lang, title] of [

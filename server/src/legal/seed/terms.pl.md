@@ -83,13 +83,6 @@
 1. Punktem kontaktowym dla użytkowników i organów (art. 11 i 12 rozporządzenia (UE) 2022/2065, „akt o usługach cyfrowych”) jest adres {{admin.email}}. Piszemy po polsku i po angielsku.
 2. Treść, którą uważasz za nielegalną albo sprzeczną z Regulaminem, zgłoś na {{admin.email}}, przez [/zgloszenia](/zgloszenia) albo przyciskiem zgłoszenia w czacie społeczności. Zgłoszenie powinno zawierać: wyjaśnienie, dlaczego treść jest nielegalna, dokładne miejsce (link, nazwę konta, klanu lub społeczności), Twoje imię i nazwisko lub nazwę oraz e-mail (nie dotyczy zgłoszeń treści przedstawiających wykorzystywanie dzieci) i oświadczenie, że zgłaszasz w dobrej wierze.
 3. Potwierdzimy otrzymanie zgłoszenia, rozpatrzymy je bez zbędnej zwłoki i poinformujemy Cię o decyzji. Autorowi treści, której dostęp ograniczymy, podamy uzasadnienie (pkt 9 ust. 2), chyba że zgłoszenie dotyczy treści, o której musimy powiadomić organy.
-4. Treści zagrażające życiu lub bezpieczeństwu osób zgłaszamy organom ścigania. Decyzji nie podejmujemy automatycznie; automatycznie działają tylko limity antyspamowe i filtr zakazanych słów w nazwach.
-
-## 9a. Zgłaszanie nielegalnych treści i punkt kontaktowy {#zglaszanie}
-
-1. Punktem kontaktowym dla użytkowników i organów (art. 11 i 12 rozporządzenia (UE) 2022/2065, „akt o usługach cyfrowych”) jest adres {{admin.email}}. Piszemy po polsku i po angielsku.
-2. Treść, którą uważasz za nielegalną albo sprzeczną z Regulaminem, zgłoś na {{admin.email}}, przez [/zgloszenia](/zgloszenia) albo przyciskiem zgłoszenia w czacie społeczności. Zgłoszenie powinno zawierać: wyjaśnienie, dlaczego treść jest nielegalna, dokładne miejsce (link, nazwę konta, klanu lub społeczności), Twoje imię i nazwisko lub nazwę oraz e-mail (nie dotyczy zgłoszeń treści przedstawiających wykorzystywanie dzieci) i oświadczenie, że zgłaszasz w dobrej wierze.
-3. Potwierdzimy otrzymanie zgłoszenia, rozpatrzymy je bez zbędnej zwłoki i poinformujemy Cię o decyzji. Autorowi treści, której dostęp ograniczymy, podamy uzasadnienie (pkt 9 ust. 2), chyba że zgłoszenie dotyczy treści, o której musimy powiadomić organy.
 4. Treści zagrażające życiu lub bezpieczeństwu osób zgłaszamy organom ścigania.
 
 ## 10. Iskry {#iskry}
