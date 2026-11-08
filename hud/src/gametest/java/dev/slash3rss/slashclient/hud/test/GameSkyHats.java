@@ -1,10 +1,10 @@
-// SkyUp's job hats are played on 26.3: their test is there only
-//#if MC >= 26.3
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.skyup.SkyHats;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+// SkyUp's job hats are played on 26.3: the test does something there only (the class is in every version's list)
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyHats;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -12,12 +12,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+//#endif
 
 /**
  * SkyUp's "Kapelusz pracusia" as the server makes it (two hats inside, the lumberjack's worn): its tooltip lists
  * each hat with the XP left (a hat joined of 30 with all of their XP), the worn one with the outer hat's wear; a single job hat gets its XP left.
  */
 public class GameSkyHats implements FabricClientGameTest {
+	//#if MC >= 26.3
 	private static ItemStack hat(String name, int job, int damage) {
 		return hat(name, job, damage, 1);
 	}
@@ -39,8 +41,11 @@ public class GameSkyHats implements FabricClientGameTest {
 		return s;
 	}
 
+	//#endif
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		//#if MC >= 26.3
 		if (TestFilter.skip(context, getClass())) return;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(20);
@@ -65,6 +70,6 @@ public class GameSkyHats implements FabricClientGameTest {
 			String want = "▪ Hats inside:\n  Kask Górnika x30 · 899 955 / 900 000 xp\n  Czapka Drwala · 29 906 / 30 000 xp « worn\n--\n▪ XP left: 29 900 / 30 000 xp";
 			if (!got.equals(want)) throw new AssertionError("The hat's lines:\n" + got);
 		}
+		//#endif
 	}
 }
-//#endif

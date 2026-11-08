@@ -518,7 +518,7 @@ public final class DungeonRooms {
 			// mobs come back only from a spawner: a room without one has no time to count down
 			if (room.mobs == 0 && near && room.spawners > 0) {
 				cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
-				DungeonRun.cleared(room.centerX(), room.centerZ());
+				DungeonRun.cleared(room.centerX(), room.centerZ(), room.spawners);
 			}
 			else if (room.mobs == 0) stillInfested.add(p);
 		}

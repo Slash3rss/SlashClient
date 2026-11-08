@@ -106,6 +106,9 @@ public class GameDungeon implements FabricClientGameTest {
 			context.waitTicks(30);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("containers 1/3") || !rooms.contains("ores 1/2") || rooms.contains("cleared 0") || !rooms.contains("without spawner 0")) throw new AssertionError("Rooms (the start room is never one without a spawner): " + rooms);
+			// the summary counts the spawner beaten
+			int beaten = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRun.spawnersForTest());
+			if (beaten < 1) throw new AssertionError("Spawners beaten: " + beaten);
 			// from the map above: exactly the nine rooms, none run together through a door
 			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
