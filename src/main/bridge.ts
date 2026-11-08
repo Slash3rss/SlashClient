@@ -52,7 +52,12 @@ export interface BridgeOptions {
   /** A community's logo, the same way. */
   communityLogo?: (id: string, version: number) => Promise<Buffer>;
   /** What the server's tab list says (serverStatus.ts): the server, the short status and its values; or nothing. */
-  gameStatus?: (status: { server: string; detail?: string; values: Record<string, string> } | undefined) => void;
+  gameStatus?: (status: { server: string; detail?: string; values: Record<string, string> } | undefined, game?: string) => void;
+  /**
+   * A game's HUD (0.9.74+) says its window is the one in use (`focused`) or whether its status may show on Discord
+   * (`show`, the mod's switch); `game` is the profile it plays, from -Dslashclient.game.
+   */
+  gameWindow?: (game: string, window: { focused?: boolean; show?: boolean }) => void;
   /** What plays on this computer (nowPlaying.ts), asked by the game only while its "Now playing" module is on; `onlySpotify` leaves out browsers and other players. */
   spotifyNow?: (onlySpotify: boolean) => Promise<unknown>;
   /** The cover of what plays by its id (from the system, or Spotify's image host), as a 64×64 PNG. */
@@ -200,6 +205,12 @@ export function bridgeError(err: unknown): { error: string; status?: number } {
   return withStatus(t('Launcher nie mógł tego zrobić. Spróbuj ponownie.'));
 }
 
+/** The profile a request's game plays (the HUD's X-SlashClient-Game, from -Dslashclient.game), if it says. */
+function gameOf(req: http.IncomingMessage): string | undefined {
+  const id = req.headers['x-slashclient-game'];
+  return typeof id === 'string' && /^[\w-]{1,64}$/.test(id) ? id : undefined;
+}
+
 export class GameBridge {
   private server?: http.Server;
   private key = randomBytes(24).toString('base64url');
@@ -330,12 +341,23 @@ export class GameBridge {
     if (method === 'POST' && url === '/status') {
       const { server, detail, values } = ((await this.body(req)) ?? {}) as { server?: unknown; detail?: unknown; values?: unknown };
       if (!this.opts.gameStatus) return this.send(res, 404, { error: 'not_found' });
+      const game = gameOf(req);
       if (server === null || server === undefined) {
-        this.opts.gameStatus(undefined);
+        this.opts.gameStatus(undefined, game);
         return this.send(res, 200, { ok: true });
       }
       if (typeof server !== 'string' || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(server)) return this.send(res, 400, { error: 'bad_request' });
-      this.opts.gameStatus({ server, detail: cleanDetail(detail), values: cleanValues(values) });
+      this.opts.gameStatus({ server, detail: cleanDetail(detail), values: cleanValues(values) }, game);
+      return this.send(res, 200, { ok: true });
+    }
+
+    // which of the games is in use, and whether it shows on Discord (two games share this bridge)
+    if (method === 'POST' && url === '/window') {
+      if (!this.opts.gameWindow) return this.send(res, 404, { error: 'not_found' });
+      const game = gameOf(req);
+      const { focused, show } = ((await this.body(req)) ?? {}) as { focused?: unknown; show?: unknown };
+      if (!game || (focused !== undefined && typeof focused !== 'boolean') || (show !== undefined && typeof show !== 'boolean')) return this.send(res, 400, { error: 'bad_request' });
+      this.opts.gameWindow(game, { focused: focused as boolean | undefined, show: show as boolean | undefined });
       return this.send(res, 200, { ok: true });
     }
 

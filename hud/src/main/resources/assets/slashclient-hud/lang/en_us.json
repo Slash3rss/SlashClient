@@ -674,6 +674,8 @@
 	"slashclient-hud.notifications.other": "Other (clips, resource packs, LAN world)",
 	"slashclient-hud.notifications.dnd": "No friends' and communities' notifications with the \"Do not disturb\" status",
 	"slashclient-hud.serverFriends.setting": "Friends next to servers in the list",
+	"slashclient-hud.discordStatus": "Discord status from this game",
+	"slashclient-hud.discordStatus.note": "Discord shows one SlashClient status at a time. With two games it is the one whose window you are playing in; switched off here, this game never shows. Needs launcher 0.9.74 or newer.",
 	"slashclient-hud.serverFriends.title": "Friends on this server: %s",
 	"slashclient-hud.playing.online": "is online now",
 	"slashclient-hud.playing.world": "started playing Minecraft",

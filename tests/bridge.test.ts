@@ -132,4 +132,32 @@ describe('game bridge', () => {
     assert.equal((await fetch(p.url + '/session', { headers: { Authorization: `Bearer ${p.key}` } })).status, 404);
     plain.stop();
   });
+
+  it('tells which game a window or a tab list status is of (two games share it)', async () => {
+    const windows: unknown[] = [];
+    const statuses: unknown[] = [];
+    const bridge = new GameBridge({
+      call: async () => ({}),
+      state: () => ({}),
+      gameWindow: (game, w) => windows.push([game, w]),
+      gameStatus: (status, game) => statuses.push([status?.server ?? null, game ?? null]),
+    });
+    const { url, key } = await bridge.start();
+    const post = (path: string, body: unknown, game?: string) => fetch(url + path, {
+      method: 'POST', body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', ...(game ? { 'X-SlashClient-Game': game } : {}) },
+    });
+    assert.equal((await post('/window', { focused: true }, 'prof-1')).status, 200);
+    assert.equal((await post('/window', { show: false }, 'prof-2')).status, 200);
+    // without saying which game, or with a wrong value: refused
+    assert.equal((await post('/window', { focused: true })).status, 400);
+    assert.equal((await post('/window', { show: 'no' }, 'prof-1')).status, 400);
+    assert.equal((await post('/window', { focused: true }, '../x')).status, 400);
+    assert.deepEqual(windows, [['prof-1', { focused: true, show: undefined }], ['prof-2', { focused: undefined, show: false }]]);
+    // a HUD from before 0.9.74 sends its status without the game
+    assert.equal((await post('/status', { server: 'skyup.pl' }, 'prof-1')).status, 200);
+    assert.equal((await post('/status', { server: 'hypixel.net' })).status, 200);
+    assert.deepEqual(statuses, [['skyup.pl', 'prof-1'], ['hypixel.net', null]]);
+    bridge.stop();
+  });
 });

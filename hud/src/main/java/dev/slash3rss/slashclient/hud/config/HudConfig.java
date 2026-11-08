@@ -714,6 +714,8 @@ public final class HudConfig {
 	public int toastVolume = 70;
 	/** Faces of friends playing on a server next to it in the server list (ServerFriends). */
 	public boolean serverFriends = true;
+	/** This game's status on Discord (the launcher shows the game in use of those that allow it). */
+	public boolean discordStatus = true;
 	/** "● NA ŻYWO" above SlashClient players live on Twitch or Kick with Minecraft (Badges.liveLabel). */
 	public boolean liveNametags = true;
 	/** Other players' ping after their name above the head, on servers (NametagPing). */
@@ -1294,6 +1296,7 @@ public final class HudConfig {
 		inventorySearch = other.inventorySearch;
 		slotLock = other.slotLock;
 		toasts = other.toasts;
+		discordStatus = other.discordStatus;
 		toastMessages = other.toastMessages;
 		// switched off before there was a switch for each: both off
 		toastOnline = other.toastOnline && other.friendPlayingToasts;

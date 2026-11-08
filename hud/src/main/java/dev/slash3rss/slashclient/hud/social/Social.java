@@ -67,6 +67,8 @@ public final class Social {
 
 	private static final String URL = System.getProperty("slashclient.bridge", "");
 	private static final String KEY = System.getProperty("slashclient.bridgeKey", "");
+	/** The profile this game plays (launchers 0.9.74+): two games share the bridge, so each says which one it is. */
+	private static final String GAME = System.getProperty("slashclient.game", "");
 	// HTTP/1.1: on plain http Java would otherwise try an "h2c" upgrade first
 	private static final HttpClient HTTP = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(3)).build();
 	private static final Gson GSON = new Gson();
@@ -224,6 +226,7 @@ public final class Social {
 			.header("Authorization", "Bearer " + KEY)
 			.header("Content-Type", "application/json");
 		if (account != null) b.header("X-SlashClient-Account", account);
+		if (!GAME.isEmpty()) b.header("X-SlashClient-Game", GAME);
 		b.method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(GSON.toJson(body)));
 		HttpResponse<String> res = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofString());
 		if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode() + " " + res.body());
@@ -261,6 +264,9 @@ public final class Social {
 					// whether we share our position with friends (an older launcher or server: nothing happens)
 					if (signedIn) FriendPositions.refresh();
 					reachable = true;
+					// the launcher may have restarted: it learns again which game is in use and what it shows
+					sentFocused = null;
+					sentShow = null;
 					// only the first failure is logged, so say it works again (a server restart is a few failed tries)
 					if (failures > 0) SlashHud.LOG.info("SlashClient: launcher bridge reachable again");
 				}
@@ -277,6 +283,41 @@ public final class Social {
 				sleep(Math.min(30_000, 2_000L * failures));
 			}
 		}
+	}
+
+	// ---------- which game is in use (Discord shows one of them) ----------
+
+	private static volatile Boolean sentFocused, sentShow;
+	private static volatile boolean windowSending, windowUnsupported;
+
+	/**
+	 * Every tick: tells the launcher when this game's window comes into use and whether its status may show on
+	 * Discord (the "Discord status" switch), so with two games Discord shows the one being played. An older
+	 * launcher has no /window: asked once.
+	 */
+	public static void windowTick(Minecraft mc) {
+		if (GAME.isEmpty() || !reachable || windowSending || windowUnsupported) return;
+		boolean focused = mc.isWindowActive();
+		boolean show = SlashHud.config == null || SlashHud.config.discordStatus;
+		if (!focused) sentFocused = false;
+		boolean focusNews = focused && !Boolean.TRUE.equals(sentFocused);
+		if (!focusNews && Boolean.valueOf(show).equals(sentShow)) return;
+		JsonObject body = new JsonObject();
+		if (focusNews) body.addProperty("focused", true);
+		body.addProperty("show", show);
+		windowSending = true;
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/window", body, 5);
+				if (focusNews) sentFocused = true;
+				sentShow = show;
+			} catch (Exception e) {
+				if (String.valueOf(e.getMessage()).startsWith("HTTP 403") || String.valueOf(e.getMessage()).startsWith("HTTP 404")) windowUnsupported = true;
+				SlashHud.LOG.debug("SlashClient: window: {}", e.toString());
+			} finally {
+				windowSending = false;
+			}
+		});
 	}
 
 	/** The launcher's newest event number, without its events (asking for events after any number it has answers at once). */

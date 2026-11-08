@@ -24,7 +24,7 @@ import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate, updateChannelChanged } from './updates';
 import { initChangelog } from './changelog';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
-import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
+import { activityFromLog, SocialClient, SocialError, type Activity, type SocialUser, type Status } from './social';
 import { decorate, serverKey, StatusRules, Throttle, type GameStatus } from './serverStatus';
 import { encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
@@ -133,7 +133,12 @@ let store: StoreData;
  * The games running now, one per profile: several profiles can play at once, one profile only
  * once (two games in the same folder would fight over its worlds and settings).
  */
-interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence; link: () => void }
+interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence; link: () => void; discord: GameDiscord }
+/**
+ * What Discord needs of one game when several run (it shows one status of SlashClient at a time): its server, its
+ * tab list's status, when its window was used last and whether its HUD lets it show (the mod's switch).
+ */
+interface GameDiscord { activity: Activity; status?: GameStatus; focusedAt: number; show: boolean }
 const games = new Map<string, RunningGame>();
 /**
  * Profiles being prepared to play (Java, libraries and assets can take minutes): they count as
@@ -180,19 +185,52 @@ let gameStatus: GameStatus | undefined;
 // Discord takes about 5 changes in 20 s: a sector change waits its turn (joining a server does not)
 const discordStatusThrottle = new Throttle(15_000);
 function discordLook(p: Presence): Presence {
-  const a = social.currentActivity();
+  // the game this status is of: its own server and tab list status (a HUD from before 0.9.74 does not say which
+  // game it is, so its status is the one of every game, as before)
+  const game = [...games.values()].find((g) => g.presence === p)?.discord;
+  const a = game?.activity ?? social.currentActivity();
   const user = social.state().user;
-  return decorate(p, { server: a.kind === 'server' ? a.server : undefined, status: gameStatus, rules: statusRules.current(), hideServer: !!user && !user.showServer });
+  return decorate(p, { server: a.kind === 'server' ? a.server : undefined, status: game?.status ?? gameStatus, rules: statusRules.current(), hideServer: !!user && !user.showServer });
 }
-function onGameStatus(status: GameStatus | undefined) {
+function onGameStatus(status: GameStatus | undefined, gameId?: string) {
   void statusRules.refresh();
-  const a = social.currentActivity();
+  const game = gameId ? games.get(gameId)?.discord : undefined;
+  const a = game?.activity ?? social.currentActivity();
   // a status about another server than the one the log says (just switched): wait for the next one
   const here = status && a.kind === 'server' && serverKey(a.server) === serverKey(status.server) ? status : undefined;
   social.setDetail(here?.detail);
-  const changed = JSON.stringify(here) !== JSON.stringify(gameStatus);
-  gameStatus = here;
+  const changed = JSON.stringify(here) !== JSON.stringify(game ? game.status : gameStatus);
+  if (game) game.status = here;
+  else gameStatus = here;
   if (changed) discordStatusThrottle.run(() => currentPresence && showPresence(currentPresence));
+}
+
+/** The game Discord shows: of the games that let it (the mod's switch), the one whose window was used last. */
+function discordGame(): RunningGame | undefined {
+  let best: RunningGame | undefined;
+  for (const g of games.values()) if (g.discord.show && (!best || g.discord.focusedAt >= best.discord.focusedAt)) best = g;
+  return best;
+}
+/** Discord shows that game, the launcher when no game runs, and nothing when every running game hides it. */
+function refreshPresence() {
+  if (!games.size) return showPresence(idlePresence());
+  const g = discordGame();
+  if (g) return showPresence(g.presence);
+  currentPresence = undefined;
+  if (store.settings.discordEnabled) void discordClient()?.set(null);
+}
+// switching between two games' windows: Discord takes about 5 changes in 20 s
+const discordFocusThrottle = new Throttle(4_000);
+/** A game's HUD says its window is the one in use, or whether its status may show (bridge.ts /window). */
+function onGameWindow(gameId: string, w: { focused?: boolean; show?: boolean }) {
+  const game = games.get(gameId)?.discord;
+  if (!game) return;
+  const before = discordGame();
+  if (w.focused) game.focusedAt = Date.now();
+  const showChanged = w.show !== undefined && w.show !== game.show;
+  if (w.show !== undefined) game.show = w.show;
+  if (showChanged) refreshPresence();
+  else if (discordGame() !== before) discordFocusThrottle.run(refreshPresence);
 }
 
 // re-send the status regularly: picks Discord up when it starts after the launcher or reconnects after a restart
@@ -400,7 +438,7 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   if (accountChanged) void signInWithMinecraft();
   if (urlChanged) await social.logout();
   setLang(store.settings.language);
-  if (store.settings.discordEnabled) showPresence(games.size ? currentPresence ?? idlePresence() : idlePresence());
+  if (store.settings.discordEnabled) refreshPresence();
   else discordClient(); // closes the connection, which clears the status
   await persist();
   // another update channel: its feed, checked at once
@@ -2067,6 +2105,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (hud.jvmArgs.length) {
     await bridge.start();
     hud.jvmArgs.push(...bridge.jvmArgs());
+    // which game the HUD is, when it tells the launcher about its window (two games share the bridge)
+    hud.jvmArgs.push(`-Dslashclient.game=${profile.id}`);
     // the mod names SlashClient with its version: on F3 and to the servers (the client's brand)
     hud.jvmArgs.push(`-Dslashclient.version=${app.getVersion()}`);
     // an offline account's skin for SlashClient players: the player sees it on themselves too, in the
@@ -2091,6 +2131,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
   const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
+  // a game just started is the one in use
+  const gameDiscord: GameDiscord = { activity: social.currentActivity(), focusedAt: Date.now(), show: true };
   // the servers' Discord looks and tab list rules, ready before the game is on one
   void statusRules.refresh();
   // opened only now: a launch stopped earlier (benchmark without the mod) leaves no empty console session
@@ -2143,10 +2185,12 @@ async function startGame(profileId: string, accountId: string, server: string | 
       }
       const now = activityFromLog(line);
       if (now) social.setActivity({ ...now, version: activityVersion, since: startedAt });
+      if (now) gameDiscord.activity = { ...now, version: activityVersion, since: startedAt };
       const update = presenceFromLog(line);
       if (update && update.state !== presence.state) {
         presence.state = update.state;
-        showPresence(presence);
+        // another game, the one in use, keeps Discord (not yet listed: shows at once, as before)
+        if (!games.has(profile.id) || discordGame()?.presence === presence) showPresence(presence);
       }
     },
     server,
@@ -2165,11 +2209,11 @@ async function startGame(profileId: string, accountId: string, server: string | 
     // (an older server reads only the uuid, as before)
     if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', mcLinkBody(account)).catch(() => {});
   };
-  const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence, link: linkPlayer };
+  const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence, link: linkPlayer, discord: gameDiscord };
   games.set(profile.id, running);
   linkPlayer();
   const linkTimer = setInterval(linkPlayer, 4 * 60_000);
-  showPresence(presence);
+  refreshPresence();
   send('store', publicStore());
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
@@ -2200,7 +2244,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
     }).catch((err) => console.error('podsumowanie sesji:', (err as Error).message));
     // another game still running keeps Discord and friends up to date; the last one closing goes back to idle
     const other = [...games.values()].at(-1);
-    showPresence(other ? other.presence : idlePresence());
+    refreshPresence();
     if (!other) social.setActivity({ kind: 'launcher' });
     // the last lines before the console says the game closed
     gameLog.flush();
@@ -2491,7 +2535,8 @@ const bridge = new GameBridge({
   gifStill: (url) => gifMedia.bytes(url),
   clanLogo: (id, version) => clanLogos.get(id, version),
   communityLogo: (id, version) => communityLogos.get(id, version),
-  gameStatus: (status) => onGameStatus(status),
+  gameStatus: (status, game) => onGameStatus(status, game),
+  gameWindow: (game, w) => onGameWindow(game, w),
   // the game's "Now playing" module (id "spotify"), only while it is on: what plays on this computer and its cover
   spotifyNow: (onlySpotify) => nowPlaying.get(onlySpotify),
   spotifyCover: (id) => nowPlayingCovers.get(id),

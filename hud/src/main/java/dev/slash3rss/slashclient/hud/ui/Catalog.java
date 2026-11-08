@@ -777,6 +777,9 @@ public final class Catalog {
 				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), v, cfg.toastVolume);
 			}),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.toastVolume, v -> cfg.toastVolume = Math.round(v))), null));
+		// with two games, Discord shows the one in use: here this game can stay off it
+		out.add(new Entry("discordStatus", "slashclient-hud.discordStatus", "extras", "m-discord", () -> cfg.discordStatus, v -> cfg.discordStatus = v, List.of(
+			new Note("slashclient-hud.discordStatus.note", () -> new Object[0])), null));
 		out.add(new Entry("serverFriends", "slashclient-hud.serverFriends.setting", "extras", "m-friends", () -> cfg.serverFriends, v -> cfg.serverFriends = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(

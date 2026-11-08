@@ -364,6 +364,8 @@ public class SlashHud implements ClientModInitializer {
 			dev.slash3rss.slashclient.hud.gamehud.PotionEnd.tick(mc);
 			// a fresh Microsoft token from the launcher before the game's runs out (in the menus)
 			SessionRenew.tick(mc);
+			// which of two games Discord shows: the one whose window is in use
+			dev.slash3rss.slashclient.hud.social.Social.windowTick(mc);
 			PartnerIcons.tick(mc);
 			DungeonMap.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.DungeonRun.tick(mc);
