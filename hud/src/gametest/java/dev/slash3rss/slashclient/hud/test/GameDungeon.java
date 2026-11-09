@@ -169,6 +169,18 @@ public class GameDungeon implements FabricClientGameTest {
 			if (glowing != 3) throw new AssertionError("The mini boss and two elites should glow: " + glowing);
 			context.takeScreenshot("dungeon-boss-glow");
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonEliteGlow = false);
+			// names written: only those glow, whatever their class (the elite "Elita" and the minion; not the mini boss)
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonGlowNames = " elita , MINION");
+			context.waitTicks(3);
+			String named = context.computeOnClient(mc -> {
+				java.util.List<String> out = new java.util.ArrayList<>();
+				for (var e : dev.slash3rss.slashclient.hud.skyup.BossGlow.glowing().entrySet())
+					out.add(mc.level.getEntity(e.getKey()).getCustomName().getString() + "=" + Integer.toHexString(e.getValue()));
+				java.util.Collections.sort(out);
+				return String.join(",", out);
+			});
+			if (!named.equals("Elita=f97316,Minion=facc15")) throw new AssertionError("Mobs glowing by name: " + named);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonGlowNames = "");
 			// the simple map: the nine rooms as tiles, a yellow square on each of the twelve doors between them
 			// (the floor's own rooms: these are not on SkyUp's grid of 13 blocks)
 			if (!rooms.contains("doors 12") || !rooms.contains("tiles 0,")) throw new AssertionError("Doors between the rooms: " + rooms);

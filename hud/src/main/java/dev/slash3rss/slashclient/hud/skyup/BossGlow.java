@@ -13,13 +13,14 @@ import java.util.Map;
 /**
  * In a SkyUp dungeon the mini bosses (and the elites, when wanted) glow the game's own way: an
  * outline seen through walls, in their class's colour, so in a crowd of spawned mobs the player
- * sees at once whether the boss is still alive and where. Worked out once a tick (DropGlowMixin
- * asks every frame).
+ * sees at once whether the boss is still alive and where. With names written in the settings
+ * ("Czyken, Żniwiarz") only the mobs with one of them in their name glow, whatever their class.
+ * Worked out once a tick (DropGlowMixin asks every frame).
  */
 public final class BossGlow {
 	private BossGlow() {}
 
-	public static final int BOSS = 0xDC2626, ELITE = 0xF97316;
+	public static final int BOSS = 0xDC2626, ELITE = 0xF97316, OTHER = 0xFACC15;
 	/** How far mobs glow: about as far as a dungeon's room or two. */
 	private static final double RANGE = 64;
 	/** The mobs glowing now: entity id → colour (0xRRGGBB). */
@@ -39,7 +40,8 @@ public final class BossGlow {
 
 	public static void tick(Minecraft mc) {
 		HudConfig c = SlashHud.config;
-		if (c == null || !c.dungeonBossGlow && !c.dungeonEliteGlow || mc.level == null || mc.player == null || !DungeonMap.active()) {
+		java.util.List<String> names = names(c == null ? "" : c.dungeonGlowNames);
+		if (c == null || !c.dungeonBossGlow && !c.dungeonEliteGlow && names.isEmpty() || mc.level == null || mc.player == null || !DungeonMap.active()) {
 			glowing = Map.of();
 			return;
 		}
@@ -48,9 +50,31 @@ public final class BossGlow {
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (!(e instanceof Mob) && !(e instanceof AbstractClientPlayer) || e == mc.player || !e.isAlive() || e.distanceToSqr(mc.player) > r2) continue;
 			int kind = DungeonMap.kind(e);
+			if (!names.isEmpty()) {
+				// only the mobs named, in their class's colour
+				if (named(DungeonMap.namesOf(e), names)) out.put(e.getId(), kind == 3 ? BOSS : kind == 2 ? ELITE : OTHER);
+				continue;
+			}
 			if (kind == 3 && c.dungeonBossGlow) out.put(e.getId(), BOSS);
 			else if (kind == 2 && c.dungeonEliteGlow) out.put(e.getId(), ELITE);
 		}
 		glowing = out;
+	}
+
+	/** The names written in the settings, split by commas, without case. */
+	static java.util.List<String> names(String text) {
+		java.util.List<String> out = new java.util.ArrayList<>();
+		if (text != null) for (String n : text.split(",")) {
+			String s = n.strip().toLowerCase(java.util.Locale.ROOT);
+			if (!s.isEmpty()) out.add(s);
+		}
+		return out;
+	}
+
+	/** Whether a mob's names have one of those written in them. */
+	static boolean named(String mobNames, java.util.List<String> names) {
+		String lower = mobNames.toLowerCase(java.util.Locale.ROOT);
+		for (String n : names) if (lower.contains(n)) return true;
+		return false;
 	}
 }

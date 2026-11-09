@@ -201,6 +201,8 @@ public final class HudConfig {
 	public boolean dungeonBlockColors = false;
 	/** In a dungeon the mini bosses glow (seen through walls), and the elites too when wanted (BossGlow). */
 	public boolean dungeonBossGlow = true, dungeonEliteGlow = false;
+	/** Mob names, comma-separated: when any are written, only the mobs with one in their name glow. */
+	public String dungeonGlowNames = "";
 	/** The kinds of loot counted on the dungeon map (in rooms and under it): chests, barrels, pots, flower pots, deepslate ores. */
 	public boolean dungeonChests = true, dungeonBarrels = true, dungeonPots = true, dungeonFlowerPots = true, dungeonOres = true;
 	/** Counters under the dungeon map, one per kind of loot. */
@@ -926,6 +928,7 @@ public final class HudConfig {
 		dungeonBlockColors = other.dungeonBlockColors;
 		dungeonBossGlow = other.dungeonBossGlow;
 		dungeonEliteGlow = other.dungeonEliteGlow;
+		dungeonGlowNames = other.dungeonGlowNames == null ? "" : other.dungeonGlowNames;
 		dungeonChests = other.dungeonChests;
 		dungeonBarrels = other.dungeonBarrels;
 		dungeonPots = other.dungeonPots;

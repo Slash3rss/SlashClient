@@ -1361,6 +1361,8 @@
 	"slashclient-hud.dungeon.blockColors": "Kolory bloków podłogi (zamiast prostych)",
 	"slashclient-hud.dungeon.bossGlow": "Mini bossy świecą",
 	"slashclient-hud.dungeon.eliteGlow": "Elity świecą",
+	"slashclient-hud.dungeon.glowNames": "Świecą tylko moby o nazwach",
+	"slashclient-hud.dungeon.glowNamesHint": "np. Czyken, Żniwiarz (puste: bossy)",
 	"slashclient-hud.dungeon.startArrow": "Pokój startowy: znacznik i strzałka do niego",
 	"slashclient-hud.dungeon.players": "Pokazuj innych graczy",
 	"slashclient-hud.dungeon.mobs": "Pokazuj moby i NPC",

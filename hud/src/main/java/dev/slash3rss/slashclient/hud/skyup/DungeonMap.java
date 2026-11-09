@@ -970,6 +970,13 @@ public final class DungeonMap implements HudModule {
 		return tag == null ? 0 : kind(tag);
 	}
 
+	/** A mob's names as the player sees them, colours left out: its own and the one shown over it ("" for none). */
+	public static String namesOf(Entity mob) {
+		String own = mob.hasCustomName() ? uncoloured(mob.getCustomName().getString()) : "";
+		Component tag = tagOver(mob);
+		return tag == null ? own : own + " | " + uncoloured(tag.getString());
+	}
+
 	/** The name shown over a mob on another entity (a hologram, a riding name tag), or null. */
 	private static Component tagOver(Entity mob) {
 		return mob instanceof net.minecraft.world.entity.LivingEntity e ? dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove(e) : null;

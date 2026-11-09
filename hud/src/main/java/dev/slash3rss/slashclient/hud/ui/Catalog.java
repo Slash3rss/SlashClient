@@ -302,6 +302,7 @@ public final class Catalog {
 					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Toggle("slashclient-hud.dungeon.bossGlow", () -> cfg.dungeonBossGlow, v -> cfg.dungeonBossGlow = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.eliteGlow", () -> cfg.dungeonEliteGlow, v -> cfg.dungeonEliteGlow = v));
+					settings.add(new Text("slashclient-hud.dungeon.glowNames", "slashclient-hud.dungeon.glowNamesHint", 200, () -> cfg.dungeonGlowNames, v -> cfg.dungeonGlowNames = v));
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 400f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));

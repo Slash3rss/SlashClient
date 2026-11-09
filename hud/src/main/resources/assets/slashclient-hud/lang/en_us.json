@@ -1361,6 +1361,8 @@
 	"slashclient-hud.dungeon.blockColors": "Floor in block colours (instead of plain)",
 	"slashclient-hud.dungeon.bossGlow": "Mini bosses glow",
 	"slashclient-hud.dungeon.eliteGlow": "Elites glow",
+	"slashclient-hud.dungeon.glowNames": "Only mobs named glow",
+	"slashclient-hud.dungeon.glowNamesHint": "e.g. Czyken, Żniwiarz (empty: bosses)",
 	"slashclient-hud.dungeon.startArrow": "Start room: a mark and an arrow to it",
 	"slashclient-hud.dungeon.players": "Show other players",
 	"slashclient-hud.dungeon.mobs": "Show mobs and NPCs",
