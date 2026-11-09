@@ -116,3 +116,5 @@ W grze 1.21.6 i nowszych na te dźwięki działa też suwak **Interfejs** w usta
 ### Własne dźwięki
 
 W karcie **Dźwięki SlashClient** kliknij **Otwórz folder dźwięków** i wrzuć tam pliki **.ogg**, **.mp3** albo **.wav** (najwyżej 1 MB; gra się najwyżej 30 sekund). Po ponownym otwarciu ustawień pliki są na każdej liście dźwięków z nutką ♪, zaraz po pierwszym dźwięku: przy oznaczeniach w czacie, znaczniku trafienia, końcu mikstury, ostrzeżeniu o narzędziu, powiadomieniach i przypomnieniach SkyUp. Działają na nie suwaki głośności. Gdy plik zniknie z folderu, zamiast niego zadzwoni zwykły dzwonek. Własne dźwięki słyszysz tylko Ty.
+
+Prościej: pod każdym wyborem dźwięku jest wiersz **Własny plik** z przyciskiem **Wybierz plik…** (a przy zakładce czatu – obok jej dźwięku). Wybrany plik z komputera mod sam kopiuje do folderu i ustawia tylko w tym jednym miejscu, więc każdy dźwięk może mieć inny plik.

@@ -116,3 +116,5 @@ In 1.21.6 and newer, Minecraft's **Interface** sound slider affects these sounds
 ### Your own sounds
 
 On the **SlashClient sounds** card, click **Open the sounds folder** and put **.ogg**, **.mp3** or **.wav** files there (up to 1 MB; at most 30 seconds play). Once you open the settings again, the files are in every list of sounds with a ♪, right after the first sound: chat mentions, the hit marker, a potion running out, the tool warning, notifications and SkyUp reminders. The volume sliders work on them. If a file is gone from the folder, the usual bell rings instead. Only you hear your own sounds.
+
+Even simpler: under every sound choice there's a **Your own file** row with a **Pick a file…** button (for a chat tab – next to its sound). The mod copies the file you pick into the folder and sets it in that one place only, so every sound can have a different file.

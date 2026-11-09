@@ -60,7 +60,7 @@ The map is only drawn again when something changed (you moved or turned, or the 
 - **Right click** – a new waypoint there (at the ground's height when it is known), opened at once to name it.
 - **Click a waypoint** – opens it: rename, recolour, hide, share with friends or delete.
 - **M**, **Esc** or ✕ closes the map.
-- **Ctrl + click** – teleports you there, onto the ground. Only where you may use `/spreadplayers` (a singleplayer world with cheats, or a server where you are an operator); the hint at the bottom of the map then says "Ctrl+click: teleport".
+- **Ctrl + click** – teleports you there, onto the ground. Where the map knows the ground's height, the mod uses `/tp` just above it; where the map hasn't seen the place yet, `/spreadplayers` looks for the ground itself (over the void by an island it finds none). Only where you may use `/tp` or `/spreadplayers` (a singleplayer world with cheats, or a server that gives you those commands); the hint at the bottom of the map then says "Ctrl+click: teleport".
 
 ### Grid and biomes
 

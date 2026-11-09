@@ -112,7 +112,7 @@ Tells you when a potion you **drank** runs out – or a few seconds before. Only
 
 ## Damage indicators
 
-When a mob or player near you loses health, the amount rises above it for a second – yellow, orange for a hard hit, red for a big one. On by default.
+When a mob or player near you loses health, the amount rises above it for a second – yellow, orange for a hard hit, red for a big one. On by default. The **Size** slider makes the numbers up to 4 times bigger.
 
 ## Drop protection
 

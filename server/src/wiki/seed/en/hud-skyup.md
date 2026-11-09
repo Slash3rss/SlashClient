@@ -19,6 +19,19 @@ In a dungeon: a map of the rooms with you, other players, mobs and loot. **M** o
 | Room loot counters, Counters' place | below the map, above, on the map or apart (the **Dungeon loot counters** module) |
 | Cleared rooms | green, with the time to respawn |
 | Rooms without a spawner | a blue frame |
+| XP on the dungeon's bar | the XP as a number on the boss bar, e.g. "90/225 xp" |
+| Mini bosses glow, Elites glow | a red (elites: orange) glow seen through walls |
+| Only mobs named glow | names separated by commas, e.g. "Czyken, Żniwiarz" – only those mobs glow (the mob's own name counts) |
+
+The mod learns by itself how much XP a dungeon level takes, from the damage you deal to mobs (the damage is the dungeon XP). Until it has measured a level it uses the server's formula, so a change in how the server counts XP doesn't break the numbers.
+
+## XP in the dungeon
+
+The **XP in the dungeon** module shows during a run the dungeon XP, your own XP (the green bar) and each job's XP from its boss bar.
+
+## Dungeon summary
+
+After you leave a dungeon, a card with a summary: the level, the time, rooms, spawners beaten, loot, ores, mobs killed (elites and mini bosses among them), the dungeon, player and job XP – with the levels gained next to them in brackets, e.g. "(level 2 → 3)". Numbers that are zero are not shown. A run cut short by leaving the server goes to the history too, and the list of runs is in the **Dungeon summary** module's settings.
 
 ## Dungeon loot highlight
 
@@ -58,6 +71,17 @@ What you wear in SkyUp's cosmetic wardrobe and the state of its switches.
 ## SkyUp plan of the week
 
 The coming events, fishing contests and the Boss Arena with their start time (in how long, at what time, or both). A notification before the start, for each kind on its own, with the sound you pick.
+
+## Boosts and skills
+
+The **Boosts and skills** module reads the beacon's boost bars ("Boost » Drop z mobów » 1 godz 59 min") and job skill bars ("Nawałnica (pozostało 1 min 14 sek)") and shows a banner with a sound:
+
+- **Boost running out** – shortly before it ends (**Warn before a boost ends**, 0–10 minutes before).
+- **Boost ended**.
+- **Job skill ended** – Wiertło, Piła, Pług, Nawałnica, Rozbiórka, Sieci rybackie, Eskalacja.
+- **Skill ready again** – after its cooldown (**Skill cooldown**, 10 minutes from its end by default). The cooldown counts only while you play on SkyUp, as on the server.
+
+The banners have icons from the beacon's and /prace menus (with SkyUp's pack loaded; without it – plain items). Each banner has its own **Sound** and can be turned off. A boost ended, a skill ready and a boost running out can also come as a **system notification** while the game is in the background (a switch next to each; the launcher shows them when its system notifications are on). A bar that goes with plenty of time left (another sector, leaving the server) doesn't count as the end.
 
 ## SkyUp XP calculator and bottling countdown
 

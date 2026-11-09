@@ -112,7 +112,7 @@ Daje znać, gdy skończy się mikstura, którą **wypiłeś** – albo kilka sek
 
 ## Wskaźniki obrażeń
 
-Gdy mob albo gracz obok Ciebie traci zdrowie, nad nim na chwilę unosi się liczba obrażeń – żółta, pomarańczowa przy mocnym ciosie, czerwona przy bardzo mocnym. Włączone od razu.
+Gdy mob albo gracz obok Ciebie traci zdrowie, nad nim na chwilę unosi się liczba obrażeń – żółta, pomarańczowa przy mocnym ciosie, czerwona przy bardzo mocnym. Włączone od razu. Suwak **Wielkość** powiększa liczby do 4 razy.
 
 ## Ochrona przed wyrzuceniem
 

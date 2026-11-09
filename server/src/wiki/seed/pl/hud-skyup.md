@@ -19,6 +19,19 @@ W dungeonie mapa pokoi z Twoją pozycją, innymi graczami, mobami i łupami. **M
 | Liczniki łupów pokoju, Miejsce liczników | pod mapą, nad, na mapie albo osobno (moduł **Liczniki łupów dungeonu**) |
 | Wyczyszczone pokoje | zielone, z czasem do respawnu |
 | Pokoje bez spawnera | niebieska ramka |
+| Exp na pasku dungeonu | exp jako liczba na pasku bossa, np. „90/225 xp” |
+| Mini bossy świecą, Elity świecą | czerwona (elity: pomarańczowa) poświata widoczna przez ściany |
+| Świecą tylko moby o nazwach | nazwy po przecinku, np. „Czyken, Żniwiarz” – świecą tylko te moby (liczy się własna nazwa moba) |
+
+Ile expa trzeba na poziom dungeonu, mod uczy się sam z obrażeń zadanych mobom (obrażenia to exp dungeonu). Dopóki poziomu nie zmierzy, liczy ze wzoru serwera, więc zmiana przeliczania expa na serwerze nie psuje liczb.
+
+## Exp w dungeonie
+
+Moduł **Exp w dungeonie** pokazuje w trakcie przejścia exp dungeonu, exp postaci (zielony pasek) i exp każdej pracy z jej paska bossa.
+
+## Podsumowanie dungeonu
+
+Po wyjściu z dungeonu karta z podsumowaniem: poziom, czas, pokoje, pokonane spawnery, łupy, rudy, zabite moby (w tym elity i mini bossy), exp dungeonu, postaci i prac – a przy nich w nawiasie zdobyte poziomy, np. „(poz. 2 → 3)”. Liczby równe zero się nie pokazują. Przejście przerwane wyjściem z serwera też trafia do historii, a lista przejść jest w ustawieniach modułu **Podsumowanie dungeonu**.
 
 ## Podświetlenie lootu w dungeonie
 
@@ -58,6 +71,17 @@ Co masz założone w kosmetycznej garderobie SkyUp i stan jej przełączników.
 ## Plan tygodnia SkyUp
 
 Najbliższe eventy, zawody wędkarskie i Boss Arena z czasem startu (za ile, o której albo oba). Powiadomienie przed startem, osobno dla każdego rodzaju, z wybranym dźwiękiem.
+
+## Boosty i umiejętności
+
+Moduł **Boosty i umiejętności** czyta paski boostów z beacona („Boost » Drop z mobów » 1 godz 59 min”) i umiejętności pracy („Nawałnica (pozostało 1 min 14 sek)”) i pokazuje baner z dźwiękiem:
+
+- **Boost się kończy** – chwilę przed końcem (**Ostrzeż przed końcem boosta**, 0–10 minut wcześniej).
+- **Koniec boosta**.
+- **Koniec umiejętności pracy** – Wiertło, Piła, Pług, Nawałnica, Rozbiórka, Sieci rybackie, Eskalacja.
+- **Umiejętność znów gotowa** – po odnowieniu (**Odnowienie umiejętności**, domyślnie 10 minut od końca). Odnowienie liczy się tylko wtedy, gdy grasz na SkyUp, jak na serwerze.
+
+Banery mają ikonki z menu beacona i z /prace (z wczytaną paczką SkyUp; bez niej – zwykłe przedmioty). Każdy baner ma własny **Dźwięk** i można go wyłączyć. Koniec boosta, gotowa umiejętność i boost na wyczerpaniu mogą też przyjść jako **powiadomienie systemowe**, gdy gra jest w tle (przełącznik przy każdym; pokazuje je launcher, gdy ma włączone powiadomienia systemowe). Pasek, który znika z dużym zapasem czasu (zmiana sektora, wyjście z serwera), nie liczy się jako koniec.
 
 ## Kalkulator XP SkyUp i odliczanie butelkowania
 

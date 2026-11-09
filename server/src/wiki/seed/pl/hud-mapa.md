@@ -60,7 +60,7 @@ Mapa rysuje się tylko wtedy, gdy coś się zmieniło (ruszyłeś się, obróci�
 - **Prawy przycisk** – nowy waypoint w tym miejscu (na wysokości terenu, gdy jest znana), od razu otwarty do nazwania.
 - **Klik na waypoint** – otwiera go: zmienisz nazwę i kolor, ukryjesz, udostępnisz znajomym albo usuniesz.
 - **M**, **Esc** albo ✕ zamyka mapę.
-- **Ctrl + klik** – teleport w to miejsce, na powierzchnię. Działa tylko tam, gdzie możesz używać komendy `/spreadplayers` (świat jednoosobowy z kodami albo serwer, na którym jesteś operatorem); wtedy podpowiedź na dole mapy mówi „Ctrl+klik: teleport”.
+- **Ctrl + klik** – teleport w to miejsce, na powierzchnię. Gdzie mapa zna wysokość terenu, mod używa `/tp` tuż nad nią; w miejscu, którego mapa jeszcze nie widziała, `/spreadplayers` szuka ziemi sam (nad pustką przy wyspie nie znajdzie). Działa tylko tam, gdzie możesz używać `/tp` albo `/spreadplayers` (świat jednoosobowy z kodami albo serwer, na którym masz te komendy); wtedy podpowiedź na dole mapy mówi „Ctrl+klik: teleport”.
 
 ### Siatka i biomy
 
