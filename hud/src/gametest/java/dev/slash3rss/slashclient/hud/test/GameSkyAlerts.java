@@ -52,15 +52,38 @@ public class GameSkyAlerts implements FabricClientGameTest {
 				context.waitTicks(15);
 				server.runCommand("bossbar remove skill");
 				context.waitTicks(15);
-				expect(context, "Skill ended: Nawałnica (Łowca) – cooling down");
+				expect(context, "Skill ended: Nawałnica – cooling down");
 				context.takeScreenshot("sky-alerts-skill-end");
 				// off SkyUp the cooldown stands still (SkyUp stops it while logged out)
 				context.runOnClient(mc -> SkyBoosts.testWorld = false);
 				context.waitTicks(80);
-				expect(context, "Skill ended: Nawałnica (Łowca) – cooling down");
+				expect(context, "Skill ended: Nawałnica – cooling down");
 				context.runOnClient(mc -> SkyBoosts.testWorld = true);
 				context.waitTicks(60);
-				expect(context, "Skill ready: Nawałnica (Łowca) – you can use it again");
+				expect(context, "Skill ready: Nawałnica – you can use it again");
+
+				// with SkyUp's own pack (SLASHCLIENT_SKYUP_PACK: a copy of it, not kept in the repository), the skill's
+				// picture from its /prace menu: a head with the job's model
+				String pack = System.getenv("SLASHCLIENT_SKYUP_PACK");
+				if (pack != null && java.nio.file.Files.exists(java.nio.file.Path.of(pack))) {
+					usePack(context, pack, true);
+					// a long cooldown: no "ready" banner over the next skill's
+					context.runOnClient(mc -> SkyBoosts.cooldownForTest = 600_000);
+					try {
+						String look = context.computeOnClient(mc -> SkyBoosts.skillLook(mc, "Nawałnica").getItem().toString());
+						if (!look.contains("player_head")) throw new AssertionError("With SkyUp's pack the skill's picture: " + look);
+						for (String skill : new String[] { "Wiertło", "Sieci rybackie", "Eskalacja" }) {
+							server.runCommand("bossbar add skill \"⚔ " + skill + " (pozostało 1 sek)\"");
+							server.runCommand("bossbar set skill players @a");
+							context.waitTicks(15);
+							server.runCommand("bossbar remove skill");
+							context.waitTicks(15);
+							context.takeScreenshot("sky-alerts-pack-" + skill.replace(' ', '-').toLowerCase(java.util.Locale.ROOT));
+						}
+					} finally {
+						usePack(context, pack, false);
+					}
+				}
 			} finally {
 				context.runOnClient(mc -> {
 					SkyBoosts.testWorld = false;
@@ -71,6 +94,39 @@ public class GameSkyAlerts implements FabricClientGameTest {
 		}
 		//#endif
 	}
+
+	//#if MC >= 26.3
+	/** SkyUp's pack copied into the game's packs and switched on (or off again), the resources loaded again. */
+	private static void usePack(ClientGameTestContext context, String pack, boolean on) {
+		java.util.concurrent.CompletableFuture<?>[] reload = new java.util.concurrent.CompletableFuture<?>[1];
+		context.runOnClient(mc -> {
+			var target = mc.getResourcePackDirectory().resolve("SkyUp-test.zip");
+			try {
+				if (on) java.nio.file.Files.copy(java.nio.file.Path.of(pack), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			} catch (java.io.IOException e) {
+				throw new RuntimeException(e);
+			}
+			var repo = mc.getResourcePackRepository();
+			repo.reload();
+			java.util.List<String> selected = new java.util.ArrayList<>(repo.getSelectedIds());
+			selected.remove("file/SkyUp-test.zip");
+			if (on) selected.add("file/SkyUp-test.zip");
+			repo.setSelected(selected);
+			reload[0] = mc.reloadResourcePacks();
+		});
+		context.waitFor(mc -> reload[0].isDone(), 2400);
+		context.waitTicks(2);
+		context.waitFor(mc -> mc.gui.overlay() == null, 2400);
+		context.waitTicks(5);
+		if (!on) context.runOnClient(mc -> {
+			try {
+				java.nio.file.Files.deleteIfExists(mc.getResourcePackDirectory().resolve("SkyUp-test.zip"));
+			} catch (java.io.IOException e) {
+				// left for the next run, switched off
+			}
+		});
+	}
+	//#endif
 
 	private static void expect(ClientGameTestContext context, String banner) {
 		String last = context.computeOnClient(mc -> SkyBoosts.lastForTest());

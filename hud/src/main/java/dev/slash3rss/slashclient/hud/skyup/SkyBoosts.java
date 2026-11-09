@@ -138,7 +138,7 @@ public final class SkyBoosts {
 			if (t.seenAt == now) continue;
 			it.remove();
 			if (t.endsAt - now > ENDED_WITHIN + t.slack) continue;
-			if (c.skySkillEnd) alert(mc, c, "skillEnd", withJob(e.getKey()), "", skillLook(mc, e.getKey()));
+			if (c.skySkillEnd) alert(mc, c, "skillEnd", e.getKey(), "", skillLook(mc, e.getKey()));
 			long cooldown = cooldownForTest >= 0 ? cooldownForTest : c.skySkillCooldown * 60_000L;
 			if (c.skySkillReady && cooldown > 0) cooldowns.put(e.getKey(), cooldown + passed);
 		}
@@ -147,7 +147,7 @@ public final class SkyBoosts {
 			e.setValue(e.getValue() - passed);
 			if (e.getValue() > 0) continue;
 			it.remove();
-			alert(mc, c, "skillReady", withJob(e.getKey()), "", skillLook(mc, e.getKey()));
+			alert(mc, c, "skillReady", e.getKey(), "", skillLook(mc, e.getKey()));
 		}
 	}
 
@@ -159,12 +159,6 @@ public final class SkyBoosts {
 	/** The job a skill belongs to, or null for one not known. */
 	static String jobOf(String skill) {
 		return SKILL_JOBS.get(skill.strip().toLowerCase(Locale.ROOT));
-	}
-
-	/** "Nawałnica (Łowca)": the skill with its job, when known. */
-	static String withJob(String skill) {
-		String job = jobOf(skill);
-		return job == null ? skill : skill + " (" + job + ")";
 	}
 
 	/**
@@ -212,7 +206,7 @@ public final class SkyBoosts {
 	private static final List<String> JOB_ORDER = List.of("Górnik", "Drwal", "Farmer", "Łowca", "Budowniczy", "Rybak", "Czarodziej");
 
 	/** The skill as SkyUp's menu draws it (with its pack loaded), else the item it is used with. */
-	static ItemStack skillLook(Minecraft mc, String skill) {
+	public static ItemStack skillLook(Minecraft mc, String skill) {
 		String job = jobOf(skill);
 		int at = job == null ? -1 : JOB_ORDER.indexOf(job);
 		//#if MC >= 26.3
