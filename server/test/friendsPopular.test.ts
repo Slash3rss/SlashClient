@@ -66,6 +66,9 @@ describe('popular among friends', () => {
     assert.deepEqual(report.content.map((c) => `${c.source}:${c.id}`), ['modrinth:AANobbMI', 'curseforge:238222', 'modrinth:YL57xq9U']);
     assert.deepEqual(report.servers, [{ address: 'mc.hypixel.net', at: now - 1000 }, { address: 'skyup.pl', at: now }]);
     assert.deepEqual(cleanReport({ content: 'x', servers: null }, s), { content: [], servers: [] });
+    // a friend's own test server or home network: nobody else can join it
+    const local = cleanReport({ servers: ['localhost', 'LocalHost:25566', '127.0.0.1', '192.168.1.5:25565', '10.0.0.2', 'skyup.pl'].map((address) => ({ address, at: now })) }, { ...s, maxServers: 10 }, now);
+    assert.deepEqual(local.servers.map((x) => x.address), ['skyup.pl']);
   });
 
   it('counts only friends who share, with their nicks and no one\'s own list', async () => {

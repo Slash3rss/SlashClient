@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { Db } from './db.ts';
 import { cleanSharing, PositionSharingStore, type PositionSharing, type ShareMode } from './positions.ts';
 import { serverKeyOf } from './presence.ts';
+import { serverKey } from './achievements.ts';
 import type { SettingDef } from './settings.ts';
 
 /**
@@ -79,12 +80,20 @@ export function cleanReport(raw: Record<string, unknown>, s: Pick<PopularSetting
   for (const r of Array.isArray(raw.servers) ? raw.servers : []) {
     if (servers.size >= s.maxServers) break;
     const { address, at } = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>;
-    if (typeof address !== 'string' || !SERVER_ADDRESS.test(address.trim())) continue;
+    if (typeof address !== 'string' || !SERVER_ADDRESS.test(address.trim()) || !publicServer(address)) continue;
     if (typeof at !== 'number' || !Number.isFinite(at) || at < since) continue;
     const key = serverKeyOf(address);
     servers.set(key, Math.max(servers.get(key) ?? 0, Math.min(at, now)));
   }
   return { content, servers: [...servers].map(([address, at]): ReportedServer => ({ address, at })) };
+}
+
+/**
+ * A server friends can join: not this computer, a home network or a name with no dot (a friend's own
+ * test server on "localhost" says nothing to anyone else).
+ */
+export function publicServer(address: string): boolean {
+  return serverKey(address) !== undefined;
 }
 
 /** Each player's last report: one row per project (and loader and version) or server. */
@@ -187,7 +196,8 @@ export function popularRoutes(deps: Deps) {
         content.push({ source, id, type, count: it.who.size, friends: people(it.who) });
       }
     }
-    const servers: PopularServer[] = ranked.filter((i) => i.kind === 'server').slice(0, s.maxResults)
+    // reports kept from before local addresses were left out: not shown either
+    const servers: PopularServer[] = ranked.filter((i) => i.kind === 'server' && publicServer(i.key)).slice(0, s.maxResults)
       .map((it) => ({ address: it.key, name: serverName(it.key), count: it.who.size, friends: people(it.who) }));
     return { enabled: true, content, servers };
   }
