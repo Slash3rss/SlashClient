@@ -499,10 +499,15 @@ public final class DungeonMap implements HudModule {
 	}
 
 	/**
-	 * The XP a dungeon level takes to the next, as SkyUp counts it: 130·L − 9·L² + L³/5 (whole numbers, the
-	 * division too). The boss bar only says how full it is, so the XP is that part of it.
+	 * The XP a dungeon level takes to the next: as learned from the damage dealt (DungeonXp), else from SkyUp's
+	 * formula. The boss bar only says how full it is, so the XP is that part of it.
 	 */
 	public static int xpNeeded(int level) {
+		return DungeonXp.need(level);
+	}
+
+	/** SkyUp's formula for a level's XP: 130·L − 9·L² + L³/5 (whole numbers, the division too). */
+	static int formula(int level) {
 		long l = Math.max(1, level);
 		return (int) Math.max(1, 130 * l - 9 * l * l + l * l * l / 5);
 	}
@@ -520,6 +525,22 @@ public final class DungeonMap implements HudModule {
 		}
 		int have = Math.round(Math.max(0f, Math.min(1f, progress)) * need);
 		return name.copy().append(Component.literal(" · " + have + "/" + need + " xp").withStyle(net.minecraft.ChatFormatting.GRAY));
+	}
+
+	/** The dungeon's boss bar now, every tick (DungeonXp): its level and fill, or null when it is not there. */
+	static float[] barNow(Minecraft mc) {
+		var overlay = Compat.bossOverlay(mc);
+		if (overlay == null) return null;
+		for (var event : ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values()) {
+			Matcher m = LEVEL.matcher(event.getName().getString());
+			if (!m.find()) continue;
+			try {
+				return new float[] { Integer.parseInt(m.group(1)), event.getProgress() };
+			} catch (NumberFormatException e) {
+				return null;
+			}
+		}
+		return null;
 	}
 
 	/** The boss bars' texts, colours left out. */

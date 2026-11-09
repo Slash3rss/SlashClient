@@ -1394,6 +1394,7 @@
 	"slashclient-hud.dungeon.sum.xp": "Exp dungeonu: %s",
 	"slashclient-hud.dungeon.sum.playerXp": "Exp postaci: %s",
 	"slashclient-hud.dungeon.sum.job": "%s: %s xp",
+	"slashclient-hud.dungeon.sum.levelUp": "(poz. %s → %s)",
 	"slashclient-hud.dungeonXp.title": "Exp w dungeonie",
 	"slashclient-hud.dungeonXp.dungeon": "Dungeon: +%s",
 	"slashclient-hud.dungeonXp.player": "Postać: +%s",

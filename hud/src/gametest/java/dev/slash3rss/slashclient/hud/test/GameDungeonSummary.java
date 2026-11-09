@@ -90,7 +90,8 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
 			// 7 of the player's own; the miner's 2 846 to 3 590, then 9 to its level's end and 3 into the next
 			String xp = context.computeOnClient(mc -> DungeonRun.xpForTest());
-			if (!xp.equals("player 7, Górnik 2858")) throw new AssertionError("The trip's XP: " + xp);
+			// levels gone up: the dungeon 2 → 3, the player 0 → 1 (7 points, then 3 spent: still counted), the miner 2 → 3
+			if (!xp.equals("player 7, Górnik 2858 | levels [2, 3] [0, 1] Górnik[2, 3]")) throw new AssertionError("The trip's XP: " + xp);
 			// the list keeps the server's model on its items
 			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());
 			if (!kept.equals("diamond paper*")) throw new AssertionError("The list's items: " + kept);
@@ -103,6 +104,34 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("dungeon-history-whole");
 			context.setScreen(() -> null);
+
+			// the XP a level takes, learned from the damage dealt: a server whose level 2 takes 300, not the formula's 225
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonXp.clearForTest());
+			server.runCommand("bossbar add dungeon \"Dungeon poz. 2\"");
+			server.runCommand("bossbar set dungeon players @a");
+			server.runCommand("bossbar set dungeon max 300");
+			server.runCommand("bossbar set dungeon value 120");
+			server.runCommand("execute at @p run summon husk ^ ^ ^3 {NoAI:1b,PersistenceRequired:1b,Tags:[\"xp\"],attributes:[{id:\"minecraft:max_health\",base:100}],Health:100f}");
+			context.waitTicks(40);
+			for (int hit = 1; hit <= 3; hit++) {
+				context.runOnClient(mc -> {
+					var husk = mc.level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, mc.player.getBoundingBox().inflate(8)).get(0);
+					dev.slash3rss.slashclient.hud.skyup.DungeonXp.attacked(mc.player, husk);
+				});
+				server.runCommand("damage @e[type=husk,tag=xp,limit=1] 10");
+				context.waitTicks(3);
+				server.runCommand("bossbar set dungeon value " + (120 + hit * 10));
+				context.waitTicks(30);
+			}
+			String learned = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonXp.learnedForTest(2));
+			if (!learned.startsWith("30/0.1/3")) throw new AssertionError("Learned of level 2: " + learned);
+			String learnedBar = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonMap.withXp(net.minecraft.network.chat.Component.literal("Dungeon poz. 2"), 0.5f).getString());
+			if (!learnedBar.equals("Dungeon poz. 2 · 150/300 xp")) throw new AssertionError("The bar with the learned XP: " + learnedBar);
+			// a level not measured: the formula, scaled as level 2 was (300/225): level 3 314 → 419
+			int three = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonMap.xpNeeded(3));
+			if (three != 419) throw new AssertionError("Level 3 scaled: " + three);
+			server.runCommand("bossbar remove dungeon");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonXp.clearForTest());
 		}
 	}
 }

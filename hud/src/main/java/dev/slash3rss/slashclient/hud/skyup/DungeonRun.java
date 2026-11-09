@@ -51,11 +51,12 @@ public final class DungeonRun {
 	/**
 	 * One trip, as shown and kept (`spawners`: each spawner beaten, its room emptied of mobs, every time again;
 	 * `elites` and `bosses`: of the kills, the elites and the mini bosses; `xp`: the dungeon XP got, from its boss
-	 * bar; `playerXp`: the player's own (the green bar); `jobXp`: each job's, from its boss bar; 0 or null in trips
-	 * kept before they were counted).
+	 * bar; `playerXp`: the player's own (the green bar); `jobXp`: each job's, from its boss bar; `levels`, `playerLevels`
+	 * and `jobLevels`: the level before and after, [from, to], when one went up; 0 or null in trips kept before they
+	 * were counted).
 	 */
 	public record Summary(long at, String level, long ms, int rooms, int cleared, int spawners, int loot, int ores, int kills, List<Gain> gains, int elites, int bosses, int xp,
-		int playerXp, Map<String, Integer> jobXp) {}
+		int playerXp, Map<String, Integer> jobXp, int[] levels, int[] playerLevels, Map<String, int[]> jobLevels) {}
 
 	/** Shorter than this (a hint that came, a peek in): no card, nothing kept. */
 	static long minMs = 20_000;
@@ -68,8 +69,14 @@ public final class DungeonRun {
 	private static long startedAt;
 	private static String level = "";
 	private static int rooms, spawners, loot, ores, kills, elites, bosses;
-	/** The dungeon XP from level 1 when the trip began and now (-1: not read yet). */
-	private static double xpFirst = -1, xpNow = -1;
+	/** The dungeon XP got in the trip, and the bar's level and fill when last read (-1: not read yet). */
+	private static double xpGot;
+	private static int xpLevel = -1;
+	private static float xpFill;
+	/** The dungeon's level and the player's own when the trip began and now (-1: not read yet). */
+	private static int levelFirst = -1, levelNow = -1, playerLevelFirst = -1, playerLevelNow = -1;
+	/** Each job's level when first seen in the trip. */
+	private static final Map<String, Integer> jobLevelFirst = new HashMap<>();
 	/** The player's own XP when last read (-1: not yet) and what came in; each job's XP got. */
 	private static int playerXpLast = -1, playerXp;
 	private static final Map<String, Double> jobXp = new LinkedHashMap<>();
@@ -100,7 +107,10 @@ public final class DungeonRun {
 		startedAt = System.currentTimeMillis();
 		level = "";
 		rooms = spawners = loot = ores = kills = elites = bosses = 0;
-		xpFirst = xpNow = -1;
+		xpGot = 0;
+		xpLevel = -1;
+		levelFirst = levelNow = playerLevelFirst = playerLevelNow = -1;
+		jobLevelFirst.clear();
 		playerXpLast = -1;
 		playerXp = 0;
 		jobXp.clear();
@@ -141,7 +151,7 @@ public final class DungeonRun {
 		}
 		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
 		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses, dungeonXp(),
-			playerXp, jobsGot());
+			playerXp, jobsGot(), up(levelFirst, levelNow), up(playerLevelFirst, playerLevelNow), jobLevelsUp());
 		List<Summary> list = new ArrayList<>(history());
 		list.add(0, s);
 		while (list.size() > KEPT) list.remove(list.size() - 1);
@@ -154,21 +164,45 @@ public final class DungeonRun {
 	}
 
 	/**
-	 * The dungeon's boss bar: its level and how full it is. The XP counts from level 1 (every level before taken
-	 * whole, DungeonMap.xpNeeded), so a level gone up on the way counts what it took.
+	 * The dungeon's boss bar: its level and how full it is. What it grew by since last read counts, at each
+	 * level's XP as known then (DungeonMap.xpNeeded, learned as the trip goes on); a level gone up on the way
+	 * counts the rest of the one before and any whole levels between.
 	 */
 	static void xp(int level, float progress) {
 		if (!running || level < 1) return;
-		double all = 0;
-		for (int l = 1; l < level; l++) all += DungeonMap.xpNeeded(l);
-		all += Math.max(0f, Math.min(1f, progress)) * DungeonMap.xpNeeded(level);
-		if (xpFirst < 0) xpFirst = all;
-		xpNow = all;
+		float fill = Math.max(0f, Math.min(1f, progress));
+		// within a level a bar going back counts back too (its name and fill may come apart: a new level's name first)
+		if (xpLevel >= 1 && level == xpLevel) xpGot += (fill - xpFill) * DungeonMap.xpNeeded(level);
+		else if (xpLevel >= 1 && level > xpLevel) {
+			xpGot += (1f - xpFill) * DungeonMap.xpNeeded(xpLevel);
+			for (int l = xpLevel + 1; l < level; l++) xpGot += DungeonMap.xpNeeded(l);
+			xpGot += fill * DungeonMap.xpNeeded(level);
+		}
+		xpLevel = level;
+		xpFill = fill;
+		if (levelFirst < 0) levelFirst = level;
+		levelNow = Math.max(levelNow, level);
+	}
+
+	/** [from, to] when a level went up, else null (nothing shown, nothing kept). */
+	private static int[] up(int from, int to) {
+		return from >= 0 && to > from ? new int[] { from, to } : null;
+	}
+
+	/** Each job whose level went up in the trip: [from, to]. */
+	private static Map<String, int[]> jobLevelsUp() {
+		Map<String, int[]> out = new LinkedHashMap<>();
+		for (var e : jobLevelFirst.entrySet()) {
+			double[] last = jobLast.get(e.getKey());
+			int[] up = last == null ? null : up(e.getValue(), (int) last[0]);
+			if (up != null) out.put(e.getKey(), up);
+		}
+		return out.isEmpty() ? null : out;
 	}
 
 	/** The dungeon XP got so far in the trip. */
 	static int dungeonXp() {
-		return xpFirst < 0 ? 0 : (int) Math.max(0, Math.round(xpNow - xpFirst));
+		return (int) Math.max(0, Math.round(xpGot));
 	}
 
 	/** Each job's XP got so far in the trip, whole, those with some. */
@@ -195,6 +229,9 @@ public final class DungeonRun {
 		int total = mc.player.totalExperience;
 		if (playerXpLast >= 0 && total > playerXpLast) playerXp += total - playerXpLast;
 		playerXpLast = total;
+		// the highest level reached: levels spent on enchanting do not take one away
+		if (playerLevelFirst < 0) playerLevelFirst = mc.player.experienceLevel;
+		playerLevelNow = Math.max(playerLevelNow, mc.player.experienceLevel);
 		for (String bar : bossBars) {
 			java.util.regex.Matcher m = JOB_BAR.matcher(bar);
 			if (!m.find()) continue;
@@ -207,7 +244,9 @@ public final class DungeonRun {
 				continue;
 			}
 			String job = m.group(1).strip();
-			double[] last = jobLast.put(job, new double[] { level, have, need });
+			jobLevelFirst.putIfAbsent(job, (int) level);
+			double[] last = jobLast.get(job);
+			if (last == null || level >= last[0]) jobLast.put(job, new double[] { level, have, need });
 			if (last == null) continue;
 			double got = level == last[0] ? have - last[1] : level > last[0] ? Math.max(0, last[2] - last[1]) + have : 0;
 			if (got > 0) jobXp.merge(job, got, Double::sum);
@@ -398,12 +437,20 @@ public final class DungeonRun {
 		line(out, Items.IRON_SWORD, "kills", s.kills());
 		line(out, Items.GOLDEN_SWORD, "elites", s.elites());
 		line(out, Items.WITHER_SKELETON_SKULL, "bosses", s.bosses());
-		line(out, Items.NETHER_STAR, "xp", s.xp());
-		line(out, Items.EXPERIENCE_BOTTLE, "playerXp", s.playerXp());
+		line(out, Items.NETHER_STAR, "xp", s.xp(), s.levels());
+		line(out, Items.EXPERIENCE_BOTTLE, "playerXp", s.playerXp(), s.playerLevels());
 		if (s.jobXp() != null) for (var e : s.jobXp().entrySet()) {
-			if (e.getValue() != null && e.getValue() > 0) out.add(Map.entry(jobIcon(e.getKey()), Ui.tr("slashclient-hud.dungeon.sum.job", e.getKey(), e.getValue())));
+			if (e.getValue() == null || e.getValue() <= 0) continue;
+			int[] up = s.jobLevels() == null ? null : s.jobLevels().get(e.getKey());
+			out.add(Map.entry(jobIcon(e.getKey()), withLevels(Ui.tr("slashclient-hud.dungeon.sum.job", e.getKey(), e.getValue()), up)));
 		}
 		return out;
+	}
+
+	/** A line with the levels gone up after it, "(poz. 2 → 3)", when one did. */
+	private static Component withLevels(Component line, int[] up) {
+		if (up == null || up.length < 2 || up[1] <= up[0]) return line;
+		return line.copy().append(" ").append(Ui.tr("slashclient-hud.dungeon.sum.levelUp", up[0], up[1]));
 	}
 
 	/** A job's picture, by its name on SkyUp. */
@@ -421,7 +468,11 @@ public final class DungeonRun {
 	}
 
 	private static void line(List<Map.Entry<Item, Component>> out, Item item, String key, int n) {
-		if (n != 0) out.add(Map.entry(item, Ui.tr("slashclient-hud.dungeon.sum." + key, n)));
+		line(out, item, key, n, null);
+	}
+
+	private static void line(List<Map.Entry<Item, Component>> out, Item item, String key, int n, int[] up) {
+		if (n != 0) out.add(Map.entry(item, withLevels(Ui.tr("slashclient-hud.dungeon.sum." + key, n), up)));
 	}
 
 	private static final Map<String, ItemStack> decoded = new HashMap<>();
@@ -514,7 +565,9 @@ public final class DungeonRun {
 		int light = 0xFFFFA94D, dark = 0xFFB45309;
 		List<Map.Entry<Item, Component>> lines = lines(shown);
 		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
-		int w = Math.min(300, sw - 16), rows = (lines.size() + 1) / 2;
+		int w = Math.min(300, sw - 16), colW = (w - 16) / 2;
+		int[][] cells = cells(lines, colW);
+		int rows = rows(cells);
 		int h = 34 + rows * 18 + 6 + 14 + 22;
 		int at = Math.max(30, sh / 9);
 		int x = (sw - w) / 2, y = Math.round(-h - 4 + (at + h + 4) * (in - out));
@@ -525,17 +578,45 @@ public final class DungeonRun {
 		g.item(new ItemStack(Items.SPAWNER), x + 10, y + 10);
 		Ui.draw(g, Ui.fit(title(shown, true), w - 45), x + 37, y + 8, light);
 		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.dungeon.sum.left"), w - 45), x + 37, y + 20, Ui.TEXT_2);
-		int ty = y + 36, colW = (w - 16) / 2;
+		int ty = y + 36;
 		for (int i = 0; i < lines.size(); i++) {
-			int cx = x + 8 + (i % 2) * colW, cy = ty + (i / 2) * 18;
+			int cx = x + 8 + cells[i][1] * colW, cy = ty + cells[i][0] * 18;
 			g.item(new ItemStack(lines.get(i).getKey()), cx, cy);
-			Ui.draw(g, Ui.fit(lines.get(i).getValue(), colW - 22), cx + 19, cy + 4, Ui.TEXT);
+			Ui.draw(g, Ui.fit(lines.get(i).getValue(), colW * (cells[i][2] + 1) - 22), cx + 19, cy + 4, Ui.TEXT);
 		}
 		int gy = ty + rows * 18 + 4;
 		Ui.draw(g, Ui.trBold(shown.gains().isEmpty() ? "slashclient-hud.dungeon.sum.nothing" : "slashclient-hud.dungeon.sum.gained"), x + 8, gy, Ui.TEXT_2);
 		items(g, shown.gains(), x + 8, gy + 12, w - 16, true);
 		float left = Math.max(0f, Math.min(1f, 1f - (float) (age - IN) / SHOW));
 		g.fill(x + 8, y + h - 3, x + 8 + Math.round((w - 16) * left), y + h - 2, light);
+	}
+
+	/**
+	 * Where each line goes in two columns, {row, column, wide}: a line too long for one column takes a whole
+	 * row of its own (with a level gone up after it, say), the rest fill both.
+	 */
+	public static int[][] cells(List<Map.Entry<Item, Component>> lines, int colW) {
+		int[][] out = new int[lines.size()][];
+		int row = 0, col = 0;
+		for (int i = 0; i < lines.size(); i++) {
+			if (Ui.width(lines.get(i).getValue()) + 22 > colW) {
+				if (col == 1) row++;
+				out[i] = new int[] { row++, 0, 1 };
+				col = 0;
+			} else {
+				out[i] = new int[] { row, col, 0 };
+				if (col == 1) row++;
+				col = 1 - col;
+			}
+		}
+		return out;
+	}
+
+	/** How many rows the lines take. */
+	public static int rows(int[][] cells) {
+		int rows = 0;
+		for (int[] c : cells) rows = Math.max(rows, c[0] + 1);
+		return rows;
 	}
 
 	private static float ease(float t) {
@@ -621,6 +702,9 @@ public final class DungeonRun {
 		Summary s = history().get(0);
 		StringBuilder out = new StringBuilder("player " + s.playerXp());
 		if (s.jobXp() != null) for (var e : s.jobXp().entrySet()) out.append(", ").append(e.getKey()).append(' ').append(e.getValue());
+		// the levels gone up: the dungeon's, the player's, each job's
+		out.append(" | levels ").append(java.util.Arrays.toString(s.levels())).append(' ').append(java.util.Arrays.toString(s.playerLevels()));
+		if (s.jobLevels() != null) for (var e : s.jobLevels().entrySet()) out.append(' ').append(e.getKey()).append(java.util.Arrays.toString(e.getValue()));
 		return out.toString();
 	}
 

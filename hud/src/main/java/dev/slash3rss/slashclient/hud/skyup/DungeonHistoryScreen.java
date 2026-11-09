@@ -128,12 +128,13 @@ public class DungeonHistoryScreen extends Screen {
 		y += 14;
 		var lines = DungeonRun.lines(s);
 		int colW = (pw - 24) / 2;
+		int[][] cells = DungeonRun.cells(lines, colW);
 		for (int i = 0; i < lines.size(); i++) {
-			int cx = px + 12 + (i % 2) * colW, cy = y + (i / 2) * 18;
+			int cx = px + 12 + cells[i][1] * colW, cy = y + cells[i][0] * 18;
 			g.item(new ItemStack(lines.get(i).getKey()), cx, cy);
-			Ui.draw(g, Ui.fit(lines.get(i).getValue(), colW - 22), cx + 19, cy + 4, Ui.TEXT);
+			Ui.draw(g, Ui.fit(lines.get(i).getValue(), colW * (cells[i][2] + 1) - 22), cx + 19, cy + 4, Ui.TEXT);
 		}
-		y += (lines.size() + 1) / 2 * 18 + 6;
+		y += DungeonRun.rows(cells) * 18 + 6;
 		Ui.draw(g, Ui.trBold(s.gains().isEmpty() ? "slashclient-hud.dungeon.sum.nothing" : "slashclient-hud.dungeon.sum.gained"), px + 12, y, Ui.TEXT_2);
 		y += 13;
 		for (int i = 0; i < s.gains().size(); i++) {

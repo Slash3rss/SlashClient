@@ -368,6 +368,7 @@ public class SlashHud implements ClientModInitializer {
 			dev.slash3rss.slashclient.hud.social.Social.windowTick(mc);
 			PartnerIcons.tick(mc);
 			DungeonMap.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.DungeonXp.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.DungeonRun.tick(mc);
 			LootHighlight.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.BossGlow.tick(mc);
@@ -456,6 +457,8 @@ public class SlashHud implements ClientModInitializer {
 				//#if MC >= 26.3
 				SkyCounters.attacked(player, entity);
 				//#endif
+				// the damage dealt in a dungeon is its XP: learned from it how much a level takes
+				dev.slash3rss.slashclient.hud.skyup.DungeonXp.attacked(player, entity);
 				ExtraModules.Stats.attack(player, entity);
 				SessionStats.attacked(entity);
 				KillEffects.attacked(entity);
