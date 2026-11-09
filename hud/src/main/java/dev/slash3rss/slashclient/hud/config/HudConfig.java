@@ -288,6 +288,13 @@ public final class HudConfig {
 	 * only on joining, as many take it later (its jobs' bonus runs from when it is taken).
 	 */
 	public int skyBonusEvery = 60;
+	/**
+	 * SkyUp's boosts and job skills (SkyBoosts): a warning this many minutes before a boost runs out (0: none),
+	 * a banner when one ends, when a job skill ends and when it is ready again after its cooldown (minutes).
+	 */
+	public boolean skyAlerts = true, skyBoostEnd = true, skySkillEnd = true, skySkillReady = true;
+	public int skyBoostWarn = 1, skySkillCooldown = 10, skyAlertsVolume = 70;
+	public String skyAlertsSound = "default";
 	/** SkyUp's plan of the week: how many coming events the module lists. */
 	public int skyPlanRows = 3;
 	/** How many minutes before an event of the plan the banner says it starts (0 = no banner). */
@@ -985,6 +992,14 @@ public final class HudConfig {
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
 		skyDailySound = other.skyDailySound == null ? "default" : other.skyDailySound;
 		skyBonusEvery = Math.max(0, Math.min(240, other.skyBonusEvery));
+		skyAlerts = other.skyAlerts;
+		skyBoostEnd = other.skyBoostEnd;
+		skySkillEnd = other.skySkillEnd;
+		skySkillReady = other.skySkillReady;
+		skyBoostWarn = Math.max(0, Math.min(30, other.skyBoostWarn));
+		skySkillCooldown = Math.max(0, Math.min(60, other.skySkillCooldown));
+		skyAlertsVolume = Math.max(0, Math.min(100, other.skyAlertsVolume));
+		skyAlertsSound = other.skyAlertsSound == null ? "default" : other.skyAlertsSound;
 		skyPlanRows = Math.max(1, Math.min(8, other.skyPlanRows));
 		skyPlanRemind = Math.max(0, Math.min(60, other.skyPlanRemind));
 		skyPlanEvents = other.skyPlanEvents;

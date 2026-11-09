@@ -510,6 +510,21 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.config.KeyPresetsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		//#if MC >= 26.3
+		// SkyUp's boosts running out and job skills over and ready again: a banner and a sound
+		String[] alertSounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS)).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+		out.add(new Entry("skyAlerts", "slashclient-hud.skyAlerts", "skyup", "m-skyalerts", () -> cfg.skyAlerts, v -> cfg.skyAlerts = v, List.of(
+			new Slider("slashclient-hud.skyAlerts.boostWarn", 0f, 10f, 1f, "%.0f min", () -> (float) cfg.skyBoostWarn, v -> cfg.skyBoostWarn = Math.round(v)),
+			new Toggle("slashclient-hud.skyAlerts.boostEndSetting", () -> cfg.skyBoostEnd, v -> cfg.skyBoostEnd = v),
+			new Toggle("slashclient-hud.skyAlerts.skillEndSetting", () -> cfg.skySkillEnd, v -> cfg.skySkillEnd = v),
+			new Toggle("slashclient-hud.skyAlerts.skillReadySetting", () -> cfg.skySkillReady, v -> cfg.skySkillReady = v),
+			new Slider("slashclient-hud.skyAlerts.cooldown", 1f, 30f, 1f, "%.0f min", () -> (float) cfg.skySkillCooldown, v -> cfg.skySkillCooldown = Math.round(v)),
+			new Choice("slashclient-hud.skyAlerts.sound", alertSounds, "slashclient-hud.chat.sound.", () -> cfg.skyAlertsSound, v -> {
+				cfg.skyAlertsSound = v;
+				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyAlertsVolume);
+			}),
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyAlertsVolume, v -> cfg.skyAlertsVolume = Math.round(v))), null));
+		//#endif
 		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
 		int[] lootColors = dev.slash3rss.slashclient.hud.skyup.LootHighlight.COLORS;
 		out.add(new Entry("lootHighlight", "slashclient-hud.lootHighlight", "skyup", "m-loothighlight", () -> cfg.lootHighlight, v -> cfg.lootHighlight = v, List.of(

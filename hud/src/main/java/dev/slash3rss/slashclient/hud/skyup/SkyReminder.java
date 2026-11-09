@@ -20,7 +20,9 @@ public final class SkyReminder {
 	public enum Look {
 		BONUS(0xFFFFC94D, 0xFFB7791F), DAILY(0xFF4ADE80, 0xFF15803D),
 		// the plan of the week's: events purple, fishing contests blue, the boss arena red
-		EVENTS(0xFFC084FC, 0xFF7E22CE), FISHING(0xFF60A5FA, 0xFF1D4ED8), BOSS(0xFFF87171, 0xFFB91C1C);
+		EVENTS(0xFFC084FC, 0xFF7E22CE), FISHING(0xFF60A5FA, 0xFF1D4ED8), BOSS(0xFFF87171, 0xFFB91C1C),
+		// boosts in their bars' blue, job skills orange
+		BOOST(0xFF38BDF8, 0xFF0369A1), SKILL(0xFFFB923C, 0xFFC2410C);
 
 		final int light, dark;
 

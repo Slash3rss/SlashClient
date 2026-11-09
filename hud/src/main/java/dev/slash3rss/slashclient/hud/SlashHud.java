@@ -389,6 +389,7 @@ public class SlashHud implements ClientModInitializer {
 			SkyCase.tick(mc);
 			SkyWardrobe.tick(mc);
 			SkyXp.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.SkyBoosts.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.SkyPlan.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.SkyWiki.tick(mc);
 			//#endif
