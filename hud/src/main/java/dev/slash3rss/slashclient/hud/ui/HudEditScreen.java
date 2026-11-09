@@ -436,6 +436,15 @@ public class HudEditScreen extends Screen {
 		String icon = "none".equals(tab.sound()) ? "bell-slash" : "bell";
 		int bw = Math.max(90, Ui.buttonWidth(now, icon, 18, 6)), bx = Math.max(box.getX() - 5, x + 6 + Ui.width(Ui.tr("slashclient-hud.chat.sound")) + 10);
 		Ui.button(g, "chatSound:" + tab.name, bx, sy, bw, 18, icon, now, false, mx, my);
+		// a file of the player's own for this tab: picked on the computer, copied in and set
+		Component own = Ui.tr("slashclient-hud.sounds.pickFile");
+		int fw = Ui.buttonWidth(own, "plus", 18, 6), fx = bx + bw + 4;
+		Ui.button(g, "chatSoundFile:" + tab.name, fx, sy, fw, 18, "plus", own, false, mx, my);
+		hits.add(new Hit(fx, sy, fw, 18, () -> dev.slash3rss.slashclient.hud.SoundFiles.pick(v -> {
+			tab.sound = v;
+			ChatTabs.playSound(minecraft, v);
+			tabsChanged();
+		})));
 		// the tab's place among the others (in the chat's row of tabs too)
 		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
 		int at = tabs.indexOf(tab), ux = x + w - 46;

@@ -69,6 +69,119 @@ public final class SoundFiles {
 		return dir;
 	}
 
+	/** For the test: the file the next pick takes instead of asking (null: the system's window asks). */
+	public static volatile Path pickForTest;
+
+	/**
+	 * A sound file picked on the computer (the system's own "open" window), copied into the folder and handed to
+	 * `chosen` as a settings value on the game's thread. A file too big, of another kind or one that cannot be copied
+	 * says so in a toast instead.
+	 */
+	public static void pick(java.util.function.Consumer<String> chosen) {
+		java.util.function.Consumer<Path> take = from -> {
+			String value;
+			try {
+				value = copyIn(from);
+			} catch (IOException e) {
+				dev.slash3rss.slashclient.hud.social.Social.toast(net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickFailed").getString(), e.getMessage(), "bell-slash");
+				return;
+			}
+			Minecraft.getInstance().execute(() -> chosen.accept(value));
+		};
+		if (pickForTest != null) {
+			Path from = pickForTest;
+			Thread.ofVirtual().start(() -> take.accept(from));
+			return;
+		}
+		openWindow(from -> Thread.ofVirtual().start(() -> take.accept(from)));
+	}
+
+	//#if MC >= 26.3
+	/** The window's callback and filter, kept alive until it answers (SDL calls back later). */
+	private static org.lwjgl.sdl.SDL_DialogFileCallback dialogCallback;
+	private static org.lwjgl.sdl.SDL_DialogFileFilter.Buffer dialogFilters;
+	private static ByteBuffer dialogName, dialogPattern;
+
+	/** The game's window is SDL's from 26.3: its own "open file" window, over the game, answering on the game's thread. */
+	private static void openWindow(java.util.function.Consumer<Path> picked) {
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> {
+			freeWindow();
+			dialogName = org.lwjgl.system.MemoryUtil.memUTF8(net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickTitle").getString());
+			dialogPattern = org.lwjgl.system.MemoryUtil.memUTF8("ogg;mp3;wav");
+			dialogFilters = org.lwjgl.sdl.SDL_DialogFileFilter.calloc(1);
+			dialogFilters.get(0).name(dialogName).pattern(dialogPattern);
+			dialogCallback = org.lwjgl.sdl.SDL_DialogFileCallback.create((userdata, list, filter) -> {
+				Path from = null;
+				// a list of paths ending with NULL; NULL itself on an error, an empty list when cancelled
+				long first = list == 0 ? 0 : org.lwjgl.system.MemoryUtil.memGetAddress(list);
+				if (first != 0) from = Path.of(org.lwjgl.system.MemoryUtil.memUTF8(first));
+				Path chosen = from;
+				mc.execute(SoundFiles::freeWindow);
+				if (chosen != null) picked.accept(chosen);
+			});
+			org.lwjgl.sdl.SDLDialog.SDL_ShowOpenFileDialog(dialogCallback, 0L, mc.getWindow().handle(), dialogFilters, (CharSequence) null, false);
+		});
+	}
+
+	private static void freeWindow() {
+		if (dialogCallback != null) dialogCallback.free();
+		if (dialogFilters != null) dialogFilters.free();
+		if (dialogName != null) org.lwjgl.system.MemoryUtil.memFree(dialogName);
+		if (dialogPattern != null) org.lwjgl.system.MemoryUtil.memFree(dialogPattern);
+		dialogCallback = null;
+		dialogFilters = null;
+		dialogName = dialogPattern = null;
+	}
+	//#else
+	//$ /** Before 26.3 the game has LWJGL's tinyfd: the system's "open file" window, off the game's thread so it does not freeze. */
+	//$ private static void openWindow(java.util.function.Consumer<Path> picked) {
+	//$ 	Thread picker = new Thread(() -> {
+	//$ 		String path;
+	//$ 		try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+	//$ 			var filters = stack.mallocPointer(EXTENSIONS.length);
+	//$ 			for (String e : EXTENSIONS) filters.put(stack.UTF8("*" + e));
+	//$ 			filters.flip();
+	//$ 			path = org.lwjgl.util.tinyfd.TinyFileDialogs.tinyfd_openFileDialog(
+	//$ 				net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickTitle").getString(), null, filters, ".ogg, .mp3, .wav", false);
+	//$ 		}
+	//$ 		if (path != null) picked.accept(Path.of(path));
+	//$ 	}, "SlashClient sound picker");
+	//$ 	picker.setDaemon(true);
+	//$ 	picker.start();
+	//$ }
+	//#endif
+
+	/**
+	 * A file copied into the folder under its own name ("name (2).ogg" when another file has it), or the one there
+	 * already when it is the same; the settings value. A file too big or of another kind is refused, said why.
+	 */
+	/** For the test: a file copied in as the "Pick a file…" button does. */
+	public static String copyInForTest(Path from) throws IOException {
+		return copyIn(from);
+	}
+
+	static String copyIn(Path from) throws IOException {
+		String name = from.getFileName().toString();
+		String lower = name.toLowerCase(Locale.ROOT);
+		boolean known = false;
+		for (String e : EXTENSIONS) known |= lower.endsWith(e);
+		if (!known) throw new IOException(net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickKind").getString());
+		if (!Files.isRegularFile(from)) throw new IOException(net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickGone").getString());
+		if (Files.size(from) > MAX_BYTES) throw new IOException(net.minecraft.network.chat.Component.translatable("slashclient-hud.sounds.pickBig").getString());
+		Path dir = folderMade();
+		if (from.toAbsolutePath().normalize().getParent() != null && from.toAbsolutePath().normalize().getParent().equals(dir.toAbsolutePath().normalize())) return PREFIX + name;
+		int dot = name.lastIndexOf('.');
+		String base = name.substring(0, dot), ext = name.substring(dot);
+		Path to = dir.resolve(name);
+		for (int n = 2; Files.exists(to); n++) {
+			if (Files.size(to) == Files.size(from) && java.util.Arrays.equals(Files.readAllBytes(to), Files.readAllBytes(from))) return PREFIX + to.getFileName();
+			to = dir.resolve(base + " (" + n + ")" + ext);
+		}
+		Files.copy(from, to);
+		return PREFIX + to.getFileName();
+	}
+
 	/** The files offered now, as settings values ("file:dzwonek.mp3"), by name. */
 	public static List<String> offered() {
 		List<String> out = new ArrayList<>();

@@ -631,6 +631,54 @@ public class HudScreenshots implements FabricClientGameTest {
 			int asked = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SoundFiles.engineAsked) - askedBefore;
 			context.runOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(master));
 			if (asked < 3) throw new AssertionError("The sound engine asked for " + asked + " of 3 own sounds");
+			// "Pick a file…" under a list of sounds: a file from elsewhere copied into the folder and set there only;
+			// the same file again is not copied twice, a file of another kind is refused
+			String picked = context.computeOnClient(mc -> {
+				try {
+					java.nio.file.Path outside = dev.slash3rss.slashclient.hud.SoundFiles.folderMade().getParent().resolve("Mój dźwięk.ogg");
+					java.nio.file.Files.copy(dev.slash3rss.slashclient.hud.SoundFiles.folderMade().resolve("beep.ogg"), outside, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+					dev.slash3rss.slashclient.hud.SoundFiles.pickForTest = outside;
+					String before = dev.slash3rss.slashclient.hud.SlashHud.config.toolWarningSound;
+					for (var e : dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {})) if (e.id().equals("notifications")) {
+						var rows = e.settings();
+						for (int i = 0; i < rows.size(); i++) if (rows.get(i) instanceof dev.slash3rss.slashclient.hud.ui.Catalog.Action act && act.labelKey().equals("slashclient-hud.sounds.ownFile")) {
+							if (!(rows.get(i - 1) instanceof dev.slash3rss.slashclient.hud.ui.Catalog.Choice)) return "the row is not under the list of sounds";
+							act.run().run();
+							return "ok " + before;
+						}
+					}
+					return "no \"own file\" row in the notifications' settings";
+				} catch (java.io.IOException e) {
+					return e.toString();
+				}
+			});
+			if (!picked.startsWith("ok ")) throw new AssertionError("Picking a file: " + picked);
+			context.waitTicks(10);
+			String set = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.toastSound + " | " + dev.slash3rss.slashclient.hud.SlashHud.config.toolWarningSound
+				+ " | " + java.nio.file.Files.exists(dev.slash3rss.slashclient.hud.SoundFiles.folderMade().resolve("Mój dźwięk.ogg")));
+			if (!set.equals("file:Mój dźwięk.ogg | " + picked.substring(3) + " | true")) throw new AssertionError("After picking a file: " + set);
+			String again = context.computeOnClient(mc -> {
+				try {
+					return dev.slash3rss.slashclient.hud.SoundFiles.copyInForTest(dev.slash3rss.slashclient.hud.SoundFiles.folderMade().getParent().resolve("Mój dźwięk.ogg"));
+				} catch (java.io.IOException e) {
+					return e.toString();
+				}
+			});
+			if (!again.equals("file:Mój dźwięk.ogg")) throw new AssertionError("The same file again: " + again);
+			String refused = context.computeOnClient(mc -> {
+				try {
+					java.nio.file.Path txt = dev.slash3rss.slashclient.hud.SoundFiles.folderMade().getParent().resolve("notatka.txt");
+					java.nio.file.Files.writeString(txt, "nie dźwięk");
+					return dev.slash3rss.slashclient.hud.SoundFiles.copyInForTest(txt);
+				} catch (java.io.IOException e) {
+					return "refused";
+				}
+			});
+			if (!refused.equals("refused")) throw new AssertionError("A text file was taken as a sound: " + refused);
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SoundFiles.pickForTest = null;
+				dev.slash3rss.slashclient.hud.SlashHud.config.toastSound = "none";
+			});
 			// the sliders: all of SlashClient's sounds at once, and a module's own
 			context.setScreen(() -> new HudEditScreen("sounds"));
 			context.waitTicks(10);
@@ -641,6 +689,11 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.setScreen(() -> new HudEditScreen("notifications"));
 			context.waitTicks(10);
 			context.takeScreenshot("notifications-sound");
+			// at its end: the sound, "Your own file" with its button, the volume
+			context.getInput().setCursorPos(500, 300);
+			context.getInput().scroll(-30);
+			context.waitTicks(10);
+			context.takeScreenshot("notifications-sound-file");
 		} finally {
 			context.runOnClient(mc -> TestHooks.captureOutgoing(false));
 			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, ""));

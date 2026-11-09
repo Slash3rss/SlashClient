@@ -956,7 +956,25 @@ public final class Catalog {
 			dev.slash3rss.slashclient.hud.chat.ChatTabs.reapply();
 		}, List.of(), null));
 		out.replaceAll(Catalog::withKeys);
+		out.replaceAll(Catalog::withSoundFiles);
 		return out;
+	}
+
+	/** Whether a choice is one of sounds (their names' keys end so: "…chat.sound.", "…hitMarker.sound."). */
+	static boolean soundChoice(Setting s) {
+		return s instanceof Choice c && c.valueKeyPrefix() != null && c.valueKeyPrefix().endsWith("sound.");
+	}
+
+	/** Each list of sounds with a row under it for a file of the player's own: picked on the computer, set for that one only. */
+	private static Entry withSoundFiles(Entry e) {
+		if (e.settings().stream().noneMatch(Catalog::soundChoice)) return e;
+		List<Setting> settings = new ArrayList<>();
+		for (Setting s : e.settings()) {
+			settings.add(s);
+			if (soundChoice(s)) settings.add(new Action("slashclient-hud.sounds.ownFile", "slashclient-hud.sounds.pickFile",
+				() -> dev.slash3rss.slashclient.hud.SoundFiles.pick(((Choice) s).set())));
+		}
+		return new Entry(e.id(), e.nameKey(), e.category(), e.icon(), e.get(), e.set(), settings, e.open());
 	}
 
 	//#if MC >= 26.3
