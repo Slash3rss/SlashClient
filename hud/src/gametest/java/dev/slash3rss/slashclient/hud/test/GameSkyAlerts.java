@@ -52,10 +52,15 @@ public class GameSkyAlerts implements FabricClientGameTest {
 				context.waitTicks(15);
 				server.runCommand("bossbar remove skill");
 				context.waitTicks(15);
-				expect(context, "Skill ended: Nawałnica – cooling down");
+				expect(context, "Skill ended: Nawałnica (Łowca) – cooling down");
 				context.takeScreenshot("sky-alerts-skill-end");
+				// off SkyUp the cooldown stands still (SkyUp stops it while logged out)
+				context.runOnClient(mc -> SkyBoosts.testWorld = false);
+				context.waitTicks(80);
+				expect(context, "Skill ended: Nawałnica (Łowca) – cooling down");
+				context.runOnClient(mc -> SkyBoosts.testWorld = true);
 				context.waitTicks(60);
-				expect(context, "Skill ready: Nawałnica – you can use it again");
+				expect(context, "Skill ready: Nawałnica (Łowca) – you can use it again");
 			} finally {
 				context.runOnClient(mc -> {
 					SkyBoosts.testWorld = false;

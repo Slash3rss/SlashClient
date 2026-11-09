@@ -45,8 +45,13 @@ public final class SkyBoosts {
 	}
 
 	private static final Map<String, Timer> boosts = new HashMap<>(), skills = new HashMap<>();
-	/** Job skills on their cooldown: name → when they are ready again. */
+	/**
+	 * Job skills on their cooldown: name → the time still to wait. SkyUp stops the cooldown while the player is
+	 * logged out, so it counts down only while on SkyUp.
+	 */
 	private static final Map<String, Long> cooldowns = new HashMap<>();
+	/** When the cooldowns were last counted down (-1: off SkyUp since). */
+	private static long countedAt = -1;
 
 	/** As if on SkyUp (the in-game test's world). */
 	public static boolean testWorld;
@@ -88,10 +93,13 @@ public final class SkyBoosts {
 		if (c == null || !c.skyAlerts || mc.level == null || mc.player == null || !onSkyUp(mc)) {
 			boosts.clear();
 			skills.clear();
+			countedAt = -1;
 			return;
 		}
 		if (mc.level.getGameTime() % 5 != 0) return;
 		long now = System.currentTimeMillis();
+		long passed = countedAt < 0 ? 0 : now - countedAt;
+		countedAt = now;
 		for (String bar : barTexts(mc)) {
 			Matcher b = BOOST.matcher(bar);
 			if (b.find()) {
@@ -130,16 +138,54 @@ public final class SkyBoosts {
 			if (t.seenAt == now) continue;
 			it.remove();
 			if (t.endsAt - now > ENDED_WITHIN + t.slack) continue;
-			if (c.skySkillEnd) alert(mc, c, "skillEnd", e.getKey(), "", Items.IRON_PICKAXE);
+			if (c.skySkillEnd) alert(mc, c, "skillEnd", withJob(e.getKey()), "", skillIcon(e.getKey()));
 			long cooldown = cooldownForTest >= 0 ? cooldownForTest : c.skySkillCooldown * 60_000L;
-			if (c.skySkillReady && cooldown > 0) cooldowns.put(e.getKey(), now + cooldown);
+			if (c.skySkillReady && cooldown > 0) cooldowns.put(e.getKey(), cooldown + passed);
 		}
 		for (var it = cooldowns.entrySet().iterator(); it.hasNext(); ) {
 			var e = it.next();
-			if (now < e.getValue()) continue;
+			e.setValue(e.getValue() - passed);
+			if (e.getValue() > 0) continue;
 			it.remove();
-			alert(mc, c, "skillReady", e.getKey(), "", Items.NETHER_STAR);
+			alert(mc, c, "skillReady", withJob(e.getKey()), "", skillIcon(e.getKey()));
 		}
+	}
+
+	/** Each job's skill on SkyUp: its name on the bar → the job. */
+	private static final Map<String, String> SKILL_JOBS = Map.of(
+		"wiertło", "Górnik", "piła", "Drwal", "pług", "Farmer", "nawałnica", "Łowca",
+		"rozbiórka", "Budowniczy", "sieci rybackie", "Rybak", "eskalacja", "Czarodziej");
+
+	/** The job a skill belongs to, or null for one not known. */
+	static String jobOf(String skill) {
+		return SKILL_JOBS.get(skill.strip().toLowerCase(Locale.ROOT));
+	}
+
+	/** "Nawałnica (Łowca)": the skill with its job, when known. */
+	static String withJob(String skill) {
+		String job = jobOf(skill);
+		return job == null ? skill : skill + " (" + job + ")";
+	}
+
+	/**
+	 * The item the skill is used with (skyup.pl/wiki/prace): the drill a pickaxe, the saw an axe, the plough a hoe,
+	 * the storm a sword, the demolition a shovel, the nets a fishing rod, the escalation a potion; another skill
+	 * its job's picture.
+	 */
+	static net.minecraft.world.item.Item skillIcon(String skill) {
+		return switch (skill.strip().toLowerCase(Locale.ROOT)) {
+			case "wiertło" -> Items.DIAMOND_PICKAXE;
+			case "piła" -> Items.DIAMOND_AXE;
+			case "pług" -> Items.DIAMOND_HOE;
+			case "nawałnica" -> Items.DIAMOND_SWORD;
+			case "rozbiórka" -> Items.DIAMOND_SHOVEL;
+			case "sieci rybackie" -> Items.FISHING_ROD;
+			case "eskalacja" -> Items.POTION;
+			default -> {
+				String job = jobOf(skill);
+				yield job == null ? Items.IRON_PICKAXE : DungeonRun.jobIcon(job);
+			}
+		};
 	}
 
 	private static void seen(Map<String, Timer> map, String name, long left, String text, long now) {
@@ -180,6 +226,7 @@ public final class SkyBoosts {
 		boosts.clear();
 		skills.clear();
 		cooldowns.clear();
+		countedAt = -1;
 		lastForTest = "";
 	}
 }
