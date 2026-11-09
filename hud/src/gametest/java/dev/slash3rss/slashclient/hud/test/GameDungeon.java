@@ -181,6 +181,7 @@ public class GameDungeon implements FabricClientGameTest {
 			});
 			if (!named.equals("Elita=f97316,Minion=facc15")) throw new AssertionError("Mobs glowing by name: " + named);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonGlowNames = "");
+
 			// the simple map: the nine rooms as tiles, a yellow square on each of the twelve doors between them
 			// (the floor's own rooms: these are not on SkyUp's grid of 13 blocks)
 			if (!rooms.contains("doors 12") || !rooms.contains("tiles 0,")) throw new AssertionError("Doors between the rooms: " + rooms);
@@ -252,6 +253,20 @@ public class GameDungeon implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.dungeonFull(false));
 			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");
+			// the mini boss's name over a minion standing under it (a crowd): the minion has its own name, it does not glow
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonGlowNames = "Mini boss");
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,Tags:[\"crowd\"]," + name("{\"text\":\"Chickenus\",\"color\":\"dark_purple\"}") + "}", x0 - 6, y, z0 - 3));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,Marker:1b,NoGravity:1b,CustomNameVisible:1b,Tags:[\"crowd\"]," + name("{\"text\":\"Mini boss\",\"color\":\"dark_red\"}") + "}", x0 - 6, y + 2, z0 - 3));
+			context.waitTicks(5);
+			String crowd = context.computeOnClient(mc -> {
+				java.util.List<String> out = new java.util.ArrayList<>();
+				for (var id : dev.slash3rss.slashclient.hud.skyup.BossGlow.glowing().keySet()) out.add(mc.level.getEntity(id).getCustomName().getString());
+				return String.join(",", out);
+			});
+			if (!crowd.equals("Mini boss")) throw new AssertionError("Under the boss's name only the boss should glow: " + crowd);
+			// moved far off, not killed: a death in a room would count for the room
+			server.runCommand(String.format("tp @e[tag=crowd] %d %d %d", x0 + 2000, y, z0));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonGlowNames = "");
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono Dungeon poz. 3\"");
 			server.runCommand("bossbar remove dungeon");
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 - 600, y + 20, z0));

@@ -970,11 +970,16 @@ public final class DungeonMap implements HudModule {
 		return tag == null ? 0 : kind(tag);
 	}
 
-	/** A mob's names as the player sees them, colours left out: its own and the one shown over it ("" for none). */
+	/**
+	 * A mob's name as the player sees it, colours left out: its own, else the one shown over it ("" for none).
+	 * Only without a name of its own the one over it counts: in a crowd the boss's name hangs over its
+	 * minions too, and they are not the boss.
+	 */
 	public static String namesOf(Entity mob) {
-		String own = mob.hasCustomName() ? uncoloured(mob.getCustomName().getString()) : "";
+		String own = !npc(mob) && mob.hasCustomName() ? uncoloured(mob.getCustomName().getString()).strip() : "";
+		if (!own.isEmpty()) return own;
 		Component tag = tagOver(mob);
-		return tag == null ? own : own + " | " + uncoloured(tag.getString());
+		return tag == null ? "" : uncoloured(tag.getString());
 	}
 
 	/** The name shown over a mob on another entity (a hologram, a riding name tag), or null. */
