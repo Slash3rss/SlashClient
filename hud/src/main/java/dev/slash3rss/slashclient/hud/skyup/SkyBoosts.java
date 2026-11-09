@@ -124,12 +124,12 @@ public final class SkyBoosts {
 			if (t.seenAt == now) {
 				if (warnBefore > 0 && !t.warned && t.endsAt - now <= warnBefore && t.endsAt > now) {
 					t.warned = true;
-					alert(mc, c, "boostSoon", e.getKey(), time(t.endsAt - now), Items.CLOCK);
+					alert(mc, c, "boostSoon", e.getKey(), time(t.endsAt - now), new ItemStack(Items.CLOCK));
 				}
 				continue;
 			}
 			it.remove();
-			if (c.skyBoostEnd && t.endsAt - now <= ENDED_WITHIN + t.slack) alert(mc, c, "boostEnd", e.getKey(), "", Items.CLOCK);
+			if (c.skyBoostEnd && t.endsAt - now <= ENDED_WITHIN + t.slack) alert(mc, c, "boostEnd", e.getKey(), "", new ItemStack(Items.CLOCK));
 		}
 		// skills over, then ready again after their cooldown
 		for (var it = skills.entrySet().iterator(); it.hasNext(); ) {
@@ -138,7 +138,7 @@ public final class SkyBoosts {
 			if (t.seenAt == now) continue;
 			it.remove();
 			if (t.endsAt - now > ENDED_WITHIN + t.slack) continue;
-			if (c.skySkillEnd) alert(mc, c, "skillEnd", withJob(e.getKey()), "", skillIcon(e.getKey()));
+			if (c.skySkillEnd) alert(mc, c, "skillEnd", withJob(e.getKey()), "", skillLook(mc, e.getKey()));
 			long cooldown = cooldownForTest >= 0 ? cooldownForTest : c.skySkillCooldown * 60_000L;
 			if (c.skySkillReady && cooldown > 0) cooldowns.put(e.getKey(), cooldown + passed);
 		}
@@ -147,7 +147,7 @@ public final class SkyBoosts {
 			e.setValue(e.getValue() - passed);
 			if (e.getValue() > 0) continue;
 			it.remove();
-			alert(mc, c, "skillReady", withJob(e.getKey()), "", skillIcon(e.getKey()));
+			alert(mc, c, "skillReady", withJob(e.getKey()), "", skillLook(mc, e.getKey()));
 		}
 	}
 
@@ -205,12 +205,33 @@ public final class SkyBoosts {
 			: Component.translatable("slashclient-hud.skyAlerts.sec", s).getString();
 	}
 
-	private static void alert(Minecraft mc, HudConfig c, String key, String name, String left, net.minecraft.world.item.Item icon) {
+	/**
+	 * The jobs in SkyUp's order and their active skill's picture in its /prace menu: a head with the model
+	 * 641 (the miner) to 647 (the wizard) from SkyUp's resource pack.
+	 */
+	private static final List<String> JOB_ORDER = List.of("Górnik", "Drwal", "Farmer", "Łowca", "Budowniczy", "Rybak", "Czarodziej");
+
+	/** The skill as SkyUp's menu draws it (with its pack loaded), else the item it is used with. */
+	static ItemStack skillLook(Minecraft mc, String skill) {
+		String job = jobOf(skill);
+		int at = job == null ? -1 : JOB_ORDER.indexOf(job);
+		//#if MC >= 26.3
+		if (at >= 0 && mc.getResourceManager().getNamespaces().contains("skyup")) {
+			ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+			head.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+				new net.minecraft.world.item.component.CustomModelData(List.of(641f + at), List.of(), List.of(), List.of()));
+			return head;
+		}
+		//#endif
+		return new ItemStack(skillIcon(skill));
+	}
+
+	private static void alert(Minecraft mc, HudConfig c, String key, String name, String left, ItemStack icon) {
 		String title = Component.translatable("slashclient-hud.skyAlerts." + key + "Title").getString();
 		String text = Component.translatable("slashclient-hud.skyAlerts." + key, name, left).getString();
 		lastForTest = title + ": " + text;
 		//#if MC >= 26.3
-		SkyReminder.show(key.startsWith("boost") ? SkyReminder.Look.BOOST : SkyReminder.Look.SKILL, title, text, new ItemStack(icon));
+		SkyReminder.show(key.startsWith("boost") ? SkyReminder.Look.BOOST : SkyReminder.Look.SKILL, title, text, icon);
 		//#endif
 		String sound = c.skyAlertsSound == null || c.skyAlertsSound.equals("default") ? "" : c.skyAlertsSound;
 		mc.execute(() -> ChatTabs.playSound(mc, sound, c.skyAlertsVolume));
