@@ -117,7 +117,8 @@ public class GameMapExtras implements FabricClientGameTest {
 				context.getInput().releaseKey(InputConstants.KEY_LCONTROL);
 				context.waitTicks(20);
 				String sent = context.computeOnClient(mc -> MapSortTestHooks.mapTeleport());
-				if (!sent.contains("spreadplayers -19.5 18.5")) throw new AssertionError("Ctrl + click did not teleport: " + sent);
+				// a column the map knows: /tp onto its ground (/spreadplayers only for those it does not)
+				if (!sent.contains("tp @s -19.5 ") || !sent.endsWith(" 18.5")) throw new AssertionError("Ctrl + click did not teleport: " + sent);
 				double[] pos = context.computeOnClient(mc -> new double[] { mc.player.getX(), mc.player.getZ() });
 				if (Math.abs(pos[0] + 18.5) > 2 || Math.abs(pos[1] - 18.5) > 2) throw new AssertionError("Not teleported: " + pos[0] + ", " + pos[1]);
 			}

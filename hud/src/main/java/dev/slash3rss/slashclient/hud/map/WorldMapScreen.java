@@ -258,18 +258,33 @@ public class WorldMapScreen extends Screen {
 		}
 	}
 
-	/** Whether the player may teleport (the server sends /spreadplayers among the commands they can use). */
-	public static boolean canTeleport(Minecraft mc) {
+	/** Whether the player may use one of the game's commands (the server sends those among the ones they can use). */
+	private static boolean has(Minecraft mc, String command) {
 		var connection = mc.getConnection();
-		return connection != null && connection.getCommands().getRoot().getChild("spreadplayers") != null;
+		return connection != null && connection.getCommands().getRoot().getChild(command) != null;
 	}
 
-	/** Onto the ground at a column (in the Nether under its roof), with the game's own command. */
+	/** Whether the player may teleport: /tp, or /spreadplayers for places the map has no height of. */
+	public static boolean canTeleport(Minecraft mc) {
+		return has(mc, "tp") || has(mc, "spreadplayers");
+	}
+
+	/**
+	 * Onto the ground at a column. Where the map knows its height, /tp just above it: /spreadplayers looks for safe
+	 * ground only in the two blocks around and fails over the void (a skyblock island's edge), water or lava. Where
+	 * the map does not know it, /spreadplayers finds the ground itself (in the Nether under its roof).
+	 */
 	void teleport(int x, int z) {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null || !canTeleport(mc)) return;
 		boolean roof = mc.level.dimensionType().hasCeiling();
-		String cmd = String.format(java.util.Locale.ROOT, "spreadplayers %d.5 %d.5 0 1 %sfalse @s", x, z, roof ? "under 120 " : "");
+		int h = MinimapTerrain.heightAt(x, z);
+		// a height on the Nether's roof is the roof's, not the ground under it
+		boolean known = h != Integer.MIN_VALUE && !(roof && h >= 120);
+		String cmd;
+		if (known && has(mc, "tp")) cmd = String.format(java.util.Locale.ROOT, "tp @s %d.5 %d %d.5", x, h + 1, z);
+		else if (has(mc, "spreadplayers")) cmd = String.format(java.util.Locale.ROOT, "spreadplayers %d.5 %d.5 0 1 %sfalse @s", x, z, roof ? "under 120 " : "");
+		else return;
 		mc.player.connection.sendCommand(cmd);
 		teleported = cmd;
 		centerX = x + 0.5;
