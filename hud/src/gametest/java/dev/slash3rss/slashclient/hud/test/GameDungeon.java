@@ -156,6 +156,19 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
+			// the mini boss glows red, seen through walls; the elites only when switched on, in orange
+			String glow = context.computeOnClient(mc -> {
+				var bosses = dev.slash3rss.slashclient.hud.skyup.BossGlow.glowing();
+				return bosses.size() + " " + bosses.values().stream().allMatch(c -> c == dev.slash3rss.slashclient.hud.skyup.BossGlow.BOSS)
+					+ " " + bosses.keySet().stream().allMatch(id -> { var e = mc.level.getEntity(id); return e != null && mc.shouldEntityAppearGlowing(e) && e.getTeamColor() == dev.slash3rss.slashclient.hud.skyup.BossGlow.BOSS; });
+			});
+			if (!glow.equals("1 true true")) throw new AssertionError("The mini boss's glow: " + glow);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonEliteGlow = true);
+			context.waitTicks(3);
+			int glowing = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.BossGlow.glowing().size());
+			if (glowing != 3) throw new AssertionError("The mini boss and two elites should glow: " + glowing);
+			context.takeScreenshot("dungeon-boss-glow");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonEliteGlow = false);
 			// the simple map: the nine rooms as tiles, a yellow square on each of the twelve doors between them
 			// (the floor's own rooms: these are not on SkyUp's grid of 13 blocks)
 			if (!rooms.contains("doors 12") || !rooms.contains("tiles 0,")) throw new AssertionError("Doors between the rooms: " + rooms);

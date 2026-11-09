@@ -199,6 +199,8 @@ public final class HudConfig {
 	public boolean dungeonSummary = true;
 	/** The dungeon map's floor in its blocks' colours instead of one plain grey. */
 	public boolean dungeonBlockColors = false;
+	/** In a dungeon the mini bosses glow (seen through walls), and the elites too when wanted (BossGlow). */
+	public boolean dungeonBossGlow = true, dungeonEliteGlow = false;
 	/** The kinds of loot counted on the dungeon map (in rooms and under it): chests, barrels, pots, flower pots, deepslate ores. */
 	public boolean dungeonChests = true, dungeonBarrels = true, dungeonPots = true, dungeonFlowerPots = true, dungeonOres = true;
 	/** Counters under the dungeon map, one per kind of loot. */
@@ -922,6 +924,8 @@ public final class HudConfig {
 		dungeonContainers = other.dungeonContainers;
 		dungeonSummary = other.dungeonSummary;
 		dungeonBlockColors = other.dungeonBlockColors;
+		dungeonBossGlow = other.dungeonBossGlow;
+		dungeonEliteGlow = other.dungeonEliteGlow;
 		dungeonChests = other.dungeonChests;
 		dungeonBarrels = other.dungeonBarrels;
 		dungeonPots = other.dungeonPots;

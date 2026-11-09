@@ -6,12 +6,13 @@ import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-/** The colour a glowing dropped item glows in (LootHighlight): like the item, instead of white. */
+/** The colour a glowing dropped item glows in (LootHighlight): like the item, instead of white; a dungeon boss in its class's (BossGlow). */
 @Mixin(Entity.class)
 abstract class DropGlowColorMixin {
 	@ModifyReturnValue(method = "getTeamColor", at = @At("RETURN"))
 	private int slashclient$dropColor(int color) {
 		int c = LootHighlight.glowColor((Entity) (Object) this);
+		if (c < 0) c = dev.slash3rss.slashclient.hud.skyup.BossGlow.glowColor((Entity) (Object) this);
 		return c >= 0 ? c : color;
 	}
 }
