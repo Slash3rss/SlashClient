@@ -124,12 +124,12 @@ public final class SkyBoosts {
 			if (t.seenAt == now) {
 				if (warnBefore > 0 && !t.warned && t.endsAt - now <= warnBefore && t.endsAt > now) {
 					t.warned = true;
-					alert(mc, c, "boostSoon", e.getKey(), time(t.endsAt - now), new ItemStack(Items.CLOCK));
+					alert(mc, c, "boostSoon", e.getKey(), time(t.endsAt - now), boostLook(mc, e.getKey()));
 				}
 				continue;
 			}
 			it.remove();
-			if (c.skyBoostEnd && t.endsAt - now <= ENDED_WITHIN + t.slack) alert(mc, c, "boostEnd", e.getKey(), "", new ItemStack(Items.CLOCK));
+			if (c.skyBoostEnd && t.endsAt - now <= ENDED_WITHIN + t.slack) alert(mc, c, "boostEnd", e.getKey(), "", boostLook(mc, e.getKey()));
 		}
 		// skills over, then ready again after their cooldown
 		for (var it = skills.entrySet().iterator(); it.hasNext(); ) {
@@ -205,6 +205,32 @@ public final class SkyBoosts {
 	 */
 	private static final List<String> JOB_ORDER = List.of("Górnik", "Drwal", "Farmer", "Łowca", "Budowniczy", "Rybak", "Czarodziej");
 
+	/** The beacon's boosts in its menu's order: a head with the model 960 (drop from generators) to 965 (animals' growth). */
+	private static final List<String> BOOST_ORDER = List.of("drop z generatorów", "drop z mobów", "exp z mobów", "cięższe ryby", "wzrost roślin", "wzrost zwierząt");
+
+	/** The boost as SkyUp's beacon menu draws it (with its pack loaded), else an item like it; a clock for one not known. */
+	public static ItemStack boostLook(Minecraft mc, String boost) {
+		String key = boost.strip().toLowerCase(Locale.ROOT);
+		int at = BOOST_ORDER.indexOf(key);
+		//#if MC >= 26.3
+		if (at >= 0 && mc.getResourceManager().getNamespaces().contains("skyup")) {
+			ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+			head.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+				new net.minecraft.world.item.component.CustomModelData(List.of(960f + at), List.of(), List.of(), List.of()));
+			return head;
+		}
+		//#endif
+		return new ItemStack(switch (key) {
+			case "drop z generatorów" -> Items.COBBLESTONE;
+			case "drop z mobów" -> Items.ROTTEN_FLESH;
+			case "exp z mobów" -> Items.EXPERIENCE_BOTTLE;
+			case "cięższe ryby" -> Items.COD;
+			case "wzrost roślin" -> Items.WHEAT;
+			case "wzrost zwierząt" -> Items.EGG;
+			default -> Items.CLOCK;
+		});
+	}
+
 	/** The skill as SkyUp's menu draws it (with its pack loaded), else the item it is used with. */
 	public static ItemStack skillLook(Minecraft mc, String skill) {
 		String job = jobOf(skill);
@@ -227,9 +253,30 @@ public final class SkyBoosts {
 		//#if MC >= 26.3
 		SkyReminder.show(key.startsWith("boost") ? SkyReminder.Look.BOOST : SkyReminder.Look.SKILL, title, text, icon);
 		//#endif
-		String sound = c.skyAlertsSound == null || c.skyAlertsSound.equals("default") ? "" : c.skyAlertsSound;
+		String chosen = switch (key) {
+			case "boostSoon" -> c.skyBoostSoonSound;
+			case "boostEnd" -> c.skyBoostEndSound;
+			case "skillEnd" -> c.skySkillEndSound;
+			default -> c.skySkillReadySound;
+		};
+		String sound = chosen == null || chosen.equals("default") ? "" : chosen;
 		mc.execute(() -> ChatTabs.playSound(mc, sound, c.skyAlertsVolume));
+		// with the game in the background: on the desktop too, each kind as set
+		boolean desktop = switch (key) {
+			case "boostSoon" -> c.skyBoostSoonDesktop;
+			case "boostEnd" -> c.skyBoostEndDesktop;
+			case "skillReady" -> c.skySkillReadyDesktop;
+			default -> false;
+		};
+		if (desktop && (!mc.isWindowActive() || backgroundForTest)) {
+			desktopForTest = title + ": " + text;
+			dev.slash3rss.slashclient.hud.social.Social.desktopNotify(title, text);
+		}
 	}
+
+	/** For the test: the last desktop notification asked for; the game as if in the background. */
+	public static String desktopForTest = "";
+	public static boolean backgroundForTest;
 
 	/** For the test: the last banner, "title: text". */
 	public static String lastForTest() {
@@ -242,6 +289,8 @@ public final class SkyBoosts {
 		skills.clear();
 		cooldowns.clear();
 		countedAt = -1;
+		desktopForTest = "";
+		backgroundForTest = false;
 		lastForTest = "";
 	}
 }

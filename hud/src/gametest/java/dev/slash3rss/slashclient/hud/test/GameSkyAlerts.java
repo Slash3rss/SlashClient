@@ -42,9 +42,16 @@ public class GameSkyAlerts implements FabricClientGameTest {
 				// its last seconds, then gone: ended
 				server.runCommand("bossbar set drop name \"Boost » Drop z mobów » 2 sek\"");
 				context.waitTicks(20);
+				context.runOnClient(mc -> SkyBoosts.backgroundForTest = true);
 				server.runCommand("bossbar remove drop");
 				context.waitTicks(20);
 				expect(context, "Boost ended: Drop z mobów");
+				String boostDesktop = context.computeOnClient(mc -> SkyBoosts.desktopForTest);
+				if (!boostDesktop.equals("Boost ended: Drop z mobów")) throw new AssertionError("The boost's desktop notification: " + boostDesktop);
+				context.runOnClient(mc -> {
+					SkyBoosts.backgroundForTest = false;
+					SkyBoosts.desktopForTest = "";
+				});
 
 				// a job skill at its end: over, then ready again after the cooldown
 				server.runCommand("bossbar add skill \"⚔ Nawałnica (pozostało 1 sek)\"");
@@ -58,9 +65,16 @@ public class GameSkyAlerts implements FabricClientGameTest {
 				context.runOnClient(mc -> SkyBoosts.testWorld = false);
 				context.waitTicks(80);
 				expect(context, "Skill ended: Nawałnica – cooling down");
-				context.runOnClient(mc -> SkyBoosts.testWorld = true);
+				// ready while the game is in the background: on the desktop too
+				context.runOnClient(mc -> {
+					SkyBoosts.testWorld = true;
+					SkyBoosts.backgroundForTest = true;
+				});
 				context.waitTicks(60);
 				expect(context, "Skill ready: Nawałnica – you can use it again");
+				String desktop = context.computeOnClient(mc -> SkyBoosts.desktopForTest);
+				if (!desktop.equals("Skill ready: Nawałnica – you can use it again")) throw new AssertionError("The desktop notification: " + desktop);
+				context.runOnClient(mc -> SkyBoosts.backgroundForTest = false);
 
 				// with SkyUp's own pack (SLASHCLIENT_SKYUP_PACK: a copy of it, not kept in the repository), the skill's
 				// picture from its /prace menu: a head with the job's model
@@ -70,6 +84,16 @@ public class GameSkyAlerts implements FabricClientGameTest {
 					// a long cooldown: no "ready" banner over the next skill's
 					context.runOnClient(mc -> SkyBoosts.cooldownForTest = 600_000);
 					try {
+						String boostLook = context.computeOnClient(mc -> SkyBoosts.boostLook(mc, "Wzrost roślin").getItem().toString());
+						if (!boostLook.contains("player_head")) throw new AssertionError("With SkyUp's pack the boost's picture: " + boostLook);
+						for (String boost : new String[] { "Drop z generatorów", "Cięższe ryby" }) {
+							server.runCommand("bossbar add b \"Boost » " + boost + " » 2 sek\"");
+							server.runCommand("bossbar set b players @a");
+							context.waitTicks(15);
+							server.runCommand("bossbar remove b");
+							context.waitTicks(15);
+							context.takeScreenshot("sky-alerts-pack-" + boost.replace(' ', '-').toLowerCase(java.util.Locale.ROOT));
+						}
 						String look = context.computeOnClient(mc -> SkyBoosts.skillLook(mc, "Nawałnica").getItem().toString());
 						if (!look.contains("player_head")) throw new AssertionError("With SkyUp's pack the skill's picture: " + look);
 						for (String skill : new String[] { "Wiertło", "Sieci rybackie", "Eskalacja" }) {

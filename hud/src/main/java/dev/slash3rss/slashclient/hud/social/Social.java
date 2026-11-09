@@ -295,6 +295,27 @@ public final class Social {
 	 * Discord (the "Discord status" switch), so with two games Discord shows the one being played. An older
 	 * launcher has no /window: asked once.
 	 */
+	private static volatile boolean notifyUnsupported;
+
+	/**
+	 * A notification on the desktop through the launcher (0.9.74+); an older launcher, or a game started without
+	 * it, says nothing and is not asked again.
+	 */
+	public static void desktopNotify(String title, String text) {
+		if (!reachable || notifyUnsupported) return;
+		JsonObject body = new JsonObject();
+		body.addProperty("title", title.length() > 100 ? title.substring(0, 100) : title);
+		body.addProperty("body", text.length() > 200 ? text.substring(0, 200) : text);
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/notify", body, 5);
+			} catch (Exception e) {
+				if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) notifyUnsupported = true;
+				SlashHud.LOG.debug("SlashClient: notify: {}", e.toString());
+			}
+		});
+	}
+
 	public static void windowTick(Minecraft mc) {
 		if (GAME.isEmpty() || !reachable || windowSending || windowUnsupported) return;
 		boolean focused = mc.isWindowActive();

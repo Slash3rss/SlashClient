@@ -2552,6 +2552,8 @@ const bridge = new GameBridge({
   communityLogo: (id, version) => communityLogos.get(id, version),
   gameStatus: (status, game) => onGameStatus(status, game),
   gameWindow: (game, w) => onGameWindow(game, w),
+  // the game asks for a desktop notification while it is in the background (Settings → system notifications decide)
+  notify: (title, body) => void notifier.show({ title, body }),
   // the game's "Now playing" module (id "spotify"), only while it is on: what plays on this computer and its cover
   spotifyNow: (onlySpotify) => nowPlaying.get(onlySpotify),
   spotifyCover: (id) => nowPlayingCovers.get(id),

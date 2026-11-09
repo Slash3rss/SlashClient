@@ -515,14 +515,17 @@ public final class Catalog {
 		String[] alertSounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.Sounds.withFiles(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS)).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 		out.add(new Entry("skyAlerts", "slashclient-hud.skyAlerts", "skyup", "m-skyalerts", () -> cfg.skyAlerts, v -> cfg.skyAlerts = v, List.of(
 			new Slider("slashclient-hud.skyAlerts.boostWarn", 0f, 10f, 1f, "%.0f min", () -> (float) cfg.skyBoostWarn, v -> cfg.skyBoostWarn = Math.round(v)),
+			alertSound("slashclient-hud.skyAlerts.boostSoonSound", alertSounds, () -> cfg.skyBoostSoonSound, v -> cfg.skyBoostSoonSound = v),
+			new Toggle("slashclient-hud.skyAlerts.boostSoonDesktop", () -> cfg.skyBoostSoonDesktop, v -> cfg.skyBoostSoonDesktop = v),
 			new Toggle("slashclient-hud.skyAlerts.boostEndSetting", () -> cfg.skyBoostEnd, v -> cfg.skyBoostEnd = v),
+			alertSound("slashclient-hud.skyAlerts.boostEndSound", alertSounds, () -> cfg.skyBoostEndSound, v -> cfg.skyBoostEndSound = v),
+			new Toggle("slashclient-hud.skyAlerts.boostEndDesktop", () -> cfg.skyBoostEndDesktop, v -> cfg.skyBoostEndDesktop = v),
 			new Toggle("slashclient-hud.skyAlerts.skillEndSetting", () -> cfg.skySkillEnd, v -> cfg.skySkillEnd = v),
+			alertSound("slashclient-hud.skyAlerts.skillEndSound", alertSounds, () -> cfg.skySkillEndSound, v -> cfg.skySkillEndSound = v),
 			new Toggle("slashclient-hud.skyAlerts.skillReadySetting", () -> cfg.skySkillReady, v -> cfg.skySkillReady = v),
+			alertSound("slashclient-hud.skyAlerts.skillReadySound", alertSounds, () -> cfg.skySkillReadySound, v -> cfg.skySkillReadySound = v),
+			new Toggle("slashclient-hud.skyAlerts.skillReadyDesktop", () -> cfg.skySkillReadyDesktop, v -> cfg.skySkillReadyDesktop = v),
 			new Slider("slashclient-hud.skyAlerts.cooldown", 1f, 30f, 1f, "%.0f min", () -> (float) cfg.skySkillCooldown, v -> cfg.skySkillCooldown = Math.round(v)),
-			new Choice("slashclient-hud.skyAlerts.sound", alertSounds, "slashclient-hud.chat.sound.", () -> cfg.skyAlertsSound, v -> {
-				cfg.skyAlertsSound = v;
-				dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyAlertsVolume);
-			}),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyAlertsVolume, v -> cfg.skyAlertsVolume = Math.round(v))), null));
 		//#endif
 		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
@@ -955,4 +958,14 @@ public final class Catalog {
 		out.replaceAll(Catalog::withKeys);
 		return out;
 	}
+
+	//#if MC >= 26.3
+	/** A banner's sound (the chat's and the game's; "default" the bell), heard when picked at the banners' volume. */
+	private static Choice alertSound(String labelKey, String[] sounds, Supplier<String> get, Consumer<String> set) {
+		return new Choice(labelKey, sounds, "slashclient-hud.chat.sound.", get, v -> {
+			set.accept(v);
+			dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, SlashHud.config.skyAlertsVolume);
+		});
+	}
+	//#endif
 }

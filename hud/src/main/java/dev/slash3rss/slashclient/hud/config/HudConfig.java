@@ -294,7 +294,10 @@ public final class HudConfig {
 	 */
 	public boolean skyAlerts = true, skyBoostEnd = true, skySkillEnd = true, skySkillReady = true;
 	public int skyBoostWarn = 1, skySkillCooldown = 10, skyAlertsVolume = 70;
-	public String skyAlertsSound = "default";
+	/** Each banner's sound (ChatTabs' and the game's; "default" the bell). */
+	public String skyBoostSoonSound = "pling", skyBoostEndSound = "default", skySkillEndSound = "bass", skySkillReadySound = "levelup";
+	/** Each banner also on the desktop (a system notification through the launcher) while the game is in the background. */
+	public boolean skyBoostSoonDesktop = false, skyBoostEndDesktop = true, skySkillReadyDesktop = true;
 	/** SkyUp's plan of the week: how many coming events the module lists. */
 	public int skyPlanRows = 3;
 	/** How many minutes before an event of the plan the banner says it starts (0 = no banner). */
@@ -999,7 +1002,13 @@ public final class HudConfig {
 		skyBoostWarn = Math.max(0, Math.min(30, other.skyBoostWarn));
 		skySkillCooldown = Math.max(0, Math.min(60, other.skySkillCooldown));
 		skyAlertsVolume = Math.max(0, Math.min(100, other.skyAlertsVolume));
-		skyAlertsSound = other.skyAlertsSound == null ? "default" : other.skyAlertsSound;
+		skyBoostSoonSound = other.skyBoostSoonSound == null ? "pling" : other.skyBoostSoonSound;
+		skyBoostEndSound = other.skyBoostEndSound == null ? "default" : other.skyBoostEndSound;
+		skySkillEndSound = other.skySkillEndSound == null ? "bass" : other.skySkillEndSound;
+		skySkillReadySound = other.skySkillReadySound == null ? "levelup" : other.skySkillReadySound;
+		skyBoostSoonDesktop = other.skyBoostSoonDesktop;
+		skyBoostEndDesktop = other.skyBoostEndDesktop;
+		skySkillReadyDesktop = other.skySkillReadyDesktop;
 		skyPlanRows = Math.max(1, Math.min(8, other.skyPlanRows));
 		skyPlanRemind = Math.max(0, Math.min(60, other.skyPlanRemind));
 		skyPlanEvents = other.skyPlanEvents;

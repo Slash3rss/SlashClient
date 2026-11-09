@@ -160,4 +160,22 @@ describe('game bridge', () => {
     assert.deepEqual(statuses, [['skyup.pl', 'prof-1'], ['hypixel.net', null]]);
     bridge.stop();
   });
+
+  it('shows the game\'s desktop notifications, plain and short', async () => {
+    const shown: unknown[] = [];
+    const bridge = new GameBridge({ call: async () => ({}), state: () => ({}), notify: (title, body) => shown.push([title, body]) });
+    const { url, key } = await bridge.start();
+    const post = (body: unknown) => fetch(url + '/notify', { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } });
+    assert.equal((await post({ title: 'Umiejętność gotowa', body: 'Nawałnica – możesz jej znów użyć' })).status, 200);
+    assert.equal((await post({ title: '', body: 'x' })).status, 400);
+    assert.equal((await post({ title: 'x'.repeat(101), body: 'x' })).status, 400);
+    assert.equal((await post({ title: 'x', body: 5 })).status, 400);
+    assert.deepEqual(shown, [['Umiejętność gotowa', 'Nawałnica – możesz jej znów użyć']]);
+    bridge.stop();
+    // a launcher without it: the game hears "not here" and stops asking
+    const plain = new GameBridge({ call: async () => ({}), state: () => ({}) });
+    const p = await plain.start();
+    assert.equal((await fetch(p.url + '/notify', { method: 'POST', body: '{"title":"a","body":"b"}', headers: { Authorization: `Bearer ${p.key}` } })).status, 404);
+    plain.stop();
+  });
 });

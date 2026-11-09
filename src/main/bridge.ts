@@ -58,6 +58,8 @@ export interface BridgeOptions {
    * (`show`, the mod's switch); `game` is the profile it plays, from -Dslashclient.game.
    */
   gameWindow?: (game: string, window: { focused?: boolean; show?: boolean }) => void;
+  /** A game's HUD (0.9.74+) asks for a system notification (a job skill ready again on SkyUp, the game in the background). */
+  notify?: (title: string, body: string) => void;
   /** What plays on this computer (nowPlaying.ts), asked by the game only while its "Now playing" module is on; `onlySpotify` leaves out browsers and other players. */
   spotifyNow?: (onlySpotify: boolean) => Promise<unknown>;
   /** The cover of what plays by its id (from the system, or Spotify's image host), as a 64×64 PNG. */
@@ -358,6 +360,15 @@ export class GameBridge {
       const { focused, show } = ((await this.body(req)) ?? {}) as { focused?: unknown; show?: unknown };
       if (!game || (focused !== undefined && typeof focused !== 'boolean') || (show !== undefined && typeof show !== 'boolean')) return this.send(res, 400, { error: 'bad_request' });
       this.opts.gameWindow(game, { focused: focused as boolean | undefined, show: show as boolean | undefined });
+      return this.send(res, 200, { ok: true });
+    }
+
+    // a notification on the desktop: plain text, short (the launcher's own switch for them decides)
+    if (method === 'POST' && url === '/notify') {
+      if (!this.opts.notify) return this.send(res, 404, { error: 'not_found' });
+      const { title, body } = ((await this.body(req)) ?? {}) as { title?: unknown; body?: unknown };
+      if (typeof title !== 'string' || typeof body !== 'string' || !title.trim() || title.length > 100 || body.length > 200) return this.send(res, 400, { error: 'bad_request' });
+      this.opts.notify(title.trim(), body.trim());
       return this.send(res, 200, { ok: true });
     }
 
