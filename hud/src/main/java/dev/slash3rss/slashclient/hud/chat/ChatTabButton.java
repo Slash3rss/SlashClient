@@ -70,6 +70,8 @@ final class ChatTabButton extends Button {
 		if (pulling && index >= 0 && e.y() < rowY - 4) ChatTabs.detach(index, (int) e.x(), (int) e.y());
 		ChatTabs.dragging = -1;
 		pulling = false;
+		// the click took the focus from the chat's line: give it back, so the player types at once
+		if (icon == null && dev.slash3rss.slashclient.hud.Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof net.minecraft.client.gui.screens.ChatScreen chat) ChatTabInput.back(chat);
 	}
 
 	/**

@@ -248,7 +248,7 @@ public final class ChatTabInput {
 	}
 
 	/** The cursor back in the chat's own line. */
-	private static void back(Screen screen) {
+	static void back(Screen screen) {
 		EditBox in = mainInput(screen);
 		if (in != null) screen.setFocused(in);
 		else screen.setFocused(null);

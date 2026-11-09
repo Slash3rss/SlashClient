@@ -223,6 +223,15 @@ public class HudScreenshots implements FabricClientGameTest {
 			// pulling the "PM" tab out of the row with the mouse: it becomes a window of its own
 			double[] pm = context.computeOnClient(mc -> TestHooks.chatTabCenter("PM"));
 			if (pm == null) throw new AssertionError("No PM tab in the chat");
+			// a click on a tab leaves the cursor in the chat's line: the player types at once
+			context.runOnClient(mc -> TestHooks.mouse("press", pm));
+			context.runOnClient(mc -> TestHooks.mouse("release", pm));
+			boolean typing = context.computeOnClient(mc -> {
+				var in = dev.slash3rss.slashclient.hud.chat.ChatTabInput.mainInput(dev.slash3rss.slashclient.hud.Compat.screen(mc));
+				return in != null && in.isFocused() && dev.slash3rss.slashclient.hud.Compat.screen(mc).getFocused() == in;
+			});
+			if (!typing) throw new AssertionError("After a click on a tab the chat's line lost the cursor");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.chat.ChatTabs.select(-1));
 			// Esc in the middle of the drag: back in the chat, nothing follows the cursor and the tab is still in the row
 			context.runOnClient(mc -> TestHooks.mouse("press", pm));
 			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { pm[0] + 20, pm[1] - 40 }));
