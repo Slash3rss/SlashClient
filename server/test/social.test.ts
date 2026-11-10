@@ -793,6 +793,30 @@ describe('social server', () => {
     assert.equal(removed.body.friends.length, 0);
   });
 
+  it('keeps a blocked player from inviting again, until unblocked', async () => {
+    const pest = await login('Natret');
+    const me = await login('Spokojna');
+    await call('POST', '/v1/friends/requests', pest.token, { handle: 'Spokojna' });
+    const blocked = await call('POST', `/v1/friends/requests/${pest.user.id}/block`, me.token);
+    assert.equal(blocked.status, 200);
+    assert.deepEqual(blocked.body.incoming, []);
+    assert.deepEqual(blocked.body.blocked.map((b: any) => b.handle), ['Natret']);
+    // the request is gone for them too, and a new one does not get through
+    assert.deepEqual((await call('GET', '/v1/friends', pest.token)).body.outgoing, []);
+    assert.equal((await call('POST', '/v1/friends/requests', pest.token, { handle: 'Spokojna' })).body.error, 'blocked');
+    assert.deepEqual((await call('GET', '/v1/friends', me.token)).body.incoming, []);
+    // only a request to me can be blocked this way
+    assert.equal((await call('POST', `/v1/friends/requests/${me.user.id}/block`, pest.token)).status, 404);
+    // unblocked, they can invite again
+    const back = await call('DELETE', `/v1/friends/blocked/${pest.user.id}`, me.token);
+    assert.deepEqual(back.body.blocked, []);
+    assert.equal((await call('POST', '/v1/friends/requests', pest.token, { handle: 'Spokojna' })).body.status, 'sent');
+    // blocked again, and then I invite them myself: that takes the block back
+    await call('POST', `/v1/friends/requests/${pest.user.id}/block`, me.token);
+    assert.equal((await call('POST', '/v1/friends/requests', me.token, { handle: 'Natret' })).body.status, 'sent');
+    assert.deepEqual((await call('GET', '/v1/friends', me.token)).body.blocked, []);
+  });
+
   it('knows which Minecraft players use SlashClient', async () => {
     const steve = '8667ba71-b85a-4004-af54-457a9734eed7';
     const alex = 'ec561538-f3fd-461d-aff5-086b22154bce';

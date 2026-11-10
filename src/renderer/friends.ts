@@ -56,7 +56,8 @@ interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
 /** `editedAt`, `deleted`: changed or taken back by the author (server 0.9.23+). */
 interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean; editedAt?: number; deleted?: boolean; imageRemoved?: { at: number; expired?: boolean; by?: string } }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
-interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
+/** `blocked` comes from servers that can block invites (0.9.76 on); without it the "Zablokuj" button stays hidden. */
+interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[]; blocked?: Request[] }
 
 export interface FriendsDeps {
   api: any;
@@ -106,6 +107,7 @@ export function socialErrorText(code: string): string {
     not_found: t('Nie ma takiego gracza w SlashClient.'),
     self: t('Nie możesz zaprosić samego siebie.'),
     already_friends: t('Jesteście już znajomymi.'),
+    blocked: t('Ten gracz nie przyjmuje od Ciebie zaproszeń.'),
     not_friends: t('Możecie pisać tylko do znajomych.'),
     too_long: t('Wiadomość jest za długa (maks. {0} znaków).', MAX_MESSAGE),
     empty: t('Wiadomość jest pusta.'),
@@ -1074,7 +1076,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         const decline = el('button', { type: 'button', className: 'icon-btn', title: t('Odrzuć') }, icon('fa-xmark'));
         accept.addEventListener('click', () => act(() => api.socialApi('POST', `/v1/friends/requests/${r.id}/accept`), t('{0} jest teraz Twoim znajomym.', r.name)));
         decline.addEventListener('click', () => act(() => api.socialApi('DELETE', `/v1/friends/requests/${r.id}`)));
-        sections.push(el('div', { className: 'fr-row' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: `@${r.handle}` })), accept, decline));
+        // declining for good: they cannot invite again until unblocked at the bottom of the list
+        const block = list.blocked ? el('button', { type: 'button', className: 'icon-btn', title: t('Zablokuj (nie będzie mógł znowu zaprosić)') }, icon('fa-ban')) : '';
+        if (block) block.addEventListener('click', () => act(() => api.socialApi('POST', `/v1/friends/requests/${r.id}/block`), t('Zablokowano {0}. Nie zaprosi Cię ponownie.', r.name)));
+        sections.push(el('div', { className: 'fr-row' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: `@${r.handle}` })), accept, decline, block));
       }
     }
     // players met recently, under the invites (collapsible)
@@ -1101,6 +1106,14 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         const cancel = el('button', { type: 'button', className: 'icon-btn', title: t('Anuluj zaproszenie') }, icon('fa-xmark'));
         cancel.addEventListener('click', () => act(() => api.socialApi('DELETE', `/v1/friends/requests/${r.id}`)));
         sections.push(el('div', { className: 'fr-row is-offline' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: t('czeka na odpowiedź') })), cancel));
+      }
+    }
+    if (list.blocked?.length) {
+      sections.push(el('div', { className: 'fr-section', textContent: t('Zablokowani ({0})', list.blocked.length) }));
+      for (const r of list.blocked) {
+        const unblock = el('button', { type: 'button', className: 'icon-btn', title: t('Odblokuj') }, icon('fa-unlock'));
+        unblock.addEventListener('click', () => act(() => api.socialApi('DELETE', `/v1/friends/blocked/${r.id}`), t('Odblokowano {0}.', r.name)));
+        sections.push(el('div', { className: 'fr-row is-offline' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: t('nie może Cię zaprosić') })), unblock));
       }
     }
     listBox.replaceChildren(...sections);

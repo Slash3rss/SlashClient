@@ -807,6 +807,8 @@ export function createApp(cfg: Config) {
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
+      // players I blocked from inviting me; launchers before 0.9.76 ignore it (and show no "Zablokuj")
+      blocked: db.blocked(me),
     };
   }
 
@@ -1661,6 +1663,10 @@ export function createApp(cfg: Config) {
       if (!other) throw new HttpError(404, 'not_found');
       if (other.id === me) throw new HttpError(400, 'self');
       if (db.areFriends(me, other.id)) throw new HttpError(409, 'already_friends');
+      // they blocked us: no request reaches them (and they get no notice)
+      if (db.isBlocked(other.id, me)) throw new HttpError(403, 'blocked');
+      // inviting someone I blocked takes the block back
+      db.unblock(me, other.id);
       // they already asked us: that is a yes from both sides
       if (db.hasRequest(other.id, me)) {
         db.addFriendship(me, other.id);
@@ -1691,6 +1697,19 @@ export function createApp(cfg: Config) {
       const me = authed(req);
       if (!db.removeRequest(other, me) && !db.removeRequest(me, other)) throw new HttpError(404, 'not_found');
       push(other, { type: 'friends' });
+      return friendList(me);
+    }],
+    // declines a request to me and keeps that player from inviting me again (until unblocked)
+    ['POST', /^\/v1\/friends\/requests\/([\w-]+)\/block$/, (req, [from]) => {
+      const me = authed(req);
+      if (!db.hasRequest(from, me)) throw new HttpError(404, 'not_found');
+      db.block(me, from);
+      push(from, { type: 'friends' });
+      return friendList(me);
+    }],
+    ['DELETE', /^\/v1\/friends\/blocked\/([\w-]+)$/, (req, [other]) => {
+      const me = authed(req);
+      if (!db.unblock(me, other)) throw new HttpError(404, 'not_found');
       return friendList(me);
     }],
     ['DELETE', /^\/v1\/friends\/([\w-]+)$/, (req, [other]) => {

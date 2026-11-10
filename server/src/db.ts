@@ -78,6 +78,13 @@ CREATE TABLE IF NOT EXISTS requests (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (from_uuid, to_uuid)
 );
+-- a player blocked from sending friend requests to another (who declined theirs with "Zablokuj")
+CREATE TABLE IF NOT EXISTS blocks (
+  uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+  blocked TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (uuid, blocked)
+);
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   from_uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
@@ -964,6 +971,27 @@ CREATE INDEX IF NOT EXISTS deleted_accounts_at ON deleted_accounts(deleted_at);
   outgoing(uuid: string): Request[] {
     return this.stmt(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.to_uuid
       WHERE r.from_uuid = ? ORDER BY r.created_at DESC`).all(uuid) as unknown as Request[];
+  }
+
+  // ---- blocks (friend requests) ----
+
+  /** Blocks a player and drops the requests between the two, either way. */
+  block(uuid: string, other: string) {
+    this.stmt('INSERT OR IGNORE INTO blocks (uuid, blocked, created_at) VALUES (?, ?, ?)').run(uuid, other, Date.now());
+    this.stmt('DELETE FROM requests WHERE (from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)').run(uuid, other, other, uuid);
+  }
+
+  unblock(uuid: string, other: string): boolean {
+    return Number(this.stmt('DELETE FROM blocks WHERE uuid = ? AND blocked = ?').run(uuid, other).changes) > 0;
+  }
+
+  isBlocked(uuid: string, other: string): boolean {
+    return !!this.stmt('SELECT 1 FROM blocks WHERE uuid = ? AND blocked = ?').get(uuid, other);
+  }
+
+  blocked(uuid: string): Request[] {
+    return this.stmt(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, b.created_at AS at FROM blocks b JOIN users u ON u.uuid = b.blocked
+      WHERE b.uuid = ? ORDER BY b.created_at DESC`).all(uuid) as unknown as Request[];
   }
 
   // ---- messages ----

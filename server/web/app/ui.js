@@ -34,6 +34,7 @@ const ERRORS = {
   not_found: 'Nie znaleziono.',
   self: 'To Ty.',
   already_friends: 'Już jesteście znajomymi.',
+  blocked: 'Ten gracz nie przyjmuje od Ciebie zaproszeń.',
   rate_limited: 'Za szybko. Spróbuj za chwilę.',
   gifs_unavailable: 'GIF-y są chwilowo niedostępne.',
   gifs_disabled: 'GIF-y są wyłączone na tym serwerze.',

@@ -14,7 +14,7 @@ import { $, ago, avatarEl, badge, confirmSheet, el, errorText, guard, icon, shee
 const S = {
   me: undefined,
   health: { providers: [], dev: false },
-  friends: [], incoming: [], outgoing: [],
+  friends: [], incoming: [], outgoing: [], blocked: undefined,
   groups: [],
   clan: null, clanInvites: [],
   communities: [], communityInvites: [], communityRequests: [],
@@ -298,6 +298,7 @@ async function loadFriends() {
   S.friends = res.friends;
   S.incoming = res.incoming;
   S.outgoing = res.outgoing;
+  S.blocked = res.blocked;
 }
 async function loadGroups() {
   const res = await api('GET', '/v1/groups').catch(() => undefined);
@@ -440,6 +441,7 @@ async function addFriend() {
   S.friends = res.friends;
   S.incoming = res.incoming;
   S.outgoing = res.outgoing;
+  S.blocked = res.blocked;
   toast(res.status === 'friends' ? t('Jesteście teraz znajomymi.') : t('Zaproszenie wysłane.'));
   rerender();
 }
@@ -623,7 +625,9 @@ function renderInvites(view) {
   if (S.incoming.length) sections.push(el('h2', { textContent: t('Do znajomych') }), el('ul', { class: 'list' }, ...S.incoming.map((p) => el('li', { class: 'item' },
     avatarEl(p), el('div', { class: 'grow' }, el('div', { class: 'name', textContent: p.name }), el('div', { class: 'muted small', textContent: `@${p.handle}` })),
     el('button', { class: 'btn small', onclick: act(() => api('POST', `/v1/friends/requests/${p.id}/accept`), loadFriends) }, icon('fa-solid fa-check'), t('Przyjmij')),
-    el('button', { class: 'icon-btn', 'aria-label': t('Odrzuć'), onclick: act(() => api('DELETE', `/v1/friends/requests/${p.id}`), loadFriends) }, icon('fa-solid fa-xmark'))))));
+    el('button', { class: 'icon-btn', 'aria-label': t('Odrzuć'), title: t('Odrzuć'), onclick: act(() => api('DELETE', `/v1/friends/requests/${p.id}`), loadFriends) }, icon('fa-solid fa-xmark')),
+    // declining for good: older servers send no `blocked` list and cannot do it
+    S.blocked ? el('button', { class: 'icon-btn', 'aria-label': t('Zablokuj (nie będzie mógł znowu zaprosić)'), title: t('Zablokuj (nie będzie mógł znowu zaprosić)'), onclick: act(() => api('POST', `/v1/friends/requests/${p.id}/block`), loadFriends) }, icon('fa-solid fa-ban')) : ''))));
   if (S.clanInvites.length) sections.push(el('h2', { textContent: t('Do klanu') }), el('ul', { class: 'list' }, ...S.clanInvites.map((i) => el('li', { class: 'item' },
     el('span', { class: 'tag big', textContent: `[${i.clan.tag}]` }),
     el('div', { class: 'grow' }, el('div', { class: 'name', textContent: i.clan.name }), el('div', { class: 'muted small', textContent: `${t('od {0}', i.by.name)} · ${members(i.clan.members)}` })),
@@ -637,6 +641,9 @@ function renderInvites(view) {
   if (S.outgoing.length) sections.push(el('h2', { textContent: t('Wysłane') }), el('ul', { class: 'list' }, ...S.outgoing.map((p) => el('li', { class: 'item' },
     avatarEl(p), el('div', { class: 'grow' }, el('div', { class: 'name', textContent: p.name }), el('div', { class: 'muted small', textContent: t('czeka na odpowiedź') })),
     el('button', { class: 'btn small ghost', onclick: act(() => api('DELETE', `/v1/friends/requests/${p.id}`), loadFriends) }, t('Anuluj'))))));
+  if (S.blocked?.length) sections.push(el('h2', { textContent: t('Zablokowani') }), el('ul', { class: 'list' }, ...S.blocked.map((p) => el('li', { class: 'item' },
+    avatarEl(p), el('div', { class: 'grow' }, el('div', { class: 'name', textContent: p.name }), el('div', { class: 'muted small', textContent: t('nie może Cię zaprosić') })),
+    el('button', { class: 'btn small ghost', onclick: act(() => api('DELETE', `/v1/friends/blocked/${p.id}`), loadFriends) }, t('Odblokuj'))))));
   if (S.communityRequests.length) sections.push(el('h2', { textContent: t('Prośby o dołączenie') }), el('ul', { class: 'list' }, ...S.communityRequests.map((r) => el('li', { class: 'item' },
     el('span', { class: 'avatar square' }, icon('fa-solid fa-users')), el('div', { class: 'grow' }, el('div', { class: 'name', textContent: r.community.name }), el('div', { class: 'muted small', textContent: t('czeka na odpowiedź') })),
     el('button', { class: 'btn small ghost', onclick: act(() => api('DELETE', `/v1/communities/${r.community.id}/requests/mine`), loadCommunities) }, t('Anuluj'))))));
