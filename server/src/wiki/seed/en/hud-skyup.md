@@ -78,6 +78,7 @@ The **Boosts and skills** module reads the beacon's boost bars ("Boost » Drop z
 
 - **Boost running out** – shortly before it ends (**Warn before a boost ends**, 0–10 minutes before).
 - **Boost ended**.
+- **Skill running out** – a banner for a skill's last seconds (**Warn before a skill ends**, 0–60 seconds, 10 by default) that counts down and goes together with it.
 - **Job skill ended** – Wiertło, Piła, Pług, Nawałnica, Rozbiórka, Sieci rybackie, Eskalacja.
 - **Skill ready again** – after its cooldown (**Skill cooldown**, 10 minutes from its end by default). The cooldown counts only while you play on SkyUp, as on the server.
 

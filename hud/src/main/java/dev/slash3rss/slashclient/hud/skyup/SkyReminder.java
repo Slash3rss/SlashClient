@@ -36,6 +36,9 @@ public final class SkyReminder {
 	private static ItemStack icon = ItemStack.EMPTY;
 	private static Look look = Look.BONUS;
 	private static long shown = -1;
+	/** A countdown banner's end (0: shown for the usual time) and its line for the time still left. */
+	private static long until;
+	private static java.util.function.LongFunction<String> countdown;
 
 	private SkyReminder() {}
 
@@ -46,23 +49,42 @@ public final class SkyReminder {
 		SkyReminder.text = text;
 		SkyReminder.icon = icon;
 		shown = System.currentTimeMillis();
+		until = 0;
+		countdown = null;
+	}
+
+	/**
+	 * A banner that stays until `endsAt` (System.currentTimeMillis()), its line saying the time still left and its bar
+	 * running out right then: a job skill about to end goes away when the skill does.
+	 */
+	public static void showUntil(Look look, String title, java.util.function.LongFunction<String> line, ItemStack icon, long endsAt) {
+		show(look, title, line.apply(endsAt - System.currentTimeMillis()), icon);
+		until = endsAt;
+		countdown = line;
+	}
+
+	/** How long the banner stays fully shown: the usual time, or until a countdown's end. */
+	private static long showFor() {
+		return until > 0 ? Math.max(500, until - shown - IN) : SHOW;
 	}
 
 	/** Whether a banner is on screen (for the tests). */
 	public static boolean showing() {
-		return shown >= 0 && System.currentTimeMillis() - shown < IN + SHOW + OUT;
+		return shown >= 0 && System.currentTimeMillis() - shown < IN + showFor() + OUT;
 	}
 
 	public static void draw(GuiGraphicsExtractor g, Minecraft mc) {
 		if (shown < 0) return;
 		long age = System.currentTimeMillis() - shown;
-		if (age >= IN + SHOW + OUT) {
+		long show = showFor();
+		if (age >= IN + show + OUT) {
 			shown = -1;
 			return;
 		}
+		if (countdown != null) text = countdown.apply(Math.max(0, until - System.currentTimeMillis()));
 		// slides in and out, slowing down at the end of each move
 		float in = ease(Math.min(1f, (float) age / IN));
-		float out = age > IN + SHOW ? ease((float) (age - IN - SHOW) / OUT) : 0f;
+		float out = age > IN + show ? ease((float) (age - IN - show) / OUT) : 0f;
 		Component head = Ui.bold(title), line = Component.literal(text);
 		int w = Math.max(180, Math.min(300, 48 + Math.max(Ui.width(head), Ui.width(line))));
 		int h = 36;
@@ -80,7 +102,7 @@ public final class SkyReminder {
 		Ui.draw(g, Ui.fit(head, textW), x + 37, y + 8, look.light);
 		Ui.draw(g, Ui.fit(line, textW), x + 37, y + 20, Ui.TEXT);
 		// how long it is still shown
-		float left = Math.max(0f, Math.min(1f, 1f - (float) (age - IN) / SHOW));
+		float left = Math.max(0f, Math.min(1f, 1f - (float) (age - IN) / show));
 		g.fill(x + 8, y + h - 3, x + 8 + Math.round((w - 16) * left), y + h - 2, look.light);
 	}
 

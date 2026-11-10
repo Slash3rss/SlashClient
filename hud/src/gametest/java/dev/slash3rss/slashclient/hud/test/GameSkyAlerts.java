@@ -53,9 +53,16 @@ public class GameSkyAlerts implements FabricClientGameTest {
 					SkyBoosts.desktopForTest = "";
 				});
 
-				// a job skill at its end: over, then ready again after the cooldown
-				server.runCommand("bossbar add skill \"⚔ Nawałnica (pozostało 1 sek)\"");
+				// a job skill's last seconds: a banner counting down, staying until the skill's end (longer than a usual one)
+				server.runCommand("bossbar add skill \"⚔ Nawałnica (pozostało 9 sek)\"");
 				server.runCommand("bossbar set skill players @a");
+				context.waitTicks(15);
+				expect(context, "Skill running out: Nawałnica – ~ s left");
+				context.takeScreenshot("sky-alerts-skill-soon");
+				context.waitTicks(100);
+				if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyReminder.showing())) throw new AssertionError("The skill's countdown went before its end");
+				// a job skill at its end: over, then ready again after the cooldown
+				server.runCommand("bossbar set skill name \"⚔ Nawałnica (pozostało 1 sek)\"");
 				context.waitTicks(15);
 				server.runCommand("bossbar remove skill");
 				context.waitTicks(15);

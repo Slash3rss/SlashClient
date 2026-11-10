@@ -78,6 +78,7 @@ Moduł **Boosty i umiejętności** czyta paski boostów z beacona („Boost » D
 
 - **Boost się kończy** – chwilę przed końcem (**Ostrzeż przed końcem boosta**, 0–10 minut wcześniej).
 - **Koniec boosta**.
+- **Umiejętność się kończy** – baner na ostatnie sekundy umiejętności (**Ostrzeż przed końcem umiejętności**, 0–60 sekund, domyślnie 10), który odlicza czas i znika razem z nią.
 - **Koniec umiejętności pracy** – Wiertło, Piła, Pług, Nawałnica, Rozbiórka, Sieci rybackie, Eskalacja.
 - **Umiejętność znów gotowa** – po odnowieniu (**Odnowienie umiejętności**, domyślnie 10 minut od końca). Odnowienie liczy się tylko wtedy, gdy grasz na SkyUp, jak na serwerze.
 

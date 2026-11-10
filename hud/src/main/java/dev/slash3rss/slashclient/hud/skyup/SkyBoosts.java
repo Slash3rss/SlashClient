@@ -131,11 +131,20 @@ public final class SkyBoosts {
 			it.remove();
 			if (c.skyBoostEnd && t.endsAt - now <= ENDED_WITHIN + t.slack) alert(mc, c, "boostEnd", e.getKey(), "", boostLook(mc, e.getKey()));
 		}
-		// skills over, then ready again after their cooldown
+		// skills about to end (a banner counting down to their end), over, then ready again after their cooldown
+		long skillWarn = c.skySkillWarn * 1000L;
 		for (var it = skills.entrySet().iterator(); it.hasNext(); ) {
 			var e = it.next();
 			Timer t = e.getValue();
-			if (t.seenAt == now) continue;
+			if (t.seenAt == now) {
+				// only a bar with seconds says the end exactly
+				if (skillWarn > 0 && !t.warned && t.slack == 0 && t.endsAt - now <= skillWarn && t.endsAt - now > 1000) {
+					t.warned = true;
+					String skill = e.getKey();
+					alertUntil(mc, c, "skillSoon", skill, t.endsAt, skillLook(mc, skill));
+				}
+				continue;
+			}
 			it.remove();
 			if (t.endsAt - now > ENDED_WITHIN + t.slack) continue;
 			if (c.skySkillEnd) alert(mc, c, "skillEnd", e.getKey(), "", skillLook(mc, e.getKey()));
@@ -247,14 +256,26 @@ public final class SkyBoosts {
 	}
 
 	private static void alert(Minecraft mc, HudConfig c, String key, String name, String left, ItemStack icon) {
+		alert(mc, c, key, name, left, icon, 0);
+	}
+
+	/** A banner that counts down and goes when `endsAt` comes (a skill about to end). */
+	private static void alertUntil(Minecraft mc, HudConfig c, String key, String name, long endsAt, ItemStack icon) {
+		alert(mc, c, key, name, time(endsAt - System.currentTimeMillis()), icon, endsAt);
+	}
+
+	private static void alert(Minecraft mc, HudConfig c, String key, String name, String left, ItemStack icon, long endsAt) {
 		String title = Component.translatable("slashclient-hud.skyAlerts." + key + "Title").getString();
 		String text = Component.translatable("slashclient-hud.skyAlerts." + key, name, left).getString();
 		lastForTest = title + ": " + text;
 		//#if MC >= 26.3
-		SkyReminder.show(key.startsWith("boost") ? SkyReminder.Look.BOOST : SkyReminder.Look.SKILL, title, text, icon);
+		SkyReminder.Look look = key.startsWith("boost") ? SkyReminder.Look.BOOST : SkyReminder.Look.SKILL;
+		if (endsAt > 0) SkyReminder.showUntil(look, title, ms -> Component.translatable("slashclient-hud.skyAlerts." + key, name, time(ms)).getString(), icon, endsAt);
+		else SkyReminder.show(look, title, text, icon);
 		//#endif
 		String chosen = switch (key) {
 			case "boostSoon" -> c.skyBoostSoonSound;
+			case "skillSoon" -> c.skySkillSoonSound;
 			case "boostEnd" -> c.skyBoostEndSound;
 			case "skillEnd" -> c.skySkillEndSound;
 			default -> c.skySkillReadySound;

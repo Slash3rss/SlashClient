@@ -294,6 +294,9 @@ public final class HudConfig {
 	 */
 	public boolean skyAlerts = true, skyBoostEnd = true, skySkillEnd = true, skySkillReady = true;
 	public int skyBoostWarn = 1, skySkillCooldown = 10, skyAlertsVolume = 70;
+	/** Seconds before a job skill ends that its banner comes and counts down to the end (0: none). */
+	public int skySkillWarn = 10;
+	public String skySkillSoonSound = "pling";
 	/** Each banner's sound (ChatTabs' and the game's; "default" the bell). */
 	public String skyBoostSoonSound = "pling", skyBoostEndSound = "default", skySkillEndSound = "bass", skySkillReadySound = "levelup";
 	/** Each banner also on the desktop (a system notification through the launcher) while the game is in the background. */
@@ -1000,6 +1003,8 @@ public final class HudConfig {
 		skySkillEnd = other.skySkillEnd;
 		skySkillReady = other.skySkillReady;
 		skyBoostWarn = Math.max(0, Math.min(30, other.skyBoostWarn));
+		skySkillWarn = Math.max(0, Math.min(60, other.skySkillWarn));
+		skySkillSoonSound = other.skySkillSoonSound == null ? "pling" : other.skySkillSoonSound;
 		skySkillCooldown = Math.max(0, Math.min(60, other.skySkillCooldown));
 		skyAlertsVolume = Math.max(0, Math.min(100, other.skyAlertsVolume));
 		skyBoostSoonSound = other.skyBoostSoonSound == null ? "pling" : other.skyBoostSoonSound;

@@ -520,6 +520,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.skyAlerts.boostEndSetting", () -> cfg.skyBoostEnd, v -> cfg.skyBoostEnd = v),
 			alertSound("slashclient-hud.skyAlerts.boostEndSound", alertSounds, () -> cfg.skyBoostEndSound, v -> cfg.skyBoostEndSound = v),
 			new Toggle("slashclient-hud.skyAlerts.boostEndDesktop", () -> cfg.skyBoostEndDesktop, v -> cfg.skyBoostEndDesktop = v),
+			new Slider("slashclient-hud.skyAlerts.skillWarn", 0f, 60f, 5f, "%.0f s", () -> (float) cfg.skySkillWarn, v -> cfg.skySkillWarn = Math.round(v)),
+			alertSound("slashclient-hud.skyAlerts.skillSoonSound", alertSounds, () -> cfg.skySkillSoonSound, v -> cfg.skySkillSoonSound = v),
 			new Toggle("slashclient-hud.skyAlerts.skillEndSetting", () -> cfg.skySkillEnd, v -> cfg.skySkillEnd = v),
 			alertSound("slashclient-hud.skyAlerts.skillEndSound", alertSounds, () -> cfg.skySkillEndSound, v -> cfg.skySkillEndSound = v),
 			new Toggle("slashclient-hud.skyAlerts.skillReadySetting", () -> cfg.skySkillReady, v -> cfg.skySkillReady = v),
