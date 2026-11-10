@@ -126,6 +126,9 @@ export function socialErrorText(code: string): string {
     handle_taken: t('Ten nick ma już ktoś inny.'),
     handle_reserved: t('Tego nicku nie można wybrać.'),
     handle_cooldown: t('Nick możesz zmienić dopiero później.'),
+    move_has_files: t('Tamto konto ma zrzuty, klipy, zdjęcia w czacie albo profile w chmurze. Zaloguj się na nie i najpierw je usuń albo podepnij tam inny sposób logowania.'),
+    move_banned: t('Tamto konto jest zablokowane, więc tego logowania nie da się przenieść.'),
+    config_admin: t('Tamto konto jest adminem z konfiguracji serwera, więc tego logowania nie da się przenieść.'),
     too_many: t('Za dużo osób naraz (maks. 7 znajomych).'),
     bad_server: t('To nie wygląda na adres serwera.'),
     not_leader: t('Tylko lider może rozwiązać drużynę.'),
@@ -611,6 +614,38 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     });
   }
 
+  /**
+   * A login that another SlashClient account has: what that account is, and whether it goes with it (its only
+   * login: to the deleted accounts, which the admin can bring back) or stays; moved here once the player agrees.
+   */
+  async function moveLogin(provider: string, offer: { ticket: string; handle: string; name: string; friends: number; minecraft: string[]; removes: boolean; blocked: string }) {
+    const name = PROVIDERS[provider] ?? provider;
+    if (offer.blocked) {
+      deps.toast(deps.errorText(new Error(`social:${offer.blocked}`)), true);
+      return;
+    }
+    const about = [
+      t('Konto @{0}: {1} znajomych', offer.handle, String(offer.friends)),
+      ...(offer.minecraft.length ? [t('Konta Minecraft: {0}', offer.minecraft.join(', '))] : []),
+    ].join(' · ');
+    const detail = offer.removes
+      ? t('To jedyny sposób logowania tamtego konta, więc zostanie ono usunięte razem ze znajomymi, Iskrami i kosmetykami – nic z niego nie przejdzie na to konto. Admin może je przywrócić przez jakiś czas.')
+      : t('Tamto konto zostaje i dalej loguje się innymi sposobami; przenosi się tylko {0}.', name);
+    if (!(await confirmDialog({
+      title: t('{0} ma już inne konto SlashClient. Przenieść logowanie tutaj?', name),
+      body: [el('p', { className: 'muted', textContent: about }), el('p', { className: offer.removes ? 'fr-error' : 'muted', textContent: detail })],
+      ok: offer.removes ? t('Przenieś i usuń tamto konto') : t('Przenieś'), okIcon: 'fa-right-left', danger: offer.removes,
+    }))) return;
+    try {
+      const res = await api.socialApi('POST', '/v1/me/move-login', { ticket: offer.ticket });
+      Object.assign(state!.user!, res);
+      deps.toast(offer.removes ? t('Przeniesiono {0}, konto @{1} usunięte.', name, offer.handle) : t('Przeniesiono {0} z konta @{1}.', name, offer.handle));
+      renderMe();
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    }
+  }
+
   /** "Zmień nick" in the account (servers from 0.9.75): the new one, not more often than the server allows. */
   function nickRow(me: Me): Node[] {
     if (me.handleChangeAt === undefined || me.handleChangeAt === null) return [];
@@ -795,7 +830,14 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         } else if (provider !== 'dev') {
           chip.disabled = true;
           try {
-            state = await api.socialLoginOAuth(provider, true);
+            const res = await api.socialLoginOAuth(provider, true);
+            // another account of the player has this login (servers from 0.9.75): moved here once they say so
+            if (res && 'move' in res) {
+              closeLinkCode?.();
+              await moveLogin(provider, res.move);
+              return;
+            }
+            state = res;
             deps.toast(t('Połączono konto {0}.', PROVIDERS[provider] ?? provider));
             renderMe();
           } catch (err) {

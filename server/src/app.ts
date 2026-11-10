@@ -277,16 +277,48 @@ export function createApp(cfg: Config) {
     loopback?: { port: number; challenge: string };
     /** The website asks for a new account's nick after the sign-in (`askHandle`), instead of starting it as "Gracz1234". */
     askHandle?: boolean;
+    /** Linking (launchers from 0.9.75): a login another account has is offered to move here (`move`) instead of refused. */
+    askMove?: boolean;
   };
   const logins = new Map<string, Login>();
   /** Sign-ins that found no account, waiting for the player to pick a nick (POST /v1/auth/signup), by ticket. */
   const signups = new Map<string, { provider: ProviderId; id: Identity; at: number }>();
+  /** Logins found on another account while linking, waiting for the player to move them (POST /v1/me/move-login), by ticket. */
+  const moves = new Map<string, { provider: ProviderId; subject: string; from: string; to: string; at: number }>();
+
+  /**
+   * Why an account cannot be left without logins (it would go to the deleted accounts, whose files do not come
+   * back): its screenshots, clips, chat pictures or cloud profiles; '' when it can.
+   */
+  function filesKeepAccount(uuid: string): string {
+    return media.ofOwner(uuid).length || cloud.list(uuid).length || images.ofOwner(uuid, 1).some((i) => i.removedAt === null) ? 'move_has_files' : '';
+  }
+
+  /** What the player sees before moving a login: the other account, and whether it goes (its only login) or stays. */
+  function moveOffer(ticket: string, provider: ProviderId, from: string) {
+    const other = db.user(from)!;
+    const removes = db.identityCount(from) < 2;
+    return {
+      ticket, provider, handle: other.handle, name: other.name, friends: db.friends(from).length,
+      minecraft: db.minecraftAccounts(from).map((m) => m.name), removes,
+      // a banned account keeps its logins (its ban stays where the admin put it)
+      blocked: configAdmins.has(other.handle.toLowerCase()) ? 'config_admin' : other.banned ? 'move_banned' : removes ? filesKeepAccount(from) : '',
+    };
+  }
 
   /** Who the provider says signed in: a new session, or the provider added to the account. */
   function finishLogin(login: Login, provider: ProviderId, id: Identity): boolean {
     if (login.linkTo) {
       if (db.link(provider, id.subject, login.linkTo)) {
         login.result = { linked: true, user: meWithProviders(login.linkTo) };
+        return true;
+      }
+      // another account has it: newer launchers ask whether to move it here
+      const other = db.owner(provider, id.subject);
+      if (login.askMove && other && other !== login.linkTo) {
+        const ticket = randomBytes(24).toString('base64url');
+        moves.set(ticket, { provider, subject: id.subject, from: other, to: login.linkTo, at: Date.now() });
+        login.result = { move: moveOffer(ticket, provider, other) };
         return true;
       }
       login.error = 'already_linked';
@@ -1413,12 +1445,12 @@ export function createApp(cfg: Config) {
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       // older launchers and the website send nothing: they get the "Czy to Ty?" page
       // `askHandle` (the website from 0.9.75): a new account's nick is asked after the sign-in, see /v1/auth/signup
-      const { port, challenge, askHandle } = await body(req);
+      const { port, challenge, askHandle, askMove } = await body(req);
       const loopback = !p.device && Number.isInteger(port) && (port as number) >= 1024 && (port as number) <= 65535 && typeof challenge === 'string' && /^[\w-]{43}$/.test(challenge)
         ? { port: port as number, challenge } : undefined;
       const state = randomBytes(24).toString('base64url');
       const confirm = String(randomBytes(2).readUInt16BE() % 10_000).padStart(4, '0');
-      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback, askHandle: askHandle === true && !linkTo };
+      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback, askHandle: askHandle === true && !linkTo, askMove: askMove === true && !!linkTo };
       logins.set(state, login);
       if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)), confirm };
       // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
@@ -1497,6 +1529,25 @@ export function createApp(cfg: Config) {
       if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlinkIdentity(me, 'minecraft', mcUuid);
       return meWithProviders(me, leanFor(req));
+    }],
+    // a login the player proved is theirs, moved from their other account; that account goes to the deleted ones
+    // (the admin can bring it back) when it was its only login, and nothing else of it moves
+    ['POST', /^\/v1\/me\/move-login$/, async (req) => {
+      const me = authed(req);
+      limitProfileChanges(me);
+      const { ticket } = await body(req);
+      const move = typeof ticket === 'string' ? moves.get(ticket) : undefined;
+      if (!move || move.to !== me || Date.now() - move.at > LOGIN_TTL_MS) throw new HttpError(404, 'login_expired');
+      if (db.owner(move.provider, move.subject) !== move.from) throw new HttpError(409, 'login_expired');
+      const offer = moveOffer('', move.provider, move.from);
+      if (offer.blocked) throw new HttpError(409, offer.blocked);
+      moves.delete(ticket as string);
+      const from = db.user(move.from)!;
+      db.unlinkIdentity(move.from, move.provider, move.subject);
+      db.link(move.provider, move.subject, me);
+      db.log(me, 'move_login', from.handle, `${move.provider} → @${db.user(me)!.handle}${offer.removes ? ', konto usunięte' : ''}`, move.from);
+      if (offer.removes) await accounts.remove(move.from, me);
+      return { ...meWithProviders(me, leanFor(req)), moved: { from: from.handle, removed: offer.removes } };
     }],
     // the player's own new nick: free, not an admin's by configuration, and not more often than the admin set
     ['POST', /^\/v1\/me\/handle$/, async (req) => {
@@ -2792,6 +2843,7 @@ export function createApp(cfg: Config) {
     }
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
     for (const [ticket, s] of signups) if (Date.now() - s.at > LOGIN_TTL_MS) signups.delete(ticket);
+    for (const [ticket, m] of moves) if (Date.now() - m.at > LOGIN_TTL_MS) moves.delete(ticket);
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [ip, seen] of gameReporters) if ([...seen.values()].every((at) => Date.now() - at > IN_GAME_TTL_MS)) gameReporters.delete(ip);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);

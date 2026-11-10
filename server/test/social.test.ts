@@ -299,6 +299,43 @@ describe('social server', () => {
     assert.equal((await call('GET', `/v1/auth/poll?state=${again.state}`)).body.user.handle, 'Discordowy');
   });
 
+  it('moves a login from another account of the player, when asked', async () => {
+    /** Linking Microsoft (`who` types the code) to `token`'s account, as launchers from 0.9.75 ask. */
+    const link = async (who: string, token: string) => {
+      const start = (await call('POST', '/v1/auth/microsoft/start', token, { askMove: true })).body;
+      typedCodes.set(`device-${start.code.slice(4)}`, who);
+      for (let i = 0; i < 50; i++) {
+        const res = (await call('GET', `/v1/auth/poll?state=${start.state}`)).body;
+        if (!res.pending) return res;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      throw new Error('the sign-in did not finish');
+    };
+    const mover = await login('Przenosi');
+    // Jan's Microsoft: Jan keeps his account (he has Minecraft too)
+    const offer = (await link('jan', mover.token)).move;
+    assert.equal(offer.handle, 'Jan');
+    assert.equal(offer.removes, false);
+    assert.equal(offer.blocked, '');
+    // someone else cannot use the ticket
+    const stranger = await login('Obcy');
+    assert.equal((await call('POST', '/v1/me/move-login', stranger.token, { ticket: offer.ticket })).body.error, 'login_expired');
+    const moved = (await call('POST', '/v1/me/move-login', mover.token, { ticket: offer.ticket })).body;
+    assert.deepEqual(moved.moved, { from: 'Jan', removed: false });
+    assert.ok(moved.providers.includes('microsoft'));
+    assert.equal((await microsoftLogin('jan')).body.user.handle, 'Przenosi');
+    // Wybrany_Nick had only Microsoft: the account goes to the deleted ones
+    const mover2 = await login('Przenosi2');
+    const offer2 = (await link('wybrany', mover2.token)).move;
+    assert.equal(offer2.handle, 'Wybrany_Nick');
+    assert.equal(offer2.removes, true);
+    const moved2 = (await call('POST', '/v1/me/move-login', mover2.token, { ticket: offer2.ticket })).body;
+    assert.deepEqual(moved2.moved, { from: 'Wybrany_Nick', removed: true });
+    assert.equal((await call('GET', '/v1/profiles/Wybrany_Nick', mover2.token)).status, 404);
+    // older launchers (no askMove) are told it is someone else's, as before
+    assert.equal((await microsoftLogin('wybrany', mover.token)).body.error, 'already_linked');
+  });
+
   it('signs in with Google and GitHub once linked', async () => {
     const zosia = (await minecraftLogin('Zosia', mcId(6))).body;
     for (const [provider, avatar] of [['google', ''], ['github', 'https://avatars.githubusercontent.com/u/7']]) {

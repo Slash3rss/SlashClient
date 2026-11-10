@@ -3109,7 +3109,7 @@ let browserLogin = 0;
 handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(async () => {
   if (!['discord', 'microsoft', 'google', 'github'].includes(provider)) throw new SocialError('provider_disabled');
   const attempt = ++browserLogin;
-  type Result = { pending?: boolean; linked?: boolean; signup?: { ticket: string; suggestion: string }; token: string; user: never };
+  type Result = { pending?: boolean; linked?: boolean; signup?: { ticket: string; suggestion: string }; move?: Record<string, unknown>; token: string; user: never };
   // the browser comes back to this launcher, which alone can end the sign-in (oauthLoopback.ts);
   // an older server ignores it and the sign-in is picked up by asking, as before
   let state: string | undefined;
@@ -3126,7 +3126,8 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
   }, (ok, lang) => `${server}/v1/auth/done?ok=${ok ? 1 : 0}&lang=${lang}`).catch(() => undefined);
   try {
     // `askHandle` (servers from 0.9.75): with no account yet, the player picks the new one's nick after signing in
-    const startBody = { ...(loopback ? { port: loopback.port, challenge: loopback.challenge } : {}), ...(link ? {} : { askHandle: true }) };
+    // `askMove` (the same servers): linking a login another account has offers to move it here
+    const startBody = { ...(loopback ? { port: loopback.port, challenge: loopback.challenge } : {}), ...(link ? { askMove: true } : { askHandle: true }) };
     const started = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, startBody, link);
     const { url, code } = started;
     state = started.state;
@@ -3151,6 +3152,8 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
       }
       // no account behind this sign-in: the page asks for a nick, then social:signup makes the account
       if (res.signup) return { signup: { ticket: res.signup.ticket, suggestion: res.signup.suggestion ?? '' } };
+      // the login is another account's: the page asks before moving it (POST /v1/me/move-login)
+      if (res.move) return { move: res.move };
       return social.signedIn(res);
     }
     throw new SocialError('login_expired');
