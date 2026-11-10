@@ -45,6 +45,8 @@ interface Me extends Person {
   ranks?: RankView[]; badgeChoice?: string; badgeRank?: RankView | null;
   /** single Minecraft accounts' own picks (uuid without dashes: 'none' or a rank), the rest go with the account's (server 0.9.60+) */
   characterBadges?: Record<string, string>;
+  /** when the nick can be changed again (0: now; null: players cannot; none: a server before 0.9.75) */
+  handleChangeAt?: number | null;
 }
 /** `expiresAt`: after it Join is gone (server 0.9.25+; none: it does not expire). */
 interface Invite { server: string; version?: string; party?: string; expiresAt?: number }
@@ -120,6 +122,10 @@ export function socialErrorText(code: string): string {
     cancelled: t('Logowanie anulowane.'),
     not_linked: t('To konto nie jest podpięte do żadnego konta SlashClient. Zaloguj się kontem Minecraft i podepnij je w zakładce Znajomi.'),
     not_verified: t('Mojang nie potwierdził konta Minecraft. Spróbuj ponownie.'),
+    bad_handle: t('Nick: od 1 do 24 znaków, tylko litery bez polskich znaków, cyfry, _ i kropka.'),
+    handle_taken: t('Ten nick ma już ktoś inny.'),
+    handle_reserved: t('Tego nicku nie można wybrać.'),
+    handle_cooldown: t('Nick możesz zmienić dopiero później.'),
     too_many: t('Za dużo osób naraz (maks. 7 znajomych).'),
     bad_server: t('To nie wygląda na adres serwera.'),
     not_leader: t('Tylko lider może rozwiązać drużynę.'),
@@ -203,7 +209,7 @@ export function socialErrorText(code: string): string {
 export function createFriends(root: HTMLElement, badge: HTMLElement, deps: FriendsDeps) {
   const { api } = deps;
   let state: SocialState | undefined;
-  let health: { providers: string[]; dev: boolean } | undefined;
+  let health: { providers: string[]; signup?: string[]; dev: boolean } | undefined;
   let healthError = false;
   let list: FriendList = { friends: [], incoming: [], outgoing: [] };
   let selected: string | undefined;
@@ -510,7 +516,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         mc.addEventListener('click', () => signIn(() => api.socialLoginMinecraft()));
         buttons.append(mc);
       } else buttons.append(el('p', { className: 'muted', textContent: t('Dodaj konto Microsoft w zakładce Konta: konto SlashClient założy się samo i będzie logować się razem z nim.') }));
-      if (health?.providers?.length) buttons.append(el('small', { className: 'muted fr-other', textContent: t('Masz już konto SlashClient? Zaloguj się sposobem, który wcześniej do niego podpiąłeś:') }));
+      // servers from 0.9.75 make an account from these too (`signup`), with the nick asked after signing in
+      if (health?.providers?.length) {
+        buttons.append(el('small', { className: 'muted fr-other', textContent: health.signup?.length
+          ? t('Albo zaloguj się innym sposobem – bez konta SlashClient założysz nowe i wybierzesz nick (konto Minecraft nie jest potrzebne):')
+          : t('Masz już konto SlashClient? Zaloguj się sposobem, który wcześniej do niego podpiąłeś:') }));
+      }
       for (const provider of health?.providers ?? []) {
         const b = el('button', { type: 'button', className: `fr-${provider}` }, providerIcon(provider), t(' Zaloguj przez {0}', PROVIDERS[provider] ?? provider));
         b.addEventListener('click', () => signIn(() => api.socialLoginOAuth(provider)));
@@ -530,11 +541,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     root.replaceChildren(card);
   }
 
-  async function signIn(fn: () => Promise<SocialState>) {
+  async function signIn(fn: () => Promise<SocialState | { signup: { ticket: string; suggestion: string } }>) {
     signingIn = true;
     render();
     try {
-      state = await fn();
+      const res = await fn();
+      // a sign-in with no account behind it (servers from 0.9.75): the new account's nick first
+      state = 'signup' in res ? await pickNick(res.signup) : res;
       await refreshList();
       void groups.refresh();
       void communities.refresh();
@@ -547,6 +560,99 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       loginCode = undefined;
       render();
     }
+  }
+
+  /**
+   * The nick a new account starts with, asked after the sign-in (the platform's own offered first); asked again
+   * while the server says it is taken or wrong, until the account is made or the player cancels.
+   */
+  function pickNick(signup: { ticket: string; suggestion: string }): Promise<SocialState> {
+    return new Promise((resolve, reject) => {
+      const input = control<HTMLInputElement>('input', { value: signup.suggestion, placeholder: 'Steve_123', maxLength: 24, className: 'fr-nick-input', spellcheck: false });
+      const problem = el('p', { className: 'fr-error' });
+      problem.hidden = true;
+      const ok = el('button', { type: 'button', className: 'primary' }, icon('fa-user-plus'), t(' Załóż konto'));
+      const cancel = el('button', { type: 'button', textContent: t('Anuluj') });
+      let made = false;
+      const close = modalWindow(t('Wybierz nick'), [
+        el('p', { className: 'muted', textContent: t('Tak zobaczą Cię znajomi. Litery bez polskich znaków, cyfry, _ i kropka, do 24 znaków; później możesz go zmienić w ustawieniach konta.') }),
+        input, problem], [cancel, ok], () => made || reject(new Error('social:cancelled')));
+      const go = async () => {
+        const nick = input.value.trim().replace(/^@/, '');
+        const say = (code: string) => {
+          problem.textContent = deps.errorText(new Error(`social:${code}`));
+          problem.hidden = false;
+          input.focus();
+        };
+        if (!/^[A-Za-z0-9_.]{1,24}$/.test(nick)) return say('bad_handle');
+        ok.disabled = true;
+        try {
+          const next = await api.socialSignup(signup.ticket, nick);
+          made = true;
+          close();
+          resolve(next);
+        } catch (err) {
+          const code = /social:(\w+)/.exec(String((err as Error)?.message ?? err))?.[1] ?? '';
+          if (['bad_handle', 'handle_taken', 'handle_reserved'].includes(code)) say(code);
+          else {
+            made = true;
+            close();
+            reject(err);
+          }
+        } finally {
+          ok.disabled = false;
+        }
+      };
+      ok.addEventListener('click', () => void go());
+      cancel.addEventListener('click', () => close());
+      input.addEventListener('keydown', (e) => e.key === 'Enter' && void go());
+      input.focus();
+      input.select();
+    });
+  }
+
+  /** "Zmień nick" in the account (servers from 0.9.75): the new one, not more often than the server allows. */
+  function nickRow(me: Me): Node[] {
+    if (me.handleChangeAt === undefined || me.handleChangeAt === null) return [];
+    const waits = me.handleChangeAt > Date.now();
+    const change = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-pen'), t(' Zmień nick'));
+    change.disabled = waits;
+    change.addEventListener('click', () => {
+      const input = control<HTMLInputElement>('input', { value: me.handle, maxLength: 24, className: 'fr-nick-input', spellcheck: false });
+      const problem = el('p', { className: 'fr-error' });
+      problem.hidden = true;
+      const ok = el('button', { type: 'button', className: 'primary' }, icon('fa-pen'), t(' Zmień'));
+      const cancel = el('button', { type: 'button', textContent: t('Anuluj') });
+      const close = modalWindow(t('Zmień nick'), [
+        el('p', { className: 'muted', textContent: t('Następną zmianę zrobisz dopiero za jakiś czas (wielkość liter możesz zmienić zawsze). Stary link do profilu prowadzi do Ciebie, dopóki ktoś nie weźmie tego nicku.') }),
+        input, problem], [cancel, ok]);
+      const go = async () => {
+        const nick = input.value.trim().replace(/^@/, '');
+        if (nick === me.handle) return close();
+        ok.disabled = true;
+        try {
+          const res = await api.socialApi('POST', '/v1/me/handle', { handle: nick });
+          Object.assign(state!.user!, res);
+          close();
+          deps.toast(t('Twój nick to teraz @{0}.', state!.user!.handle));
+          deps.accountChanged?.();
+          renderMe();
+        } catch (err) {
+          problem.textContent = deps.errorText(err);
+          problem.hidden = false;
+        } finally {
+          ok.disabled = false;
+        }
+      };
+      ok.addEventListener('click', () => void go());
+      cancel.addEventListener('click', () => close());
+      input.addEventListener('keydown', (e) => e.key === 'Enter' && void go());
+      input.focus();
+      input.select();
+    });
+    const when = waits ? new Date(me.handleChangeAt).toLocaleDateString(getLang() === 'en' ? 'en-GB' : 'pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    return [el('div', { className: 'row fr-profile-row' }, el('small', { className: 'muted', textContent: `@${me.handle}` }), change,
+      ...(waits ? [el('small', { className: 'muted', textContent: t('Kolejna zmiana od {0}', when) })] : []))];
   }
 
   // the layout is built once, so the message box keeps its text and focus
@@ -740,6 +846,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // linked Twitch and Kick channels and their two choices (streams.ts; servers before 0.9.24 have none)
       ...(streamsBox ? [el('div', { className: 'fr-account-section feature-streams', textContent: t('Streamy') }), streamsBox.element] : []),
       el('div', { className: 'fr-account-section', textContent: t('Profil na stronie') }),
+      ...nickRow(me),
       profileRow(me),
       ...badgeRow(me));
   }

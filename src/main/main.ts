@@ -3109,7 +3109,7 @@ let browserLogin = 0;
 handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(async () => {
   if (!['discord', 'microsoft', 'google', 'github'].includes(provider)) throw new SocialError('provider_disabled');
   const attempt = ++browserLogin;
-  type Result = { pending?: boolean; linked?: boolean; token: string; user: never };
+  type Result = { pending?: boolean; linked?: boolean; signup?: { ticket: string; suggestion: string }; token: string; user: never };
   // the browser comes back to this launcher, which alone can end the sign-in (oauthLoopback.ts);
   // an older server ignores it and the sign-in is picked up by asking, as before
   let state: string | undefined;
@@ -3125,7 +3125,9 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
     }
   }, (ok, lang) => `${server}/v1/auth/done?ok=${ok ? 1 : 0}&lang=${lang}`).catch(() => undefined);
   try {
-    const started = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, loopback ? { port: loopback.port, challenge: loopback.challenge } : undefined, link);
+    // `askHandle` (servers from 0.9.75): with no account yet, the player picks the new one's nick after signing in
+    const startBody = { ...(loopback ? { port: loopback.port, challenge: loopback.challenge } : {}), ...(link ? {} : { askHandle: true }) };
+    const started = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, startBody, link);
     const { url, code } = started;
     state = started.state;
     // Microsoft signs in with a code typed on its page: copied right away, and shown in Friends
@@ -3147,6 +3149,8 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
         social.updateUser(res.user);
         return social.state();
       }
+      // no account behind this sign-in: the page asks for a nick, then social:signup makes the account
+      if (res.signup) return { signup: { ticket: res.signup.ticket, suggestion: res.signup.suggestion ?? '' } };
       return social.signedIn(res);
     }
     throw new SocialError('login_expired');
@@ -3173,6 +3177,11 @@ handle('social:linkStream', (platform: string) => socialCall(async () => {
     if (!res.pending) return res.streams;
   }
   throw new SocialError('login_expired');
+}));
+/** The new account from a sign-in that had none (social:loginOAuth's `signup`), with the nick the player picked. */
+handle('social:signup', (ticket: string, nick: string) => socialCall(async () => {
+  if (typeof ticket !== 'string' || !/^[\w-]{20,64}$/.test(ticket) || typeof nick !== 'string' || nick.length > 30) throw new SocialError('bad_request');
+  return social.signedIn(await social.call('POST', '/v1/auth/signup', { ticket, handle: nick }, false));
 }));
 handle('social:cancelLogin', () => {
   browserLogin++;

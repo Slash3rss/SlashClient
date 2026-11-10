@@ -211,6 +211,8 @@ const api = {
   /** Links a Twitch or Kick channel in the browser; the account's channels when done. */
   socialLinkStream: (platform: string) => invoke('social:linkStream', platform),
   socialCancelLogin: () => invoke('social:cancelLogin'),
+  /** A new account from a sign-in that had none, with the nick the player picked (servers from 0.9.75). */
+  socialSignup: (ticket: string, nick: string) => invoke('social:signup', ticket, nick),
   socialLogout: () => invoke('social:logout'),
   socialSetStatus: (status: string) => invoke('social:setStatus', status),
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
