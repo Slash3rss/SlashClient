@@ -198,7 +198,6 @@ const ERRORS = {
   handle_taken: 'Ten nick ma już ktoś inny.',
   handle_reserved: 'Tego nicku nie można wybrać.',
   handle_cooldown: 'Nick możesz zmienić dopiero później.',
-  signup_closed: 'Tym sposobem nie można teraz założyć konta.',
   title_too_short: 'Tytuł jest za krótki.',
   body_too_short: 'Opisz problem trochę dokładniej.',
   bad_log: 'Nie ma takiego logu (może już wygasł).',
@@ -286,7 +285,6 @@ const ERRORS_EN = {
   handle_taken: 'Someone else already has this nick.',
   handle_reserved: 'This nick cannot be picked.',
   handle_cooldown: 'You can change your nick only later.',
-  signup_closed: 'An account cannot be created this way right now.',
   title_too_short: 'The title is too short.',
   body_too_short: 'Describe the problem in a bit more detail.',
   bad_log: 'There is no such log (it may have expired).',
@@ -753,12 +751,12 @@ export const PROVIDERS = {
  * Signs in through Discord, Microsoft, Google or GitHub: the provider opens in a new window and
  * this page asks the server until that window is done (the same flow the launcher uses).
  */
-export async function signInWith(provider, handle) {
+export async function signInWith(provider, { askHandle = false } = {}) {
   const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
-  // `handle`: a new account's nick, checked by the server before the provider's page opens
+  // `askHandle`: with no account yet, the server asks for a nick after the sign-in instead of making one up
   let started;
   try {
-    started = await api('POST', `/v1/auth/${provider}/start`, handle === undefined ? undefined : { handle });
+    started = await api('POST', `/v1/auth/${provider}/start`, askHandle ? { askHandle: true } : undefined);
   } catch (err) {
     popup?.close();
     throw err;
@@ -779,9 +777,10 @@ export async function signInWith(provider, handle) {
       if (box?.cancelled) throw new ApiError('cancelled', 400);
       const res = await api('GET', `/v1/auth/poll?state=${encodeURIComponent(state)}`);
       if (res.pending) continue;
-      token.set(res.token);
       popup?.close();
-      return res.user;
+      const done = res.signup ? await pickNewHandle(res.signup) : res;
+      token.set(done.token);
+      return done.user;
     }
     throw new ApiError('login_expired', 400);
   } finally {
@@ -789,6 +788,32 @@ export async function signInWith(provider, handle) {
     try {
       localStorage.removeItem('slashclient.login');
     } catch {}
+  }
+}
+
+/** A sign-in with no account behind it: the nick the new account starts with, asked until a free one (or cancelled). */
+async function pickNewHandle({ ticket, suggestion }) {
+  let value = suggestion ?? '';
+  let problem = '';
+  for (;;) {
+    const typed = await promptModal({
+      title: L('Wybierz nick', 'Pick a nick'),
+      text: `${problem ? `${problem} ` : ''}${L('Tak zobaczą Cię znajomi. Litery bez polskich znaków, cyfry, _ i kropka, do 24 znaków; później możesz go zmienić na stronie konta.',
+        'This is how friends will see you. Letters without accents, digits, _ and a dot, up to 24 characters; you can change it later on the account page.')}`,
+      value, placeholder: 'Steve_123', maxLength: 24, required: true, ok: L('Załóż konto', 'Create the account'), okIcon: 'fa-solid fa-user-plus',
+    });
+    if (typed === null) throw new ApiError('cancelled', 400);
+    value = typed.trim().replace(/^@/, '');
+    if (!/^[A-Za-z0-9_.]{1,24}$/.test(value)) {
+      problem = errorText({ code: 'bad_handle' });
+      continue;
+    }
+    try {
+      return await api('POST', '/v1/auth/signup', { ticket, handle: value });
+    } catch (err) {
+      if (!['bad_handle', 'handle_taken', 'handle_reserved'].includes(err?.code)) throw err;
+      problem = errorText(err);
+    }
   }
 }
 

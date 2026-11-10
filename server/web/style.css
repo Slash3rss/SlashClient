@@ -142,13 +142,10 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .account-panel { display: flex; flex-direction: column; gap: 16px; }
 .account-profile { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; align-items: start; }
 .account-panel.hidden { display: none; }
-.signin { max-width: 460px; }
+/* the sign-in card in the middle of the page (the account page; the support page has its own inline one) */
+.signin { max-width: 460px; margin-inline: auto; }
 .signin .providers { display: grid; gap: 10px; margin-top: 16px; }
 .signin .providers button { justify-content: flex-start; height: 46px; }
-/* "Nie masz konta?": the nick, then the sign-in the account will use */
-.signup { margin-top: 16px; }
-.signup .field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.signup .field input { height: 42px; }
 .handle-edit { flex-wrap: wrap; gap: 8px; }
 .handle-edit input { width: 200px; max-width: 100%; }
 .profile-card { display: flex; flex-direction: column; gap: 14px; }

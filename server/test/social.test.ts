@@ -273,25 +273,29 @@ describe('social server', () => {
     await call('POST', '/v1/admin/settings', boss.token, { values: { 'profiles.handleChanges': true, 'feature.registration': true } });
   });
 
-  it('creates an account with the nick the player asked for', async () => {
-    // checked before the player is sent to the provider
+  it('asks a new account for its nick after the sign-in, when the website says it will', async () => {
+    const start = (await call('POST', '/v1/auth/microsoft/start', undefined, { askHandle: true })).body;
+    typedCodes.set(`device-${start.code.slice(4)}`, 'wybrany');
+    let polled: any;
+    for (let i = 0; i < 50 && !(polled = (await call('GET', `/v1/auth/poll?state=${start.state}`)).body).signup; i++) await new Promise((r) => setTimeout(r, 100));
+    // no account yet, no session: a ticket, and no name made from the real one
+    assert.equal(polled.token, undefined);
+    assert.equal(polled.signup.suggestion, '');
+    const ticket = polled.signup.ticket;
     for (const [handle, error] of [['a b', 'bad_handle'], ['nowygracz', 'handle_taken'], ['TOMEK', 'handle_reserved']]) {
-      assert.equal((await call('POST', '/v1/auth/microsoft/start', undefined, { handle })).body.error, error);
+      assert.equal((await call('POST', '/v1/auth/signup', undefined, { ticket, handle })).body.error, error);
     }
-    const made = (await microsoftLogin('wybrany', undefined, 'Wybrany_Nick')).body;
+    const made = (await call('POST', '/v1/auth/signup', undefined, { ticket, handle: 'Wybrany_Nick' })).body;
     assert.equal(made.user.handle, 'Wybrany_Nick');
     assert.equal(made.user.name, 'Wybrany_Nick');
-    // an account that already exists just signs in, keeping its nick
-    assert.equal((await microsoftLogin('wybrany', undefined, 'CosInnego')).body.user.handle, 'Wybrany_Nick');
-    // Discord too (a redirect), and a provider the admin left out refuses at once
-    const { state } = (await call('POST', '/v1/auth/discord/start', undefined, { handle: 'ZDiscorda' })).body;
-    await callback('discord', state);
-    const discord = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
-    // Kasia's Discord was linked to "Discordowy" in an earlier test: it signs in there
-    assert.equal(discord.user.handle, 'Discordowy');
-    await signupWith(['microsoft']);
-    assert.equal((await call('POST', '/v1/auth/github/start', undefined, { handle: 'Octo2' })).body.error, 'signup_closed');
-    await signupWith(['microsoft', 'discord', 'google', 'github']);
+    assert.equal((await call('GET', '/v1/me', made.token)).body.handle, 'Wybrany_Nick');
+    // the ticket is used up; the same Microsoft account then just signs in
+    assert.equal((await call('POST', '/v1/auth/signup', undefined, { ticket, handle: 'Drugi' })).body.error, 'login_expired');
+    assert.equal((await microsoftLogin('wybrany')).body.user.handle, 'Wybrany_Nick');
+    // an account that exists is not asked
+    const again = (await call('POST', '/v1/auth/discord/start', undefined, { askHandle: true })).body;
+    await callback('discord', again.state);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${again.state}`)).body.user.handle, 'Discordowy');
   });
 
   it('signs in with Google and GitHub once linked', async () => {

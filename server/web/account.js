@@ -87,15 +87,16 @@ function renderNav() {
 
 function renderSignIn() {
   const box = el('div', { class: 'glass card signin' },
-    el('h3', { textContent: L('Zaloguj się', 'Sign in') }),
+    el('h3', { textContent: health.signup?.length ? L('Zaloguj się lub załóż konto', 'Sign in or create an account') : L('Zaloguj się', 'Sign in') }),
     el('p', { class: 'muted small', textContent: health.signup?.length
-      ? L('Masz już konto SlashClient? Zaloguj się sposobem, który do niego podpiąłeś (w launcherze: zakładka Znajomi).', 'Already have a SlashClient account? Sign in with the way you linked to it (in the launcher: the Friends tab).')
+      ? L('Masz już konto SlashClient? Zaloguj się sposobem, który do niego podpiąłeś. Nie masz? Wybierz dowolny sposób – po zalogowaniu wybierzesz nick, a konto Minecraft podepniesz później w launcherze (nie jest potrzebne).',
+        'Already have a SlashClient account? Sign in with the way you linked to it. No account yet? Pick any way – after signing in you choose a nick, and you can link a Minecraft account later in the launcher (it is not needed).')
       : L('Konto SlashClient zakłada się samo w launcherze, razem z kontem Minecraft. Tutaj zalogujesz się sposobem, który do niego podpiąłeś w zakładce Znajomi.',
         'Your SlashClient account is created by the launcher, together with your Minecraft account. Here you sign in with the way you linked to it in the Friends tab.') }));
   const list = el('div', { class: 'providers' });
   for (const p of health.providers) {
     const [name, cls] = PROVIDERS[p] ?? [p, 'fa-solid fa-key'];
-    list.append(el('button', { onclick: () => login(() => signInWith(p)) }, icon(cls), L(`Zaloguj przez ${name}`, `Sign in with ${name}`)));
+    list.append(el('button', { onclick: () => login(() => signInWith(p, { askHandle: health.signup?.includes(p) })) }, icon(cls), L(`Zaloguj przez ${name}`, `Sign in with ${name}`)));
   }
   if (health.dev) {
     const input = el('input', { type: 'text', placeholder: L('Nick (logowanie testowe)', 'Nick (test sign-in)'), maxLength: 16 });
@@ -105,31 +106,7 @@ function renderSignIn() {
   }
   if (!health.providers.length && !health.dev) list.append(el('p', { class: 'muted', textContent: L('Logowanie nie jest jeszcze skonfigurowane na tym serwerze.', 'Signing in is not set up on this server yet.') }));
   box.append(list, signInNote());
-  $('#account').replaceChildren(box, ...(health.signup?.length ? [signUpBox()] : []));
-}
-
-/** "Załóż konto" (servers from 0.9.75): the nick first, then the sign-in that the account will use. */
-function signUpBox() {
-  const nick = el('input', { type: 'text', placeholder: L('Nick, np. Steve_123', 'Nick, e.g. Steve_123'), maxLength: 24, autocomplete: 'nickname', pattern: '[A-Za-z0-9_.]{1,24}' });
-  const list = el('div', { class: 'providers' });
-  for (const p of health.signup) {
-    const [name, cls] = PROVIDERS[p] ?? [p, 'fa-solid fa-key'];
-    list.append(el('button', { onclick: () => {
-      const handle = nick.value.trim().replace(/^@/, '');
-      if (!/^[A-Za-z0-9_.]{1,24}$/.test(handle)) {
-        toast(errorText({ code: 'bad_handle' }), true);
-        nick.focus();
-        return;
-      }
-      login(() => signInWith(p, handle));
-    } }, icon(cls), L(`Załóż konto przez ${name}`, `Create an account with ${name}`)));
-  }
-  return el('div', { class: 'glass card signin signup' },
-    el('h3', { textContent: L('Nie masz konta?', 'No account yet?') }),
-    el('p', { class: 'muted small', textContent: L('Wybierz nick i sposób logowania – konto Minecraft nie jest potrzebne, a podepniesz je później w launcherze. Gdy to konto Microsoft, Discord, Google albo GitHub ma już konto SlashClient, po prostu się zalogujesz.',
-      'Pick a nick and a way to sign in – no Minecraft account needed, you can link one later in the launcher. If this Microsoft, Discord, Google or GitHub account already has a SlashClient account, you just sign in.') }),
-    el('label', { class: 'field' }, el('span', { class: 'muted small', textContent: L('Nick (litery bez polskich znaków, cyfry, _ i kropka)', 'Nick (letters without accents, digits, _ and a dot)') }), nick),
-    list, signInNote());
+  $('#account').replaceChildren(box);
 }
 
 /** The player's own nick: changed here, not more often than the server allows (null: the admin switched it off). */

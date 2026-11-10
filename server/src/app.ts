@@ -275,10 +275,12 @@ export function createApp(cfg: Config) {
      * (PKCE): the browser is sent back to it, so only the computer the sign-in was finished on can end it.
      */
     loopback?: { port: number; challenge: string };
-    /** The nick the player asked for when creating an account this way (the website's "Załóż konto"). */
-    handle?: string;
+    /** The website asks for a new account's nick after the sign-in (`askHandle`), instead of starting it as "Gracz1234". */
+    askHandle?: boolean;
   };
   const logins = new Map<string, Login>();
+  /** Sign-ins that found no account, waiting for the player to pick a nick (POST /v1/auth/signup), by ticket. */
+  const signups = new Map<string, { provider: ProviderId; id: Identity; at: number }>();
 
   /** Who the provider says signed in: a new session, or the provider added to the account. */
   function finishLogin(login: Login, provider: ProviderId, id: Identity): boolean {
@@ -299,10 +301,16 @@ export function createApp(cfg: Config) {
     }
     try {
       if (fresh) registrationOpen();
-      // the nick the player asked for; without one, Microsoft and Google (who give the real name) start as "Gracz1234"
+      // the website asks for the nick now that the provider said who it is; the account starts with it
+      if (fresh && login.askHandle) {
+        const ticket = randomBytes(24).toString('base64url');
+        signups.set(ticket, { provider, id, at: Date.now() });
+        login.result = { signup: { ticket, suggestion: suggestedHandle(provider, id) } };
+        return true;
+      }
+      // older clients and the launcher: Microsoft and Google (who give the real name) start as "Gracz1234"
       const wanted = !fresh ? id
-        : login.handle ? { ...id, handle: login.handle, name: login.handle }
-          : provider === 'microsoft' || provider === 'google' ? { ...id, handle: `Gracz${randomInt(1000, 10_000)}`, name: '' } : id;
+        : provider === 'microsoft' || provider === 'google' ? { ...id, handle: `Gracz${randomInt(1000, 10_000)}`, name: '' } : id;
       if (!wanted.name) wanted.name = wanted.handle;
       login.result = newSession(db.signIn(provider, id.subject, wanted, '', configAdmins));
       return true;
@@ -311,6 +319,13 @@ export function createApp(cfg: Config) {
       if (err instanceof HttpError && err.code === 'banned') login.errorDetail = err.detail;
       return false;
     }
+  }
+
+  /** The nick offered when a new account picks one: Discord's or GitHub's username when free, nothing from a real name. */
+  function suggestedHandle(provider: ProviderId, id: Identity): string {
+    if (provider === 'microsoft' || provider === 'google') return '';
+    const handle = id.handle.replace(/[^\w.]/g, '').slice(0, 24);
+    return HANDLE.test(handle) && !configAdmins.has(handle.toLowerCase()) && !db.handleTaken(handle) ? handle : '';
   }
 
   /** Asks the provider, at the pace it wants, until the player has typed the code (or gives up). */
@@ -1389,21 +1404,13 @@ export function createApp(cfg: Config) {
       limitLogins(clientIp(req));
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       // older launchers and the website send nothing: they get the "Czy to Ty?" page
-      const { port, challenge, handle } = await body(req);
-      // a new account's nick (the website asks before sending the player off): checked now, so a bad one is said at once
-      let wantedHandle: string | undefined;
-      if (handle !== undefined && !linkTo) {
-        wantedHandle = typeof handle === 'string' ? handle.trim().replace(/^@/, '') : '';
-        if (!signupProviders().includes(provider)) throw new HttpError(403, 'signup_closed');
-        if (!HANDLE.test(wantedHandle)) throw new HttpError(400, 'bad_handle');
-        if (configAdmins.has(wantedHandle.toLowerCase())) throw new HttpError(409, 'handle_reserved');
-        if (db.handleTaken(wantedHandle)) throw new HttpError(409, 'handle_taken');
-      }
+      // `askHandle` (the website from 0.9.75): a new account's nick is asked after the sign-in, see /v1/auth/signup
+      const { port, challenge, askHandle } = await body(req);
       const loopback = !p.device && Number.isInteger(port) && (port as number) >= 1024 && (port as number) <= 65535 && typeof challenge === 'string' && /^[\w-]{43}$/.test(challenge)
         ? { port: port as number, challenge } : undefined;
       const state = randomBytes(24).toString('base64url');
       const confirm = String(randomBytes(2).readUInt16BE() % 10_000).padStart(4, '0');
-      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback, handle: wantedHandle };
+      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback, askHandle: askHandle === true && !linkTo };
       logins.set(state, login);
       if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)), confirm };
       // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
@@ -1424,6 +1431,22 @@ export function createApp(cfg: Config) {
       if (!login.result || login.loopback) return { pending: true };
       logins.delete(state);
       return login.result;
+    }],
+    // a sign-in that found no account: the nick the player picked starts it ({ signup: { ticket } } from /v1/auth/poll)
+    ['POST', /^\/v1\/auth\/signup$/, async (req) => {
+      limitLogins(clientIp(req));
+      const { ticket, handle } = await body(req);
+      const waiting = typeof ticket === 'string' ? signups.get(ticket) : undefined;
+      if (!waiting || Date.now() - waiting.at > LOGIN_TTL_MS) throw new HttpError(404, 'login_expired');
+      registrationOpen();
+      const next = typeof handle === 'string' ? handle.trim().replace(/^@/, '') : '';
+      if (!HANDLE.test(next)) throw new HttpError(400, 'bad_handle');
+      if (configAdmins.has(next.toLowerCase())) throw new HttpError(409, 'handle_reserved');
+      if (db.handleTaken(next)) throw new HttpError(409, 'handle_taken');
+      signups.delete(ticket as string);
+      // made meanwhile (the same account signed up in another tab): that one opens
+      const { provider, id } = waiting;
+      return newSession(db.signIn(provider, id.subject, db.owner(provider, id.subject) ? id : { ...id, handle: next, name: next }, '', configAdmins));
     }],
     // the launcher that started the sign-in ends it: the key came to it from the browser, the verifier it kept itself
     ['POST', /^\/v1\/auth\/finish$/, async (req) => {
@@ -2760,6 +2783,7 @@ export function createApp(cfg: Config) {
       ws.ping();
     }
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
+    for (const [ticket, s] of signups) if (Date.now() - s.at > LOGIN_TTL_MS) signups.delete(ticket);
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [ip, seen] of gameReporters) if ([...seen.values()].every((at) => Date.now() - at > IN_GAME_TTL_MS)) gameReporters.delete(ip);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
