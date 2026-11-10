@@ -194,6 +194,11 @@ const ERRORS = {
   not_found: 'Nie znaleziono.',
   cancelled: 'Logowanie anulowane.',
   not_linked: 'To konto nie jest podpięte do żadnego konta SlashClient. Załóż konto w launcherze (kontem Minecraft) i podepnij ten sposób logowania w zakładce Znajomi.',
+  bad_handle: 'Nick: od 1 do 24 znaków, tylko litery bez polskich znaków, cyfry, _ i kropka.',
+  handle_taken: 'Ten nick ma już ktoś inny.',
+  handle_reserved: 'Tego nicku nie można wybrać.',
+  handle_cooldown: 'Nick możesz zmienić dopiero później.',
+  signup_closed: 'Tym sposobem nie można teraz założyć konta.',
   title_too_short: 'Tytuł jest za krótki.',
   body_too_short: 'Opisz problem trochę dokładniej.',
   bad_log: 'Nie ma takiego logu (może już wygasł).',
@@ -277,6 +282,11 @@ const ERRORS_EN = {
   not_found: 'Not found.',
   cancelled: 'Signing in cancelled.',
   not_linked: 'This account is not linked to any SlashClient account. Create an account in the launcher (with your Minecraft account) and link this way of signing in in the Friends tab.',
+  bad_handle: 'Nick: 1 to 24 characters, only letters without accents, digits, _ and a dot.',
+  handle_taken: 'Someone else already has this nick.',
+  handle_reserved: 'This nick cannot be picked.',
+  handle_cooldown: 'You can change your nick only later.',
+  signup_closed: 'An account cannot be created this way right now.',
   title_too_short: 'The title is too short.',
   body_too_short: 'Describe the problem in a bit more detail.',
   bad_log: 'There is no such log (it may have expired).',
@@ -743,9 +753,17 @@ export const PROVIDERS = {
  * Signs in through Discord, Microsoft, Google or GitHub: the provider opens in a new window and
  * this page asks the server until that window is done (the same flow the launcher uses).
  */
-export async function signInWith(provider) {
+export async function signInWith(provider, handle) {
   const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
-  const { state, url, code } = await api('POST', `/v1/auth/${provider}/start`);
+  // `handle`: a new account's nick, checked by the server before the provider's page opens
+  let started;
+  try {
+    started = await api('POST', `/v1/auth/${provider}/start`, handle === undefined ? undefined : { handle });
+  } catch (err) {
+    popup?.close();
+    throw err;
+  }
+  const { state, url, code } = started;
   // the confirmation page after the provider passes by itself for a sign-in this browser started (authConfirm.js)
   try {
     localStorage.setItem('slashclient.login', state);

@@ -237,6 +237,8 @@ export class Db {
     // a ban's reason (the player sees it when signing in) and end (0 = for good), from the admin panel
     if (!userColumns.some((c) => c.name === 'ban_reason')) this.db.exec("ALTER TABLE users ADD COLUMN ban_reason TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'ban_until')) this.db.exec('ALTER TABLE users ADD COLUMN ban_until INTEGER NOT NULL DEFAULT 0');
+    // when the player last changed their nick themselves (the admin panel's changes do not count)
+    if (!userColumns.some((c) => c.name === 'handle_changed_at')) this.db.exec('ALTER TABLE users ADD COLUMN handle_changed_at INTEGER NOT NULL DEFAULT 0');
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
@@ -374,7 +376,7 @@ CREATE INDEX IF NOT EXISTS deleted_accounts_at ON deleted_accounts(deleted_at);
    * accounts; Discord and the rest only sign in to accounts they are linked to, see `owner`).
    * The name stays as it was at the start; the avatar follows the provider when it has one.
    */
-  signIn(provider: Provider, subject: string, wanted: { handle: string; name: string; avatar: string }, label = ''): User {
+  signIn(provider: Provider, subject: string, wanted: { handle: string; name: string; avatar: string }, label = '', reserved: ReadonlySet<string> = new Set()): User {
     const now = Date.now();
     const known = this.owner(provider, subject);
     if (known) {
@@ -384,7 +386,7 @@ CREATE INDEX IF NOT EXISTS deleted_accounts_at ON deleted_accounts(deleted_at);
       return this.user(known)!;
     }
     const uuid = randomUUID();
-    const handle = this.freeHandle(wanted.handle);
+    const handle = this.freeHandle(wanted.handle, reserved);
     this.stmt('INSERT INTO users (uuid, handle, handle_lower, name, avatar, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(uuid, handle, handle.toLowerCase(), wanted.name, wanted.avatar, now, now);
     this.stmt('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
@@ -446,12 +448,22 @@ CREATE INDEX IF NOT EXISTS deleted_accounts_at ON deleted_accounts(deleted_at);
   }
 
   /** `base`, or `base2`, `base3`… when someone already has it. */
-  private freeHandle(base: string): string {
+  /** A nick nobody has, from the wanted one ("Steve2" when "Steve" is taken), none of `reserved` (lower case). */
+  private freeHandle(base: string, reserved: ReadonlySet<string> = new Set()): string {
     const clean = base.replace(/[^\w.]/g, '').slice(0, 24) || 'gracz';
     for (let n = 1; ; n++) {
       const handle = n === 1 ? clean : `${clean}${n}`;
-      if (!this.stmt('SELECT 1 FROM users WHERE handle_lower = ?').get(handle.toLowerCase())) return handle;
+      if (!reserved.has(handle.toLowerCase()) && !this.stmt('SELECT 1 FROM users WHERE handle_lower = ?').get(handle.toLowerCase())) return handle;
     }
+  }
+
+  /** When the player last changed their nick themselves (0: never). */
+  handleChangedAt(uuid: string): number {
+    return (this.stmt('SELECT handle_changed_at AS at FROM users WHERE uuid = ?').get(uuid) as { at: number } | undefined)?.at ?? 0;
+  }
+
+  markHandleChanged(uuid: string, now = Date.now()) {
+    this.stmt('UPDATE users SET handle_changed_at = ? WHERE uuid = ?').run(now, uuid);
   }
 
   user(uuid: string): User | undefined {

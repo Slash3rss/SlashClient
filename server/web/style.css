@@ -145,6 +145,12 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .signin { max-width: 460px; }
 .signin .providers { display: grid; gap: 10px; margin-top: 16px; }
 .signin .providers button { justify-content: flex-start; height: 46px; }
+/* "Nie masz konta?": the nick, then the sign-in the account will use */
+.signup { margin-top: 16px; }
+.signup .field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.signup .field input { height: 42px; }
+.handle-edit { flex-wrap: wrap; gap: 8px; }
+.handle-edit input { width: 200px; max-width: 100%; }
 .profile-card { display: flex; flex-direction: column; gap: 14px; }
 .cape.wing { background-size: 307px 154px; background-position: -163px -10px; }
 .cape.wing.sm { background-size: 154px 77px; background-position: -82px -5px; }

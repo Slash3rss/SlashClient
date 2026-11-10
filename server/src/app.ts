@@ -1,5 +1,5 @@
 import { decodePng, encodePng, faceOf } from './png.ts';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -10,7 +10,7 @@ import { SprayLimit, cleanSpray } from './sprays.ts';
 import { CAPE_NAMES, CAPES, EMOTES, FORMERLY_FREE_CAPES, ITEMS, SLOTS, capeSetting, compareVersions, framesFor, knownTo, mayWear, priceOf, setsFor, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { adminUserExtrasRoutes } from './adminUserExtras.ts';
-import { createAccountAdmin } from './adminAccount.ts';
+import { createAccountAdmin, HANDLE } from './adminAccount.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -275,6 +275,8 @@ export function createApp(cfg: Config) {
      * (PKCE): the browser is sent back to it, so only the computer the sign-in was finished on can end it.
      */
     loopback?: { port: number; challenge: string };
+    /** The nick the player asked for when creating an account this way (the website's "Załóż konto"). */
+    handle?: string;
   };
   const logins = new Map<string, Login>();
 
@@ -288,16 +290,24 @@ export function createApp(cfg: Config) {
       login.error = 'already_linked';
       return false;
     }
-    // Discord and the rest only open an account they were linked to (accounts start with Minecraft)
-    if (!db.owner(provider, id.subject)) {
+    // Discord and the rest open an account they were linked to; the ones the admin picked can also start one
+    // (accounts start with Minecraft otherwise). A new one never takes a nick that is an admin by configuration.
+    const fresh = !db.owner(provider, id.subject);
+    if (fresh && !settings.list('profiles.signupProviders').includes(provider)) {
       login.error = 'not_linked';
       return false;
     }
     try {
-      login.result = newSession(db.signIn(provider, id.subject, id));
+      if (fresh) registrationOpen();
+      // the nick the player asked for; without one, Microsoft and Google (who give the real name) start as "Gracz1234"
+      const wanted = !fresh ? id
+        : login.handle ? { ...id, handle: login.handle, name: login.handle }
+          : provider === 'microsoft' || provider === 'google' ? { ...id, handle: `Gracz${randomInt(1000, 10_000)}`, name: '' } : id;
+      if (!wanted.name) wanted.name = wanted.handle;
+      login.result = newSession(db.signIn(provider, id.subject, wanted, '', configAdmins));
       return true;
     } catch (err) {
-      login.error = err instanceof HttpError && err.code === 'banned' ? 'banned' : 'provider_failed';
+      login.error = err instanceof HttpError && (err.code === 'banned' || err.code === 'feature_disabled') ? err.code : 'provider_failed';
       if (err instanceof HttpError && err.code === 'banned') login.errorDetail = err.detail;
       return false;
     }
@@ -414,6 +424,22 @@ export function createApp(cfg: Config) {
   /** New accounts may be made (the admin panel's "Rejestracja nowych kont"); throws 503 feature_disabled when not. */
   function registrationOpen() {
     if (!settings.bool(featureKey('registration'))) throw new HttpError(503, 'feature_disabled');
+  }
+
+  /** The sign-ins (other than Minecraft) that can start a new account, as the admin set them and as this server has them. */
+  function signupProviders(): string[] {
+    if (!settings.bool(featureKey('registration'))) return [];
+    const allowed = settings.list('profiles.signupProviders');
+    return Object.keys(providers).filter((p) => allowed.includes(p));
+  }
+
+  /** When the player may change their nick again (0: now), or null when players cannot change it. */
+  function handleChangeAt(me: string): number | null {
+    if (!settings.bool('profiles.handleChanges')) return null;
+    const last = db.handleChangedAt(me);
+    const days = settings.num('profiles.handleChangeDays');
+    const next = last + days * 86_400_000;
+    return last && days && next > Date.now() ? next : 0;
   }
 
   /** A banned account's answer: why and until when, next to the code older clients know (`banned`). */
@@ -738,10 +764,12 @@ export function createApp(cfg: Config) {
     const { banned: _banned, ...user } = db.user(me)!;
     const minecraft = db.minecraftAccounts(me);
     if (lean) {
-      return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), supporter: support.summary(me), ...ranks.forMe(user) };
+      return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), supporter: support.summary(me), handleChangeAt: handleChangeAt(me), ...ranks.forMe(user) };
     }
     const choice = db.avatarChoice(me);
     return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me), supporter: support.summary(me),
+      // the nick: when it can be changed again (0: now; null: players cannot change it), /v1/me/handle
+      handleChangeAt: handleChangeAt(me),
       // every rank held, the pick of the badge and the rank shown (ranks.ts)
       ...ranks.forMe(user),
       // the two avatars to pick from on the account page: the Minecraft face and the sign-in provider's picture
@@ -1311,7 +1339,8 @@ export function createApp(cfg: Config) {
       };
     }],
     // `node`: which server answered (with failover, deploy/failover/)
-    ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin, ...(cfg.node ? { node: cfg.node } : {}) })],
+    // `signup`: the sign-ins that also create an account (servers from 0.9.75; older ones only sign in with them)
+    ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), signup: signupProviders(), dev: cfg.allowDevLogin, ...(cfg.node ? { node: cfg.node } : {}) })],
 
     // -- signing in --
     ['POST', /^\/v1\/auth\/dev$/, async (req) => {
@@ -1360,12 +1389,21 @@ export function createApp(cfg: Config) {
       limitLogins(clientIp(req));
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       // older launchers and the website send nothing: they get the "Czy to Ty?" page
-      const { port, challenge } = await body(req);
+      const { port, challenge, handle } = await body(req);
+      // a new account's nick (the website asks before sending the player off): checked now, so a bad one is said at once
+      let wantedHandle: string | undefined;
+      if (handle !== undefined && !linkTo) {
+        wantedHandle = typeof handle === 'string' ? handle.trim().replace(/^@/, '') : '';
+        if (!signupProviders().includes(provider)) throw new HttpError(403, 'signup_closed');
+        if (!HANDLE.test(wantedHandle)) throw new HttpError(400, 'bad_handle');
+        if (configAdmins.has(wantedHandle.toLowerCase())) throw new HttpError(409, 'handle_reserved');
+        if (db.handleTaken(wantedHandle)) throw new HttpError(409, 'handle_taken');
+      }
       const loopback = !p.device && Number.isInteger(port) && (port as number) >= 1024 && (port as number) <= 65535 && typeof challenge === 'string' && /^[\w-]{43}$/.test(challenge)
         ? { port: port as number, challenge } : undefined;
       const state = randomBytes(24).toString('base64url');
       const confirm = String(randomBytes(2).readUInt16BE() % 10_000).padStart(4, '0');
-      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback };
+      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback, handle: wantedHandle };
       logins.set(state, login);
       if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)), confirm };
       // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
@@ -1427,6 +1465,35 @@ export function createApp(cfg: Config) {
       if (db.owner('minecraft', mcUuid) !== me) throw new HttpError(404, 'not_found');
       if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlinkIdentity(me, 'minecraft', mcUuid);
+      return meWithProviders(me, leanFor(req));
+    }],
+    // the player's own new nick: free, not an admin's by configuration, and not more often than the admin set
+    ['POST', /^\/v1\/me\/handle$/, async (req) => {
+      const me = authed(req);
+      limitProfileChanges(me);
+      const at = handleChangeAt(me);
+      if (at === null) throw new HttpError(403, 'feature_disabled');
+      const { handle } = await body(req);
+      const next = typeof handle === 'string' ? handle.trim().replace(/^@/, '') : '';
+      if (!HANDLE.test(next)) throw new HttpError(400, 'bad_handle');
+      const user = db.user(me)!;
+      if (next === user.handle) return meWithProviders(me, leanFor(req));
+      // only the letters' case: no waiting, the nick stays the player's
+      const caseOnly = next.toLowerCase() === user.handle.toLowerCase();
+      if (!caseOnly) {
+        if (at > Date.now()) throw new HttpError(429, 'handle_cooldown', undefined, { until: at });
+        if (configAdmins.has(user.handle.toLowerCase())) throw new HttpError(400, 'config_admin');
+        if (configAdmins.has(next.toLowerCase())) throw new HttpError(409, 'handle_reserved');
+        if (db.handleTaken(next, me)) throw new HttpError(409, 'handle_taken');
+      }
+      db.setHandle(me, next);
+      // the name shown above the nick goes along while it was the nick too (Minecraft's name, "Gracz1234")
+      if (user.name.toLowerCase() === user.handle.toLowerCase()) db.setName(me, next);
+      if (!caseOnly) db.markHandleChanged(me);
+      for (const f of db.friends(me)) push(f.id, { type: 'friends' });
+      push(me, { type: 'friends' });
+      broadcastPresence(me);
+      cosmeticsChanged(me);
       return meWithProviders(me, leanFor(req));
     }],
     ['POST', /^\/v1\/me$/, async (req) => {

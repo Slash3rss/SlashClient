@@ -88,8 +88,10 @@ function renderNav() {
 function renderSignIn() {
   const box = el('div', { class: 'glass card signin' },
     el('h3', { textContent: L('Zaloguj się', 'Sign in') }),
-    el('p', { class: 'muted small', textContent: L('Konto SlashClient zakłada się samo w launcherze, razem z kontem Minecraft. Tutaj zalogujesz się sposobem, który do niego podpiąłeś w zakładce Znajomi.',
-      'Your SlashClient account is created by the launcher, together with your Minecraft account. Here you sign in with the way you linked to it in the Friends tab.') }));
+    el('p', { class: 'muted small', textContent: health.signup?.length
+      ? L('Masz już konto SlashClient? Zaloguj się sposobem, który do niego podpiąłeś (w launcherze: zakładka Znajomi).', 'Already have a SlashClient account? Sign in with the way you linked to it (in the launcher: the Friends tab).')
+      : L('Konto SlashClient zakłada się samo w launcherze, razem z kontem Minecraft. Tutaj zalogujesz się sposobem, który do niego podpiąłeś w zakładce Znajomi.',
+        'Your SlashClient account is created by the launcher, together with your Minecraft account. Here you sign in with the way you linked to it in the Friends tab.') }));
   const list = el('div', { class: 'providers' });
   for (const p of health.providers) {
     const [name, cls] = PROVIDERS[p] ?? [p, 'fa-solid fa-key'];
@@ -103,7 +105,57 @@ function renderSignIn() {
   }
   if (!health.providers.length && !health.dev) list.append(el('p', { class: 'muted', textContent: L('Logowanie nie jest jeszcze skonfigurowane na tym serwerze.', 'Signing in is not set up on this server yet.') }));
   box.append(list, signInNote());
-  $('#account').replaceChildren(box);
+  $('#account').replaceChildren(box, ...(health.signup?.length ? [signUpBox()] : []));
+}
+
+/** "Załóż konto" (servers from 0.9.75): the nick first, then the sign-in that the account will use. */
+function signUpBox() {
+  const nick = el('input', { type: 'text', placeholder: L('Nick, np. Steve_123', 'Nick, e.g. Steve_123'), maxLength: 24, autocomplete: 'nickname', pattern: '[A-Za-z0-9_.]{1,24}' });
+  const list = el('div', { class: 'providers' });
+  for (const p of health.signup) {
+    const [name, cls] = PROVIDERS[p] ?? [p, 'fa-solid fa-key'];
+    list.append(el('button', { onclick: () => {
+      const handle = nick.value.trim().replace(/^@/, '');
+      if (!/^[A-Za-z0-9_.]{1,24}$/.test(handle)) {
+        toast(errorText({ code: 'bad_handle' }), true);
+        nick.focus();
+        return;
+      }
+      login(() => signInWith(p, handle));
+    } }, icon(cls), L(`Załóż konto przez ${name}`, `Create an account with ${name}`)));
+  }
+  return el('div', { class: 'glass card signin signup' },
+    el('h3', { textContent: L('Nie masz konta?', 'No account yet?') }),
+    el('p', { class: 'muted small', textContent: L('Wybierz nick i sposób logowania – konto Minecraft nie jest potrzebne, a podepniesz je później w launcherze. Gdy to konto Microsoft, Discord, Google albo GitHub ma już konto SlashClient, po prostu się zalogujesz.',
+      'Pick a nick and a way to sign in – no Minecraft account needed, you can link one later in the launcher. If this Microsoft, Discord, Google or GitHub account already has a SlashClient account, you just sign in.') }),
+    el('label', { class: 'field' }, el('span', { class: 'muted small', textContent: L('Nick (litery bez polskich znaków, cyfry, _ i kropka)', 'Nick (letters without accents, digits, _ and a dot)') }), nick),
+    list, signInNote());
+}
+
+/** The player's own nick: changed here, not more often than the server allows (null: the admin switched it off). */
+function handleEditor() {
+  if (me.handleChangeAt === undefined || me.handleChangeAt === null) return '';
+  const input = el('input', { type: 'text', value: me.handle, maxLength: 24, pattern: '[A-Za-z0-9_.]{1,24}', title: L('Nick', 'Nick') });
+  const waits = me.handleChangeAt > Date.now();
+  const when = waits ? new Date(me.handleChangeAt).toLocaleDateString(EN ? 'en-GB' : 'pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const save = el('button', { type: 'submit' }, icon('fa-solid fa-pen'), L('Zmień nick', 'Change nick'));
+  const form = el('form', { class: 'row small handle-edit', onsubmit: async (e) => {
+    e.preventDefault();
+    const handle = input.value.trim().replace(/^@/, '');
+    if (handle === me.handle) return;
+    if (handle.toLowerCase() !== me.handle.toLowerCase() && !await confirmModal({
+      title: L(`Zmienić nick na @${handle}?`, `Change your nick to @${handle}?`),
+      text: L('Następną zmianę zrobisz dopiero za jakiś czas. Stary adres profilu prowadzi do Ciebie, dopóki ktoś nie weźmie tego nicku.', 'The next change will have to wait a while. Your old profile address leads to you until someone takes that nick.'),
+      ok: L('Zmień', 'Change'), okIcon: 'fa-solid fa-pen' })) return;
+    const u = await guard(() => api('POST', '/v1/me/handle', { handle }));
+    if (!u) return;
+    me = { ...me, ...u };
+    toast(L(`Twój nick to teraz @${me.handle}.`, `Your nick is now @${me.handle}.`));
+    renderNav();
+    renderAccount();
+  } }, el('span', { class: 'muted', textContent: L('Nick:', 'Nick:') }), input, save,
+    waits ? el('span', { class: 'muted', textContent: L(`Kolejna zmiana od ${when} (wielkość liter możesz zmienić zawsze).`, `Next change from ${when} (letter case can be changed any time).`) }) : '');
+  return form;
 }
 
 /** "Odznaka przy nicku": the most important rank (the default), one of the others, or none. */
@@ -185,6 +237,7 @@ function renderAccount(reload = false) {
       ...faces.map((f) => pick(f.uuid, f.url, f.name)),
       me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
+  profile.append(handleEditor());
   // which rank's badge goes next to the nick in game, in the launcher and on the friends list
   if (me.ranks?.length) profile.append(badgePicker(), ...characterBadgePickers());
   const share = el('input', { type: 'checkbox', checked: me.showServer });

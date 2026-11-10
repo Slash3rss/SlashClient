@@ -164,7 +164,14 @@ describe('social server', () => {
     return { status: done.status, html, link };
   }
 
+  /** Which sign-ins may start an account, set in the admin panel. */
+  async function signupWith(list: string[]) {
+    const boss = await login('Tomek');
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'profiles.signupProviders': list } })).status, 200);
+  }
+
   it('signs in with Discord only to an account it was linked to', async () => {
+    await signupWith([]);
     const discordLogin = async (token?: string) => {
       const { state, url } = (await call('POST', '/v1/auth/discord/start', token)).body;
       assert.match(url, /discord\.com\/oauth2\/authorize/);
@@ -193,11 +200,12 @@ describe('social server', () => {
     assert.match((await call('POST', '/v1/me', token, { avatarSource: 'provider' })).body.avatar, /cdn\.discordapp\.com/);
     // the result is handed out once
     assert.equal(again.done.status, 200);
+    await signupWith(['microsoft', 'discord', 'google', 'github']);
   });
 
   /** A Microsoft sign-in with a code: `who` types it on microsoft.com/link, optionally linking to a session. */
-  async function microsoftLogin(who: string, token?: string) {
-    const start = (await call('POST', '/v1/auth/microsoft/start', token)).body;
+  async function microsoftLogin(who: string, token?: string, handle?: string) {
+    const start = (await call('POST', '/v1/auth/microsoft/start', token, handle === undefined ? undefined : { handle })).body;
     assert.equal(start.url, 'https://www.microsoft.com/link');
     assert.match(start.code, /^CODE\d+$/);
     // nobody has typed it yet
@@ -212,7 +220,9 @@ describe('social server', () => {
   }
 
   it('signs in with Microsoft once linked, and keeps one Microsoft account per SlashClient account', async () => {
+    await signupWith([]);
     assert.equal((await microsoftLogin('jan')).body.error, 'not_linked');
+    await signupWith(['microsoft', 'discord', 'google', 'github']);
     const jan = (await minecraftLogin('Jan', mcId(5))).body;
     assert.equal((await microsoftLogin('jan', jan.token)).body.linked, true);
     assert.equal((await microsoftLogin('jan')).body.user.id, jan.user.id);
@@ -226,6 +236,62 @@ describe('social server', () => {
     const after = await call('DELETE', '/v1/me/providers/microsoft', dev.token);
     assert.deepEqual(after.body.providers, ['dev']);
     assert.equal((await call('DELETE', '/v1/me/providers/dev', dev.token)).status, 404);
+  });
+
+  it('creates an account with a sign-in the admin allows, and the player picks their nick', async () => {
+    assert.deepEqual((await call('GET', '/v1/health')).body.signup, ['discord', 'microsoft', 'google', 'github']);
+    // Microsoft without Minecraft: a new account, not named after the person ("Gracz1234")
+    const made = (await microsoftLogin('nowy')).body;
+    assert.match(made.user.handle, /^Gracz\d{4}$/);
+    assert.equal(made.user.name, made.user.handle);
+    assert.deepEqual(made.user.providers ?? (await call('GET', '/v1/me', made.token)).body.providers, ['microsoft']);
+    assert.equal((await microsoftLogin('nowy')).body.user.id, made.user.id);
+    const token = made.token;
+    assert.equal((await call('GET', '/v1/me', token)).body.handleChangeAt, 0);
+    // a nick of one's own: checked, taken ones and admins' by configuration refused
+    assert.equal((await call('POST', '/v1/me/handle', token, { handle: 'zły nick!' })).body.error, 'bad_handle');
+    await login('Zajety');
+    assert.equal((await call('POST', '/v1/me/handle', token, { handle: 'zajety' })).body.error, 'handle_taken');
+    assert.equal((await call('POST', '/v1/me/handle', token, { handle: 'tomek' })).body.error, 'handle_reserved');
+    const changed = await call('POST', '/v1/me/handle', token, { handle: '@NowyGracz' });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.body.handle, 'NowyGracz');
+    assert.equal(changed.body.name, 'NowyGracz');
+    assert.ok(changed.body.handleChangeAt > Date.now() + 29 * 86_400_000);
+    // the next change waits, only the letters' case does not
+    const soon = await call('POST', '/v1/me/handle', token, { handle: 'Inny' });
+    assert.equal(soon.status, 429);
+    assert.equal(soon.body.error, 'handle_cooldown');
+    assert.equal((await call('POST', '/v1/me/handle', token, { handle: 'nowygracz' })).body.handle, 'nowygracz');
+    // the admin switches it off: no changes, no new accounts
+    const boss = await login('Tomek');
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'profiles.handleChanges': false, 'feature.registration': false } });
+    assert.equal((await call('GET', '/v1/me', token)).body.handleChangeAt, null);
+    assert.equal((await call('POST', '/v1/me/handle', token, { handle: 'Jeszcze' })).body.error, 'feature_disabled');
+    assert.equal((await microsoftLogin('kolejny')).body.error, 'feature_disabled');
+    assert.deepEqual((await call('GET', '/v1/health')).body.signup, []);
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'profiles.handleChanges': true, 'feature.registration': true } });
+  });
+
+  it('creates an account with the nick the player asked for', async () => {
+    // checked before the player is sent to the provider
+    for (const [handle, error] of [['a b', 'bad_handle'], ['nowygracz', 'handle_taken'], ['TOMEK', 'handle_reserved']]) {
+      assert.equal((await call('POST', '/v1/auth/microsoft/start', undefined, { handle })).body.error, error);
+    }
+    const made = (await microsoftLogin('wybrany', undefined, 'Wybrany_Nick')).body;
+    assert.equal(made.user.handle, 'Wybrany_Nick');
+    assert.equal(made.user.name, 'Wybrany_Nick');
+    // an account that already exists just signs in, keeping its nick
+    assert.equal((await microsoftLogin('wybrany', undefined, 'CosInnego')).body.user.handle, 'Wybrany_Nick');
+    // Discord too (a redirect), and a provider the admin left out refuses at once
+    const { state } = (await call('POST', '/v1/auth/discord/start', undefined, { handle: 'ZDiscorda' })).body;
+    await callback('discord', state);
+    const discord = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
+    // Kasia's Discord was linked to "Discordowy" in an earlier test: it signs in there
+    assert.equal(discord.user.handle, 'Discordowy');
+    await signupWith(['microsoft']);
+    assert.equal((await call('POST', '/v1/auth/github/start', undefined, { handle: 'Octo2' })).body.error, 'signup_closed');
+    await signupWith(['microsoft', 'discord', 'google', 'github']);
   });
 
   it('signs in with Google and GitHub once linked', async () => {
