@@ -23,8 +23,13 @@ function applyMotion() {
   const button = document.querySelector('.foot-motion');
   if (button) {
     const off = motionOff();
-    button.textContent = english() ? `Animations: ${off ? 'off' : 'on'}` : `Animacje: ${off ? 'wył.' : 'wł.'}`;
-    button.title = english() ? 'Fewer animations, for slower computers' : 'Mniej animacji, dla słabszych komputerów';
+    // a small wand next to the note, so the footer stays one line; its colour and the tooltip say on or off
+    const label = english() ? `Animations: ${off ? 'off' : 'on'} (click to turn them ${off ? 'on' : 'off'}; fewer animations for slower computers)`
+      : `Animacje: ${off ? 'wył.' : 'wł.'} (kliknij, żeby ${off ? 'włączyć' : 'wyłączyć'}; mniej animacji dla słabszych komputerów)`;
+    button.replaceChildren(Object.assign(document.createElement('i'), { className: 'fa-solid fa-wand-magic-sparkles' }));
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.classList.toggle('off', off);
     button.setAttribute('aria-pressed', String(off));
   }
   // the 3D figures (preview.js) stop or start turning
@@ -46,7 +51,10 @@ if (footRow) {
     }
     applyMotion();
   });
-  footRow.append(button);
+  // right after the note under the logo ("Nie jest powiązany z Mojang ani Microsoft."), or at the end of the row
+  const note = footRow.querySelector(':scope > .muted.small');
+  if (note) note.after(button);
+  else footRow.append(button);
   applyMotion();
 }
 // one listener across the router's page changes (this file is loaded again on each)
