@@ -305,7 +305,7 @@ export function createApp(cfg: Config) {
       if (fresh && login.askHandle) {
         const ticket = randomBytes(24).toString('base64url');
         signups.set(ticket, { provider, id, at: Date.now() });
-        login.result = { signup: { ticket, suggestion: suggestedHandle(provider, id) } };
+        login.result = { signup: { ticket, suggestion: suggestedHandle(id) } };
         return true;
       }
       // older clients and the launcher: Microsoft and Google (who give the real name) start as "Gracz1234"
@@ -321,11 +321,19 @@ export function createApp(cfg: Config) {
     }
   }
 
-  /** The nick offered when a new account picks one: Discord's or GitHub's username when free, nothing from a real name. */
-  function suggestedHandle(provider: ProviderId, id: Identity): string {
-    if (provider === 'microsoft' || provider === 'google') return '';
-    const handle = id.handle.replace(/[^\w.]/g, '').slice(0, 24);
-    return HANDLE.test(handle) && !configAdmins.has(handle.toLowerCase()) && !db.handleTaken(handle) ? handle : '';
+  /**
+   * The nick offered when a new account picks one, from the platform: Discord's or GitHub's username, the name on
+   * the Microsoft or Google account; without Polish letters and spaces, with a number when taken ("Kasia2").
+   * Only the player sees it, in the box where they change it before the account is made.
+   */
+  function suggestedHandle(id: Identity): string {
+    const base = id.handle.replace(/[łŁ]/g, (c) => (c === 'ł' ? 'l' : 'L')).normalize('NFD').replace(/[^\w.]/g, '').slice(0, 22);
+    if (!base) return '';
+    for (let n = 1; n < 100; n++) {
+      const handle = n === 1 ? base : `${base}${n}`;
+      if (HANDLE.test(handle) && !configAdmins.has(handle.toLowerCase()) && !db.handleTaken(handle)) return handle;
+    }
+    return '';
   }
 
   /** Asks the provider, at the pace it wants, until the player has typed the code (or gives up). */

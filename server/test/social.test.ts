@@ -276,11 +276,12 @@ describe('social server', () => {
   it('asks a new account for its nick after the sign-in, when the website says it will', async () => {
     const start = (await call('POST', '/v1/auth/microsoft/start', undefined, { askHandle: true })).body;
     typedCodes.set(`device-${start.code.slice(4)}`, 'wybrany');
+    await login('Ola');
     let polled: any;
     for (let i = 0; i < 50 && !(polled = (await call('GET', `/v1/auth/poll?state=${start.state}`)).body).signup; i++) await new Promise((r) => setTimeout(r, 100));
-    // no account yet, no session: a ticket, and no name made from the real one
+    // no account yet, no session: a ticket, and the name on the account as a nick to start from
     assert.equal(polled.token, undefined);
-    assert.equal(polled.signup.suggestion, '');
+    assert.equal(polled.signup.suggestion, 'Ola2');
     const ticket = polled.signup.ticket;
     for (const [handle, error] of [['a b', 'bad_handle'], ['nowygracz', 'handle_taken'], ['TOMEK', 'handle_reserved']]) {
       assert.equal((await call('POST', '/v1/auth/signup', undefined, { ticket, handle })).body.error, error);
