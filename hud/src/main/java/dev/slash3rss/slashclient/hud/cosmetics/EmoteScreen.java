@@ -13,11 +13,17 @@ import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**
  * The emote wheel: the emotes around the middle of the screen. Click one, press its number (1–9), or hold
- * the key, point and let go. The game keeps running behind it.
+ * the key, point and let go (let go pointing at nothing, it closes); after a quick tap it stays open and the key
+ * pressed again closes it. The game keeps running behind it.
  */
 public class EmoteScreen extends Screen {
 	private static final int RADIUS = 62, SLOT = 34;
 	private final KeyMapping key;
+	/** Whether the key that opened the wheel was let go: pressing it again then closes the wheel (held, it repeats). */
+	private boolean keyLetGo;
+	/** When the wheel opened: the key held longer than a tap and let go away from the emotes closes it, as in other games. */
+	private final long openedAt = System.currentTimeMillis();
+	private static final long TAP_MS = 300;
 	private int hovered = -1;
 
 	public EmoteScreen(KeyMapping key) {
@@ -95,6 +101,11 @@ public class EmoteScreen extends Screen {
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
 	//#endif
+		// the emote key again (N): the wheel closes, nothing sent
+		if (keyLetGo && key.matches(e)) {
+			onClose();
+			return true;
+		}
 		int n = e.key() - InputConstants.KEY_1;
 		if (n >= 0 && n < Cosmetics.EMOTES.size()) {
 			pick(n);
@@ -118,6 +129,14 @@ public class EmoteScreen extends Screen {
 		if (key.matches(e) && hovered >= 0) {
 			pick(hovered);
 			return true;
+		}
+		if (key.matches(e)) {
+			// held and let go with nothing pointed at: closed; a quick tap leaves it open for the mouse or a number
+			if (!keyLetGo && System.currentTimeMillis() - openedAt > TAP_MS) {
+				onClose();
+				return true;
+			}
+			keyLetGo = true;
 		}
 		//#if MC >= 1.21.9
 		return super.keyReleased(e);

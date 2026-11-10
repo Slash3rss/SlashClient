@@ -53,6 +53,22 @@ public class GameEmotes implements FabricClientGameTest {
 			String camera = context.computeOnClient(mc -> mc.options.getCameraType().name());
 			if (!walked.isEmpty() || !camera.equals("FIRST_PERSON")) throw new AssertionError("Walking off the emote: " + walked + " / " + camera);
 			context.runOnClient(mc -> TestHooks.firstPerson());
+			// a tap of N opens the wheel and leaves it open, N again closes it (nothing sent)
+			context.getInput().pressKey(o -> dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.emoteKey());
+			context.waitTicks(5);
+			String open = context.computeOnClient(mc -> String.valueOf(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			if (!open.contains("EmoteScreen")) throw new AssertionError("N did not open the wheel: " + open);
+			context.getInput().pressKey(o -> dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.emoteKey());
+			context.waitTicks(5);
+			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc)) != null) throw new AssertionError("N again did not close the wheel");
+			// held, then let go pointing at nothing: closed too
+			context.getInput().holdKey(o -> dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.emoteKey());
+			context.waitTicks(20);
+			String held = context.computeOnClient(mc -> String.valueOf(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			if (!held.contains("EmoteScreen")) throw new AssertionError("Holding N did not open the wheel: " + held);
+			context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.emoteKey());
+			context.waitTicks(5);
+			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc)) != null) throw new AssertionError("Letting N go did not close the wheel");
 		}
 	}
 }
