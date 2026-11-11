@@ -156,7 +156,6 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .handle-edit { display: flex; gap: 8px; flex: 1; min-width: 0; }
 .handle-edit input { flex: 1; min-width: 0; }
 .handle-edit button { flex-shrink: 0; }
-.profile-actions { padding-top: 4px; border-top: 1px solid rgba(255, 255, 255, .06); }
 .profile-actions > * { flex: 1; justify-content: center; }
 .cape.wing { background-size: 307px 154px; background-position: -163px -10px; }
 .cape.wing.sm { background-size: 154px 77px; background-position: -82px -5px; }
