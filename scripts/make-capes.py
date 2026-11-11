@@ -1130,8 +1130,18 @@ RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support':
              # the owner's: a deep violet night with twinkling stars and a glow behind the logo
              'staff_owner': ('#1e0a3c', '#6d28d9', '#c4b5fd')}
 
-# the owner's cape's stars: where each is and when in the loop it shines brightest
-OWNER_STARS = [(random.Random(i).uniform(3, W - 4), random.Random(i * 7 + 1).uniform(3, H - 4), random.Random(i * 13 + 2).random()) for i in range(22)]
+def owner_stars(count=22, apart=5):
+    """The owner's cape's stars: where each is and when in the loop it shines brightest, never two
+    closer than `apart` pixels (two side by side read as one smudge)."""
+    rnd, stars = random.Random('staff_owner'), []
+    while len(stars) < count:
+        x, y = rnd.uniform(3, W - 4), rnd.uniform(3, H - 4)
+        if all(math.hypot(x - sx, y - sy) >= apart for sx, sy, _ in stars):
+            stars.append((x, y, rnd.random()))
+    return stars
+
+
+OWNER_STARS = owner_stars()
 
 
 def owner_sky(f):
