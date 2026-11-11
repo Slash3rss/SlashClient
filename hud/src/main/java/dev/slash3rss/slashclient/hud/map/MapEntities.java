@@ -6,7 +6,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.monster.Enemy;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -114,7 +114,8 @@ public final class MapEntities {
 				if (!cfg.mapPlayers || p.isSpectator() || friends.contains(p.getUUID()) || !realPlayer(mc, p)) continue;
 				kind = KIND_PLAYER;
 			} else if (e instanceof Mob) {
-				kind = e.getType().getCategory() == MobCategory.MONSTER ? KIND_HOSTILE : KIND_PASSIVE;
+				// hostile by what the mob is, not by how it spawns: the sulfur cube spawns as a monster but never attacks
+				kind = e instanceof Enemy ? KIND_HOSTILE : KIND_PASSIVE;
 				if (kind == KIND_HOSTILE ? !cfg.mapHostile : !cfg.mapPassive) continue;
 			} else continue;
 			(kind == KIND_PLAYER ? players : mobs).add(new Mark(e, kind));

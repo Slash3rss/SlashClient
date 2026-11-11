@@ -70,6 +70,15 @@ public class GameMapEntities implements FabricClientGameTest {
 			String marks = context.computeOnClient(mc -> MapSortTestHooks.markers(false));
 			System.out.println("SlashClient test: minimap markers " + marks + " textures " + context.computeOnClient(mc -> MapSortTestHooks.faceTextures(false)));
 			if (!marks.equals(FACES)) throw new AssertionError("Mob faces on the minimap: " + marks);
+			// the sulfur cube spawns as a monster but never attacks: a green frame, not a red one (where the game has it)
+			if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.containsKey(net.minecraft.resources.Identifier.withDefaultNamespace("sulfur_cube"))) {
+				server.runCommand(String.format(mob, "sulfur_cube", -4, y + 1, 5));
+				context.waitTicks(20);
+				String withCube = context.computeOnClient(mc -> MapSortTestHooks.entitiesOnMinimap());
+				if (!withCube.equals("1,4,4:Gracz_Testowy,")) throw new AssertionError("The sulfur cube is not a passive mob on the minimap: " + withCube);
+				server.runCommand("kill @e[type=sulfur_cube]");
+				context.waitTicks(20);
+			}
 			context.takeScreenshot("map-entities-minimap");
 
 			// each kind switched off goes away
