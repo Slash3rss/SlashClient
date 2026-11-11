@@ -113,9 +113,9 @@ export const ITEMS: Item[] = [
   { id: 'skyup_waterblock_glebia', slot: 'cape', name: 'SkyUp – Waterblock: Głębia', since: '0.9.24', achievement: 'skyup_250h' },
   { id: 'skyup_caveblock', slot: 'cape', name: 'SkyUp – Caveblock', since: '0.9.24', achievement: 'skyup_days_100' },
   { id: 'skyup_caveblock_domek', slot: 'cape', name: 'SkyUp – Caveblock: Domek', since: '0.9.24', achievement: 'skyup_500h' },
-  { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
-  // the owner's (ADMIN_HANDLES), only theirs: other admins may not wear it
+  // the owner's (ADMIN_HANDLES), only theirs: other admins may not wear it; first of the ranks' capes, as the rank is
   { id: 'staff_owner', slot: 'cape', name: 'Właściciel', rank: 'owner', frames: 16, since: '0.9.76' },
+  { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_friend', slot: 'cape', name: 'Przyjaciel', rank: 'friend', since: '0.9.4', frames: 16 },
