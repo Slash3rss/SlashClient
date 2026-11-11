@@ -90,6 +90,27 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			String live = context.computeOnClient(mc -> DungeonRun.liveForTest());
 			if (live.lines().anyMatch(l -> l.contains("Górnik") && l.contains("~"))) throw new AssertionError("The dungeon's module: " + live);
 			context.takeScreenshot("dungeon-xp-live");
+			// with the chat open a click on the module's top folds it to its name, its top staying put; a click again unfolds it
+			context.setScreen(dev.slash3rss.slashclient.hud.Compat::chatScreen);
+			context.waitTicks(5);
+			String whole = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.foldTargetForTest("dungeonxp"));
+			String[] r = whole.split(" ");
+			if (r.length != 4) throw new AssertionError("No top to click on the dungeon's XP: " + whole);
+			int cx = Integer.parseInt(r[0]) + 4, cy = Integer.parseInt(r[1]) + 4;
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.clickFold(mc, cx, cy))) throw new AssertionError("The click did not fold it");
+			context.waitTicks(3);
+			String folded = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.foldTargetForTest("dungeonxp"));
+			String[] f = folded.split(" ");
+			if (f.length != 4 || !f[1].equals(r[1]) || Integer.parseInt(f[3]) >= 30 || !context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.placement("dungeonxp").folded))
+				throw new AssertionError("Folded: " + whole + " -> " + folded);
+			context.takeScreenshot("dungeon-xp-folded");
+			// the folded name is narrower (kept by the right edge): clicked where it is now
+			int fx = Integer.parseInt(f[0]) + 4, fy = Integer.parseInt(f[1]) + 4;
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.clickFold(mc, fx, fy))) throw new AssertionError("The click did not unfold it");
+			context.waitTicks(3);
+			String unfolded = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.foldTargetForTest("dungeonxp"));
+			if (!unfolded.equals(whole) || context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.placement("dungeonxp").folded)) throw new AssertionError("Unfolded: " + whole + " -> " + unfolded);
+			context.setScreen(() -> null);
 			server.runCommand("bossbar remove job");
 			// a level up on the way: all of level 2 (225, from an empty bar) and a tenth of level 3's 314 (130·3 − 81 + 27/5)
 			server.runCommand("bossbar set dungeon name \"Dungeon poz. 3\"");

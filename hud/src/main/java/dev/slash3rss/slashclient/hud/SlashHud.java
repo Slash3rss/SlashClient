@@ -554,11 +554,86 @@ public class SlashHud implements ClientModInitializer {
 		};
 	}
 
+	/** On the screen now, outside the editor: switched on, with something to show, and its own condition met. */
+	private static boolean drawnNow(HudModule m, HudConfig.Placement p, Minecraft mc) {
+		return p.enabled && m.visible(mc) && (dev.slash3rss.slashclient.hud.ui.Catalog.skyup(m.id()) || shownNow(p, mc));
+	}
+
+	/** A module that can be folded to its name: one with a box (not a picture, the keystrokes or the game's own parts). */
+	public static boolean foldable(HudModule m) {
+		return !m.bare() && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part);
+	}
+
+	/** A folded module's height, and its one line: its name after an arrow. */
+	private static final int FOLDED_H = 9 + Modules.PAD * 2;
+
+	private static net.minecraft.network.chat.Component foldedName(HudModule m) {
+		return net.minecraft.network.chat.Component.literal("▸ ").append(dev.slash3rss.slashclient.hud.ui.Ui.tr("slashclient-hud.module." + m.id()));
+	}
+
+	/** A module's size as drawn now (folded: its name's), unscaled. */
+	private static int[] shownSize(HudModule m, Minecraft mc, HudConfig.Placement p) {
+		if (p.folded && foldable(m)) return new int[] { mc.font.width(foldedName(m)) + Modules.PAD * 2, FOLDED_H };
+		return new int[] { m.width(mc), m.height(mc) };
+	}
+
+	/**
+	 * The top of a module on screen, which a click with the chat open folds or unfolds it by: {x, y, w, h}; null when it
+	 * has none now (not shown, or one line only, so nothing to fold).
+	 */
+	private static int[] foldTarget(HudModule m, Minecraft mc, int sw, int sh) {
+		HudConfig.Placement p = config.placement(m.id());
+		if (!foldable(m) || !drawnNow(m, p, mc)) return null;
+		int[] s = shownSize(m, mc, p);
+		if (!p.folded && s[1] < FOLDED_H + 10) return null;
+		int w = Math.round(s[0] * p.scale()), h = Math.round(s[1] * p.scale());
+		int[] at = position(p, w, h, sw, sh);
+		return new int[] { at[0], at[1], w, Math.min(h, Math.round(FOLDED_H * p.scale())) };
+	}
+
+	/** The module whose top is under the mouse, the one drawn last (on top) first; null for none. */
+	private static HudModule foldableAt(Minecraft mc, double mx, double my, int sw, int sh) {
+		for (int i = MODULES.size() - 1; i >= 0; i--) {
+			int[] r = foldTarget(MODULES.get(i), mc, sw, sh);
+			if (r != null && mx >= r[0] && mx < r[0] + r[2] && my >= r[1] && my < r[1] + r[3]) return MODULES.get(i);
+		}
+		return null;
+	}
+
+	/** A left click with the chat open: on a module's top it folds or unfolds it (true), its top staying where it was. */
+	public static boolean clickFold(Minecraft mc, double mx, double my) {
+		if (config == null || mc.level == null) return false;
+		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+		HudModule m = foldableAt(mc, mx, my, sw, sh);
+		if (m == null) return false;
+		HudConfig.Placement p = config.placement(m.id());
+		int before = foldTarget(m, mc, sw, sh)[1];
+		p.folded = !p.folded;
+		int[] s = shownSize(m, mc, p);
+		int after = position(p, Math.round(s[0] * p.scale()), Math.round(s[1] * p.scale()), sw, sh)[1];
+		p.dy += before - after;
+		config.save();
+		Sounds.play(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 1f, 25f);
+		return true;
+	}
+
+	/** With the chat open: the top of the module under the mouse lit, to show it can be clicked. */
+	public static void drawFoldHover(GuiGraphicsExtractor g, Minecraft mc, int mx, int my) {
+		if (config == null || mc.level == null || mc.getDebugOverlay().showDebugScreen()) return;
+		HudModule m = foldableAt(mc, mx, my, g.guiWidth(), g.guiHeight());
+		if (m == null) return;
+		int[] r = foldTarget(m, mc, g.guiWidth(), g.guiHeight());
+		dev.slash3rss.slashclient.hud.ui.Ui.round(g, r[0], r[1], r[2], r[3], 3, 0x26FFFFFF);
+	}
+
 	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
 		HudConfig.Placement p = config.placement(m.id());
-		if (!p.enabled || (!preview && (!m.visible(mc) || !dev.slash3rss.slashclient.hud.ui.Catalog.skyup(m.id()) && !shownNow(p, mc)))) return;
+		if (!p.enabled || (!preview && !drawnNow(m, p, mc))) return;
+		// folded, only its name shows (the editor shows it whole, to set it up)
+		boolean folded = !preview && p.folded && foldable(m);
 		// measured once a frame (some modules work out their whole content to know their size)
-		int w = m.width(mc), h = m.height(mc);
+		int[] size = folded ? shownSize(m, mc, p) : new int[] { m.width(mc), m.height(mc) };
+		int w = size[0], h = size[1];
 		int[] at = position(p, Math.round(w * p.scale()), Math.round(h * p.scale()), g.guiWidth(), g.guiHeight());
 		var pose = g.pose();
 		pose.pushMatrix();
@@ -584,10 +659,22 @@ public class SlashHud implements ClientModInitializer {
 		}
 		// the module's own text colour and shadow, where it draws in the HUD's
 		Modules.drawing = p;
-		if (preview) m.drawPreview(g, mc, 0, 0);
+		if (folded) Modules.text(g, mc, foldedName(m), Modules.PAD, Modules.PAD, Modules.textColor());
+		else if (preview) m.drawPreview(g, mc, 0, 0);
 		else m.draw(g, mc, 0, 0);
 		Modules.drawing = null;
 		pose.popMatrix();
+	}
+
+	/** For the test: where a module's top is on screen ("x y w h"), or "-" when it has none to click now. */
+	public static String foldTargetForTest(String id) {
+		Minecraft mc = Minecraft.getInstance();
+		for (HudModule m : MODULES) {
+			if (!m.id().equals(id)) continue;
+			int[] r = foldTarget(m, mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+			return r == null ? "-" : r[0] + " " + r[1] + " " + r[2] + " " + r[3];
+		}
+		return "-";
 	}
 
 	/** F3's version line with SlashClient's name and version before the game's ("SlashClient 0.9.50/1.21.4 …"). */

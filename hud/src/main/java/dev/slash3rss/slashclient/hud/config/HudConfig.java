@@ -59,6 +59,8 @@ public final class HudConfig {
 		/** When it shows (HudConfig.SHOW_WHEN; null = always), the server for "server" (a part of its address), and hidden with the chat or another window open. */
 		public String showWhen, showServer;
 		public boolean hideInChat, hideInScreens;
+		/** Folded to its name (a click on its top with the chat open folds and unfolds it); it keeps working meanwhile. */
+		public boolean folded;
 
 		public String showWhen() {
 			return showWhen == null ? "always" : showWhen;

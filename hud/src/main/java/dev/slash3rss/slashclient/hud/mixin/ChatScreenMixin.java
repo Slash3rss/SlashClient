@@ -57,6 +57,13 @@ abstract class ChatScreenMixin {
 		}
 		// text in a chat window with its own action (a command to type or run, a link): as in the chat
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+			// a HUD module's top: folds it to its name, or unfolds it (not under the chat's own things: a window, a button, a link)
+			boolean overChat = slashclient$clickable(e.x(), e.y()) || dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(e.x(), e.y()) != null;
+			for (var child : ((net.minecraft.client.gui.screens.Screen) (Object) this).children()) overChat |= child.isMouseOver(e.x(), e.y());
+			if (!overChat && SlashHud.clickFold(Minecraft.getInstance(), e.x(), e.y())) {
+				cir.setReturnValue(true);
+				return;
+			}
 			net.minecraft.network.chat.Style inWindow = dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(e.x(), e.y());
 			if (inWindow != null && (inWindow.getClickEvent() != null || inWindow.getInsertion() != null)) {
 				//#if MC >= 1.21.11
@@ -86,6 +93,7 @@ abstract class ChatScreenMixin {
 	/** Text in a chat window under the mouse: its hover shown as in the chat (a text, an item, an entity). */
 	@Inject(method = "extractRenderState", at = @At("TAIL"))
 	private void slashclient$windowHover(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+		SlashHud.drawFoldHover(g, Minecraft.getInstance(), mouseX, mouseY);
 		net.minecraft.network.chat.Style style = dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(mouseX, mouseY);
 		if (style == null || style.getHoverEvent() == null) return;
 		//#if MC >= 26.1

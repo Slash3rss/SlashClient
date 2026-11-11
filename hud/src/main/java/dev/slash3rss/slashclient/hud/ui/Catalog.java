@@ -227,12 +227,14 @@ public final class Catalog {
 				new Choice("slashclient-hud.set.showWhen", HudConfig.SHOW_WHEN, "slashclient-hud.showWhen.", p::showWhen, v -> p.showWhen = v),
 				new Text("slashclient-hud.set.showServer", "slashclient-hud.set.showServerHint", 100, () -> p.showServer == null ? "" : p.showServer, v -> p.showServer = v),
 				new Toggle("slashclient-hud.set.hideInChat", () -> p.hideInChat, v -> p.hideInChat = v),
-				new Toggle("slashclient-hud.set.hideInScreens", () -> p.hideInScreens, v -> p.hideInScreens = v)));
+				new Toggle("slashclient-hud.set.hideInScreens", () -> p.hideInScreens, v -> p.hideInScreens = v),
+				new Toggle("slashclient-hud.set.folded", () -> p.folded, v -> p.folded = v)));
 			// only what does something for it: a picture has no box, a module colouring its text itself takes no text colour
 			java.util.Set<String> pointless = new java.util.HashSet<>();
 			if (m.bare()) pointless.addAll(List.of("slashclient-hud.background", "slashclient-hud.set.opacity", "slashclient-hud.set.outline", "slashclient-hud.set.ownRadius", "slashclient-hud.set.radius"));
 			if (!m.textColored()) pointless.addAll(List.of("slashclient-hud.set.ownColor", "slashclient-hud.textColor"));
 			if (!m.shadowed()) pointless.add("slashclient-hud.shadow");
+			if (!SlashHud.foldable(m)) pointless.add("slashclient-hud.set.folded");
 			// SkyUp's modules show only on SkyUp anyway
 			if (skyup(m.id())) pointless.addAll(List.of("slashclient-hud.set.showWhen", "slashclient-hud.set.showServer"));
 			settings.removeIf(s -> pointless.contains(s.labelKey()));
