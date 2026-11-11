@@ -294,8 +294,10 @@ export function createRanks(deps: RankDeps) {
       out.push({ id: d.id, name: d.name, nameEn: d.nameEn || d.name, color: d.color, priority: d.priority, ...(iconUrl(d) ? { icon: iconUrl(d) } : {}), ...extra });
     };
     for (const d of defs.values()) {
-      if (d.auto === 'role' && deps.isAdmin(user)) add(d, { source: 'role' });
-      if (d.auto === 'owner' && deps.isOwner?.(user)) add(d, { source: 'owner' });
+      // the owner is an admin too, but shows only the owner's rank (the admin's powers and cosmetics stay: wear())
+      const owner = !!deps.isOwner?.(user) && defs.get('owner')?.enabled !== false;
+      if (d.auto === 'role' && deps.isAdmin(user) && !owner) add(d, { source: 'role' });
+      if (d.auto === 'owner' && owner) add(d, { source: 'owner' });
       if (d.auto === 'payment') {
         const tier = deps.supporter(user.id);
         // in the tier's colour and with its name, as the supporters' pages show it
