@@ -77,6 +77,18 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			server.runCommand("bossbar set job name \"Górnik (poziom 3) 3/5 000 xp (+12 xp)\"");
 			server.runCommand("xp add @p -3 points");
 			context.waitTicks(15);
+			// a minute later: the miner's 2 858 a minute, its 4 997 left in about 2 minutes (the "time to level" module)
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.skyup.LevelEta.agoForTest(60_000);
+				DungeonRun.startedAgoForTest(60_000);
+			});
+			String eta = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.LevelEta.linesForTest());
+			String miner = eta.lines().filter(l -> l.contains("Górnik")).findFirst().orElse("");
+			if (!miner.contains("~2 min")) throw new AssertionError("The time to the miner's next level: " + eta);
+			if (eta.lines().count() != 2) throw new AssertionError("The player and the miner: " + eta);
+			// the jobs' and the player's show no time in the dungeon's module
+			String live = context.computeOnClient(mc -> DungeonRun.liveForTest());
+			if (live.lines().anyMatch(l -> l.contains("Górnik") && l.contains("~"))) throw new AssertionError("The dungeon's module: " + live);
 			context.takeScreenshot("dungeon-xp-live");
 			server.runCommand("bossbar remove job");
 			// a level up on the way: all of level 2 (225, from an empty bar) and a tenth of level 3's 314 (130·3 − 81 + 27/5)

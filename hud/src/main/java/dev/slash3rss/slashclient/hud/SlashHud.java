@@ -370,6 +370,7 @@ public class SlashHud implements ClientModInitializer {
 			DungeonMap.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.DungeonXp.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.DungeonRun.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.LevelEta.tick(mc);
 			LootHighlight.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.BossGlow.tick(mc);
 			Minimap.tick(mc);

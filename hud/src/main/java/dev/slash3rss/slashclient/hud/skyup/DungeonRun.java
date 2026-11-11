@@ -213,10 +213,10 @@ public final class DungeonRun {
 	}
 
 	/** A job's boss bar: "Górnik (poziom 2) 744/3 599 xp (+3 xp)" (spaces in the numbers, a comma for the decimals). */
-	private static final java.util.regex.Pattern JOB_BAR = java.util.regex.Pattern.compile(
+	static final java.util.regex.Pattern JOB_BAR = java.util.regex.Pattern.compile(
 		"^\\s*(\\p{L}[\\p{L} ]*?)\\s*\\(poziom\\s+(\\d+)\\)\\s*([\\d\\s\u00a0\u202f.,]+?)\\s*/\\s*([\\d\\s\u00a0\u202f.,]+?)\\s*xp");
 
-	private static double number(String s) {
+	static double number(String s) {
 		return Double.parseDouble(s.replaceAll("[\\s\u00a0\u202f]", "").replace(',', '.'));
 	}
 
@@ -648,7 +648,10 @@ public final class DungeonRun {
 				out.add(Ui.tr("slashclient-hud.dungeonXp.job", "Górnik", 120));
 				return out;
 			}
-			out.add(Ui.tr("slashclient-hud.dungeonXp.dungeon", dungeonXp()));
+			// with about how long to the dungeon's next level, at the pace of the trip so far
+			Component dungeon = Ui.tr("slashclient-hud.dungeonXp.dungeon", dungeonXp());
+			long eta = LevelEta.etaSeconds(xpGot, System.currentTimeMillis() - startedAt, xpLevel >= 1 ? (1f - xpFill) * DungeonMap.xpNeeded(xpLevel) : 0);
+			out.add(eta < 0 ? dungeon : dungeon.copy().append(Ui.tr("slashclient-hud.dungeonXp.eta", LevelEta.duration(eta))));
 			out.add(Ui.tr("slashclient-hud.dungeonXp.player", playerXp));
 			for (var e : jobsGot().entrySet()) out.add(Ui.tr("slashclient-hud.dungeonXp.job", e.getKey(), e.getValue()));
 			return out;
@@ -678,6 +681,18 @@ public final class DungeonRun {
 	}
 
 	// ---------- for the tests ----------
+
+	/** For the test: the trip began this long ago, for a pace to show. */
+	public static void startedAgoForTest(long ms) {
+		startedAt = System.currentTimeMillis() - ms;
+	}
+
+	/** For the test: the HUD module's lines, one per line. */
+	public static String liveForTest() {
+		StringBuilder out = new StringBuilder();
+		for (Component c : Live.lines()) out.append(c.getString()).append('\n');
+		return out.toString();
+	}
 
 	/** For the test: a trip counts from any length, and the list in memory starts empty. */
 	public static void quickForTest() {

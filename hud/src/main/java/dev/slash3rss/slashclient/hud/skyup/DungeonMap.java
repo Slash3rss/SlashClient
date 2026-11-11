@@ -544,7 +544,7 @@ public final class DungeonMap implements HudModule {
 	}
 
 	/** The boss bars' texts, colours left out. */
-	private static java.util.List<String> bossBarTexts(Minecraft mc) {
+	static java.util.List<String> bossBarTexts(Minecraft mc) {
 		java.util.List<String> out = new java.util.ArrayList<>();
 		var overlay = Compat.bossOverlay(mc);
 		if (overlay == null) return out;
