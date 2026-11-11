@@ -90,7 +90,7 @@ export function iconProblem(data: Buffer): 'not_png' | 'bad_logo_size' | 'too_la
 /**
  * The badge the game draws for a player, for a HUD that knows `known` ranks (its knownRanks).
  * HUDs from 0.9.23 say 'colors': they get any rank with its colour. Older ones get the shown rank
- * if they know it (the pink friend as the green one when they know only that), else the supporter's
+ * if they know it (the pink friend as the green one when they know only that, the owner as an admin), else the supporter's
  * logo in the rank's colour if they tint that one, else the most important rank they know, else
  * nothing (the white logo).
  */
@@ -99,7 +99,7 @@ export function gameBadge(shown: HeldRank | undefined, held: HeldRank[], known: 
   if (known.includes('colors')) return { rank: shown.id, color: shown.color };
   const knows = (id: string) => OLD_HUD_RANKS.includes(id) || known.includes(id);
   const as = (r: HeldRank) => (r.id === 'supporter' ? (knows('supporter') ? { rank: 'supporter', supporterColor: r.color } : undefined)
-    : knows(r.id) ? { rank: r.id } : r.id === 'friend_pink' ? { rank: 'friend' } : undefined);
+    : knows(r.id) ? { rank: r.id } : r.id === 'friend_pink' ? { rank: 'friend' } : r.id === 'owner' ? { rank: 'admin' } : undefined);
   // a rank it does not know: drawn as the supporter's logo in its colour by a HUD that tints that one
   const own = as(shown) ?? (knows('supporter') ? { rank: 'supporter', supporterColor: shown.color } : undefined);
   if (own) return own;

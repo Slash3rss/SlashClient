@@ -543,6 +543,12 @@ describe('social server', () => {
     const worn = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, tomMc] })).body.cosmetics;
     assert.deepEqual(worn[ewaMc], { cape: 'galaxy', wings: 'angel', trail: 'hearts', pet: 'allay' });
     assert.deepEqual(worn[tomMc], { cape: 'staff_admin', aura: 'royal' });
+    // the owner's cape: Tomek is the owner (ADMIN_HANDLES); an admin by role may not wear it
+    assert.equal((await call('POST', '/v1/me', tom.token, { cape: 'staff_owner' })).body.cape, 'staff_owner');
+    await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { role: 'admin' });
+    assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'staff_owner' })).body.error, 'bad_cape');
+    await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { role: '' });
+    await call('POST', '/v1/me', tom.token, { cape: 'staff_admin' });
     // '' takes an item off
     assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { pet: '' } })).body.loadout.pet, undefined);
     // clothing: a hat and a top go with the rest, each only in its own slot

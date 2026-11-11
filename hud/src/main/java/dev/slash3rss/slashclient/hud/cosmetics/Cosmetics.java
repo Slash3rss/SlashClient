@@ -34,7 +34,7 @@ public final class Cosmetics {
 	/** The order of the emote wheel and of the glyphs in font/emote.json (U+E100 onwards). */
 	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire", "sixseven");
 	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono",
-		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner", "staff_friend", "staff_friend_pink",
+		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner", "staff_friend", "staff_friend_pink", "staff_owner",
 		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm",
 		"lava", "desert", "cyber", "honey", "mint", "vortex", "starfall",
 		// earned with SlashClient achievements only
@@ -52,7 +52,7 @@ public final class Cosmetics {
 		Map.entry("pulse", 8), Map.entry("matrix", 8), Map.entry("storm", 8), Map.entry("vortex", 8), Map.entry("starfall", 8), Map.entry("skyup_chmury", 8),
 		Map.entry("streak100", 8), Map.entry("streak365", 8),
 		// the ranks' capes: a light sweeping across the logo, then a rest
-		Map.entry("staff_admin", 16), Map.entry("staff_support", 16), Map.entry("staff_partner", 16), Map.entry("staff_friend", 16), Map.entry("staff_friend_pink", 16));
+		Map.entry("staff_admin", 16), Map.entry("staff_support", 16), Map.entry("staff_partner", 16), Map.entry("staff_friend", 16), Map.entry("staff_friend_pink", 16), Map.entry("staff_owner", 16));
 	private static final long FRAME_MS = 120;
 	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow", "fairy", "bone", "gilded",
 		"emberwings", "sapphire", "obsidianwings");

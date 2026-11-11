@@ -315,6 +315,11 @@ describe('ranks', () => {
     assert.deepEqual(mine.ranks.slice(0, 2).map((r: any) => [r.id, r.source, !!r.pickOnly]), [['owner', 'owner', false], ['admin', 'role', true]]);
     const friend = mine.ranks.find((r: any) => r.id === 'friend');
     assert.equal(friend.pickOnly, true);
+    // in game: HUDs that know any rank draw the owner's; older ones draw it as the admin's
+    const own = await inGame(boss.token, boss.user.id, 45);
+    assert.equal((await lookup(own, NEW_HUD)).ranks[own], 'owner');
+    assert.equal((await lookup(own, OLD_HUD)).ranks[own], 'admin');
+    assert.equal((await lookup(own)).ranks[own], 'admin');
     assert.equal((await call('POST', '/v1/me/badge', boss.token, { rank: 'friend' })).status, 200);
     assert.equal((await me(boss.token)).badgeRank.id, 'friend');
     // the game draws it, the public profile still lists only the ranks held

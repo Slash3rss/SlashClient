@@ -14,7 +14,7 @@ import type { CosmeticSetting } from './db.ts';
  */
 export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray' | 'prop';
 export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears', 'back', 'tail', 'ring', 'move', 'spray', 'prop'];
-export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
+export type Rank = 'owner' | 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
   id: string;
@@ -114,6 +114,8 @@ export const ITEMS: Item[] = [
   { id: 'skyup_caveblock', slot: 'cape', name: 'SkyUp – Caveblock', since: '0.9.24', achievement: 'skyup_days_100' },
   { id: 'skyup_caveblock_domek', slot: 'cape', name: 'SkyUp – Caveblock: Domek', since: '0.9.24', achievement: 'skyup_500h' },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
+  // the owner's (ADMIN_HANDLES), only theirs: other admins may not wear it
+  { id: 'staff_owner', slot: 'cape', name: 'Właściciel', rank: 'owner', frames: 16, since: '0.9.76' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_friend', slot: 'cape', name: 'Przyjaciel', rank: 'friend', since: '0.9.4', frames: 16 },
@@ -450,6 +452,8 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
   const it = item(id);
   if (!it || it.slot !== slot) return false;
   const held = typeof badge === 'string' ? [badge] : badge;
+  // the owner's cape is the owner's alone, admins or not
+  if (it.rank === 'owner') return held.includes('owner');
   if (held.includes('admin')) return true;
   // the supporters' items: with a tier of that level (or an admin's grant of the item)
   const need = supporterLevel(settings, it);

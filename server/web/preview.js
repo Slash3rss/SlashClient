@@ -13,7 +13,7 @@ const still = () => document.documentElement.classList.contains('reduce-motion')
 const ANIMATED = new Map([
   ...['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury', 'streak100', 'streak365'].map((id) => [id, 8]),
   // the ranks' capes: a light sweeping across the logo
-  ...['staff_admin', 'staff_support', 'staff_partner', 'staff_friend', 'staff_friend_pink'].map((id) => [id, 16]),
+  ...['staff_admin', 'staff_support', 'staff_partner', 'staff_friend', 'staff_friend_pink', 'staff_owner'].map((id) => [id, 16]),
 ]);
 
 let loading;

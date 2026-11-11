@@ -6,7 +6,7 @@
 import math
 import os
 import random
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 K = 4
 OUT = os.path.join(os.path.dirname(__file__), '..', 'hud', 'src', 'main', 'resources', 'assets', 'slashclient-hud', 'textures', 'cape')
@@ -1126,12 +1126,36 @@ def mix_hex(a, b, t):
 # ---------- capes for the ranks: the logo in the rank's colour ----------
 
 RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a'),
-             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0'), 'staff_friend_pink': ('#500724', '#db2777', '#fbcfe8')}
+             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0'), 'staff_friend_pink': ('#500724', '#db2777', '#fbcfe8'),
+             # the owner's: a deep violet night with twinkling stars and a glow behind the logo
+             'staff_owner': ('#1e0a3c', '#6d28d9', '#c4b5fd')}
+
+# the owner's cape's stars: where each is and when in the loop it shines brightest
+OWNER_STARS = [(random.Random(i).uniform(3, W - 4), random.Random(i * 7 + 1).uniform(3, H - 4), random.Random(i * 13 + 2).random()) for i in range(22)]
 
 
-def rank_cape(cape):
+def owner_sky(f):
+    """The owner's cape under the logo: the violet, its stars at frame `f` and a soft glow in the middle."""
+    top, bottom, light = RANK_CAPES['staff_owner']
+    img = gradient(top, bottom)
+    glow = Image.new('RGBA', img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([W * 0.12, H * 0.26, W * 0.88, H * 0.74], fill=hexrgb('#a78bfa') + (150,))
+    img = Image.alpha_composite(img, glow.filter(ImageFilter.GaussianBlur(5)))
+    d = ImageDraw.Draw(img)
+    for x, y, phase in OWNER_STARS:
+        # each star brightens and fades once per loop, at its own time
+        b = 0.5 + 0.5 * math.cos(2 * math.pi * (f / RANK_FRAMES - phase))
+        c = mix(hexrgb(light), (255, 255, 255), b) + (round(90 + 165 * b),)
+        d.point((x, y), fill=c)
+        if b > 0.8:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                d.point((x + dx, y + dy), fill=hexrgb(light) + (140,))
+    return border(img, light)
+
+
+def rank_cape(cape, f=0):
     top, bottom, light = RANK_CAPES[cape]
-    img = border(gradient(top, bottom), light)
+    img = owner_sky(f) if cape == 'staff_owner' else border(gradient(top, bottom), light)
     return logo(img, '#ffffff', top)
 
 
@@ -1141,7 +1165,7 @@ RANK_FRAMES = 16
 def rank_cape_frame(cape, f):
     """The rank cape with a band of light sweeping across it (the first frames), then a rest:
     frame 0 is the plain cape, the launcher's and the website's picture of it."""
-    img = rank_cape(cape)
+    img = rank_cape(cape, f)
     _, _, light = RANK_CAPES[cape]
     t = f / RANK_FRAMES
     sweep = t / 0.6
