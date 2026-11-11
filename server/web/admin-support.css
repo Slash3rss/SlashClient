@@ -6,6 +6,8 @@
 .sup-tier summary { cursor: pointer; list-style: none; }
 .sup-tier[open] summary { margin-bottom: 14px; }
 .sup-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tier); flex-shrink: 0; }
+/* the rows under the fields (an icon, a switch, the buttons) spaced like the fields' grids */
+.sup-tier > .row:not(summary):not(:last-child) { margin-bottom: 12px; }
 .sup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
 .sup-grid.two { grid-template-columns: 1fr 1fr; }
 .sup-grid input[type=color] { height: 40px; width: 100%; padding: 2px; background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); }
