@@ -1,7 +1,7 @@
 // The landing page: download button for the visitor's system, the screenshot that straightens
 // as you scroll, sections that fade in and the capes. The words, the modules, the features and
 // the FAQ come in the page from the server (edited in the admin panel's "Strona główna").
-import { $, animateCape, api, cosmeticsCatalog, el, icon, motionOff, token } from './common.js';
+import { $, ASSET_V, animateCape, api, cosmeticsCatalog, el, icon, motionOff, token } from './common.js';
 
 const EN = document.documentElement.lang === 'en';
 
@@ -70,7 +70,7 @@ const strip = $('#cape-strip');
 // asked first, so the capes' frames (animateCape) come from the same answer (common.js)
 const catalog = strip ? cosmeticsCatalog() : undefined;
 for (const c of document.querySelectorAll('[data-cape]')) {
-  c.style.backgroundImage = `url(/vendor/capes/${c.dataset.cape}.png)`;
+  c.style.backgroundImage = `url(/vendor/capes/${c.dataset.cape}.png${ASSET_V})`;
   animateCape(c, c.dataset.cape);
 }
 if (strip) {
@@ -84,7 +84,7 @@ if (strip) {
       const title = price ? (EN ? `${c.name}: in the shop for ${price} Sparks from achievements` : `${c.name}: w sklepie za ${price} Iskier z osiągnięć`)
         : c.exclusive ? `${c.name} (${EN ? 'exclusive' : 'ekskluzywna'})` : c.name;
       const d = el('div', { class: `cape${price ? ' priced' : ''}`, title });
-      d.style.backgroundImage = `url(/vendor/capes/${c.id}.png)`;
+      d.style.backgroundImage = `url(/vendor/capes/${c.id}.png${ASSET_V})`;
       animateCape(d, c.id);
       if (price) d.append(el('span', { class: 'spark-price', textContent: `✦ ${price}` }));
       return d;

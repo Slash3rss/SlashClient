@@ -6,6 +6,9 @@
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
+/** The deploy's version (?v=… on this module's address): cosmetics' pictures change with a deploy, the CDN keeps old ones a day otherwise. */
+const ASSET_V = new URL(import.meta.url).search;
+
 /** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
 const still = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -99,16 +102,16 @@ export class Preview {
     this.viewer.zoom = worn.walk ? 0.62 : worn.hat || worn.ears || worn.suit ? 0.72 : worn.cape || worn.wings || worn.elytra || worn.back ? 0.76 : 0.85;
     // a back item takes the back first (as in the game), then wings, then an elytra, then the cape
     if (worn.back) this.viewer.loadCape(null);
-    else if (worn.wings) await this.viewer.loadCape(`/vendor/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
-    else if (worn.elytra) await this.viewer.loadCape(`/vendor/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
+    else if (worn.wings) await this.viewer.loadCape(`/vendor/wings/${worn.wings}.png${ASSET_V}`, { backEquipment: 'elytra' });
+    else if (worn.elytra) await this.viewer.loadCape(`/vendor/elytra/${worn.elytra}.png${ASSET_V}`, { backEquipment: 'elytra' });
     else if (worn.cape) {
-      await this.viewer.loadCape(`/vendor/capes/${worn.cape}.png`, { backEquipment: 'cape' });
+      await this.viewer.loadCape(`/vendor/capes/${worn.cape}.png${ASSET_V}`, { backEquipment: 'cape' });
       if (ANIMATED.has(worn.cape)) {
         let f = 0;
         const id = worn.cape;
         const frames = ANIMATED.get(id);
         this.capeTimer = setInterval(() => {
-          if (!document.hidden && !still()) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png`, { backEquipment: 'cape' });
+          if (!document.hidden && !still()) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png${ASSET_V}`, { backEquipment: 'cape' });
         }, 150);
       }
     } else this.viewer.loadCape(null);

@@ -4,6 +4,9 @@
 import { gameIconInto } from './preview.js';
 // (with `from`: the server puts the version on it as on every import, so the page loads it once, not twice)
 import {} from './navState.js';
+/** The deploy's version (?v=… on this module's own address): cosmetics' pictures change with a deploy, and the CDN keeps the old ones a day otherwise. */
+export const ASSET_V = new URL(import.meta.url).search;
+
 
 const TOKEN = 'slashclient.token';
 
@@ -511,7 +514,7 @@ function modalRow(r) {
 /** A cape's front, cut from its texture; an animated one turns its frames like in the game. */
 export function capeEl(id, small = false) {
   const c = el('div', { class: `cape${small ? ' sm' : ''}`, title: id });
-  c.style.backgroundImage = `url(/vendor/capes/${id}.png)`;
+  c.style.backgroundImage = `url(/vendor/capes/${id}.png${ASSET_V})`;
   animateCape(c, id);
   return c;
 }
@@ -557,7 +560,7 @@ const capeImages = new Map();
 function capeReady(id, n) {
   let ready = capeImages.get(id);
   if (!ready) {
-    const images = Array.from({ length: n }, (_, f) => Object.assign(new Image(), { src: `/vendor/capes/${id}_${f}.png` }));
+    const images = Array.from({ length: n }, (_, f) => Object.assign(new Image(), { src: `/vendor/capes/${id}_${f}.png${ASSET_V}` }));
     ready = Promise.all(images.map((i) => i.decode().catch(() => {}))).then(() => images);
     capeImages.set(id, ready);
   }
@@ -581,7 +584,7 @@ export function animateCape(node, id) {
       const all = document.querySelectorAll('[data-cape-anim]');
       for (const c of all) {
         const count = frames.get(c.dataset.capeAnim);
-        if (count) c.style.backgroundImage = `url(/vendor/capes/${c.dataset.capeAnim}_${capeTick % count}.png)`;
+        if (count) c.style.backgroundImage = `url(/vendor/capes/${c.dataset.capeAnim}_${capeTick % count}.png${ASSET_V})`;
       }
       if (!all.length) {
         clearInterval(capeTimer);
