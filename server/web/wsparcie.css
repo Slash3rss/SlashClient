@@ -1,7 +1,7 @@
 /* The "Wesprzyj" page (/wsparcie), its result pages and the support terms (/wsparcie/regulamin). */
 .support-page .head { margin-bottom: 22px; }
 .support-page .head h1 { font-size: clamp(30px, 4vw, 42px); font-weight: 800; letter-spacing: -.02em; }
-.support-page .head p { margin-left: 0; max-width: 720px; }
+.support-page .head p { margin-left: 0; max-width: none; }
 .nav-links .nav-support i { margin-right: 2px; }
 .test-banner { margin: 0 0 18px; padding: 10px 14px; border-radius: 12px; background: rgba(250, 204, 21, .12); border: 1px solid rgba(250, 204, 21, .35); color: var(--gold); font-weight: 600; }
 

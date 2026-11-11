@@ -196,4 +196,8 @@ body.landing { position: relative; display: flex; flex-direction: column; min-he
 body.landing > main { flex: 1 0 auto; }
 .account-page .head { margin-bottom: 18px; }
 .account-page .head h1, .account-page .head h2 { font-size: clamp(30px, 4vw, 40px); }
-.account-page .head p { margin-left: 0; }
+.account-page .head p { margin-left: 0; max-width: none; }
+/* signed in: no description, a smaller title, the profile right under it */
+.account-page.signed-in .head p { display: none; }
+.account-page.signed-in .head { margin-bottom: 14px; }
+.account-page.signed-in .head h1, .account-page.signed-in .head h2 { font-size: clamp(24px, 3vw, 30px); }

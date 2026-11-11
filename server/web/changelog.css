@@ -1,7 +1,7 @@
 /* The changelog (/zmiany, /changelog): one card per release, newest first. */
 .changelog { max-width: 860px; display: flex; flex-direction: column; gap: 18px; }
 .changelog .legal-head { margin-bottom: 6px; }
-.cl-lead { max-width: 640px; margin: 0 0 14px; }
+.cl-lead { margin: 0 0 14px; }
 .cl-actions { margin: 0; }
 .cl-release { scroll-margin-top: 90px; padding: 20px 22px; border-radius: 18px; background: rgba(17, 22, 34, .72); border: 1px solid var(--border); }
 .cl-release:target { border-color: rgba(96, 165, 250, .6); box-shadow: 0 0 0 3px rgba(59, 130, 246, .18); }

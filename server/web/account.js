@@ -187,6 +187,8 @@ async function login(fn) {
 }
 
 function renderAccount(reload = false) {
+  // signed in, the page's description is not needed: only a small title stays above the profile
+  document.querySelector('.account-page')?.classList.toggle('signed-in', !!me);
   if (!me) return renderSignIn();
   const profile = el('div', { class: 'glass card profile-card' },
     el('div', { class: 'row' }, avatarEl(me, true),

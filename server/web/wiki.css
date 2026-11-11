@@ -23,7 +23,7 @@
 
 /* ---- the start page ---- */
 .wiki-index { display: flex; flex-direction: column; gap: 26px; }
-.wiki-hero .wiki-lead { max-width: 700px; margin: 0; line-height: 1.6; }
+.wiki-hero .wiki-lead { margin: 0; line-height: 1.6; }
 .wiki-part { scroll-margin-top: 90px; }
 .wiki-part h2, .wiki-results h2 { display: flex; align-items: baseline; gap: 10px; font-size: 21px; margin: 0 0 12px; }
 .wiki-part h2 i { color: var(--accent-light); font-size: 18px; }
