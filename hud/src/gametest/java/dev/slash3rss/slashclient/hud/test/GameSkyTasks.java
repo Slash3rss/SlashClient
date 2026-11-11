@@ -480,8 +480,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(!state.startsWith("Nowicjusz") && !rows.contains("Nowicjusz") && !context.computeOnClient(mc -> TestHooks.skyTasks()).contains("Nowicjusz|"), "a category done", state + "\n" + rows);
 			// SkyUp's shamanism window: each mob's recipe read from it (a name the game does not know kept as it is)
 			String shamanRead = context.computeOnClient(mc -> TestHooks.skyShamanWindow());
-			check(shamanRead.equals("1 x Wiedźma redstone_torch/glass_bottle 10 {bone=10, rotten_flesh=20} | 2 x Świnia stick/carrot_on_a_stick 15 {bone=16, wheat=128} | "
-				+ "1 x Kostka siarki end_rod/slime_ball 40 {name:Pył siarkowy=3} | none | "), "the shamanism window's recipes", shamanRead);
+			check(shamanRead.equals("1 x Wiedźma campfire:redstone_torch/glass_bottle 10 {bone=10, rotten_flesh=20} | 2 x Świnia campfire:stick/carrot_on_a_stick 15 {bone=16, wheat=128} | "
+				+ "1 x Kostka siarki soul_campfire:end_rod/slime_ball 40 {name:Pył siarkowy=3} | none | "), "the shamanism window's recipes", shamanRead);
 			// the witch tracked with the key; her things carried and held: ready in the window, ready to summon in the module
 			world.getServer().runCommand("item replace entity @a weapon.mainhand with redstone_torch");
 			world.getServer().runCommand("item replace entity @a weapon.offhand with glass_bottle");
@@ -496,7 +496,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.takeScreenshot("skyup-shaman-window");
 			String shamanRows = context.computeOnClient(mc -> TestHooks.skyShamanModule());
 			// (the mobs in the game's English; SkyUp's own "Pył siarkowy" as it is)
-			check(shamanRows.startsWith("Witch | Ready – right-click the campfire | Pig ×2 | ")
+			// each with its campfire: the witch's in the line saying she is ready, the sulfur cube's a soul one
+			check(shamanRows.startsWith("Witch | Ready – right-click: Campfire | Pig ×2 | Block: Campfire | ") && shamanRows.contains("Block: Soul Campfire")
 				&& shamanRows.contains("Wand: Stick ✖") && shamanRows.contains("Bone 10/16") && shamanRows.contains("Wheat 0/128")
 				&& shamanRows.contains("Sulfur Cube") && shamanRows.contains("Pył siarkowy 0/3") && shamanRows.endsWith("lit [0]"), "the shamanism module", shamanRows);
 			context.waitTicks(3);

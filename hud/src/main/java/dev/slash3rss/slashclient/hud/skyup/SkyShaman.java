@@ -136,7 +136,7 @@ public final class SkyShaman {
 		Item wand = item(mob.wand()), main = item(mob.main());
 		boolean wandOk = wand != null && mc.player.getMainHandItem().is(wand), mainOk = main != null && mc.player.getOffhandItem().is(main);
 		boolean levelOk = mc.player.experienceLevel >= mob.level();
-		out.add(Component.translatable("slashclient-hud.skyShaman.tools", (wandOk ? "✔ " : "✖ ") + itemName(mob.wand()), (mainOk ? "✔ " : "✖ ") + itemName(mob.main()),
+		out.add(Component.translatable("slashclient-hud.skyShaman.tools", itemName(block(mob)), (wandOk ? "✔ " : "✖ ") + itemName(mob.wand()), (mainOk ? "✔ " : "✖ ") + itemName(mob.main()),
 			(levelOk ? "✔ " : "✖ ") + mob.level()).getString());
 		for (var e : mob.materials().entrySet()) {
 			int have = carried(mc, e.getKey());
@@ -177,15 +177,18 @@ public final class SkyShaman {
 
 	// ---------- recipes read from SkyUp's window, and the mobs tracked ----------
 
-	/** A recipe as the window shows it: the mob, how many come, the wand, the main item, the level and the materials (item ids, or "name:…"). */
+	/**
+	 * A recipe as the window shows it: the mob, how many come, the block it is summoned on (a campfire or a soul one), the
+	 * wand, the main item, the level and the materials (item ids, or "name:…"); `block` is "" in recipes kept before it was read.
+	 */
 	static final class Learned {
 		String name = "";
 		int count = 1, level;
-		String wand = "", main = "";
+		String block = "", wand = "", main = "";
 		Map<String, Integer> materials = new LinkedHashMap<>();
 
 		boolean same(Learned o) {
-			return o != null && name.equals(o.name) && count == o.count && level == o.level && wand.equals(o.wand) && main.equals(o.main) && materials.equals(o.materials);
+			return o != null && name.equals(o.name) && count == o.count && level == o.level && java.util.Objects.equals(block, o.block) && wand.equals(o.wand) && main.equals(o.main) && materials.equals(o.materials);
 		}
 	}
 
@@ -241,6 +244,16 @@ public final class SkyShaman {
 		return out;
 	}
 
+	/**
+	 * The block a mob is summoned on: as SkyUp's window says ("Blok przywołujący » Ognisko dusz"), else as the wiki has it
+	 * (grade III, the end rod's mobs, on a soul campfire; the others on a campfire).
+	 */
+	static String block(Mob mob) {
+		Learned l = data().recipes.get(mob.names().get(0));
+		if (l != null && l.block != null && !l.block.isEmpty()) return l.block;
+		return mob.wand().equals("end_rod") ? "soul_campfire" : "campfire";
+	}
+
 	/** How many a recipe summons (the window says "2 x Świnia"; 1 when only the list knows it). */
 	static int count(Mob mob) {
 		Learned l = data().recipes.get(mob.names().get(0));
@@ -276,7 +289,8 @@ public final class SkyShaman {
 				String line = l.replaceFirst("^[▪•»\\s]+", "");
 				int at = line.indexOf('»');
 				String label = at < 0 ? line : line.substring(0, at).strip(), value = at < 0 ? "" : line.substring(at + 1).strip();
-				if (label.startsWith("Różdżka")) r.wand = key(mc, value);
+				if (label.startsWith("Blok przywołujący")) r.block = key(mc, value);
+				else if (label.startsWith("Różdżka")) r.wand = key(mc, value);
 				else if (label.startsWith("Przedmiot główny")) r.main = key(mc, value);
 				else if (label.startsWith("Doświadczenie")) r.level = Integer.parseInt("0" + value.replaceAll("\\D", ""));
 				else if (label.startsWith("Potrzebne materiały")) materials = true;
@@ -428,9 +442,11 @@ public final class SkyShaman {
 			out.add(new Row(SkyLang.tr(mob.names().get(0)) + (n > 1 ? " ×" + n : ""), ready ? GREEN : GOLD, "", 0, 0));
 			if (mc.player == null) continue;
 			if (ready) {
-				out.add(new Row(Component.translatable("slashclient-hud.skyShaman.ready").getString(), GREEN, "", 0, 6));
+				out.add(new Row(Component.translatable("slashclient-hud.skyShaman.ready", itemName(block(mob))).getString(), GREEN, "", 0, 6));
 				continue;
 			}
+			// which campfire: the one thing not carried
+			out.add(new Row(Component.translatable("slashclient-hud.skyShaman.block").getString() + ": " + itemName(block(mob)), WHITE, "", 0, 6));
 			out.add(tool(mc, "slashclient-hud.skyShaman.wand", mob.wand(), is(mc.player.getMainHandItem(), mob.wand())));
 			out.add(tool(mc, "slashclient-hud.skyShaman.main", mob.main(), is(mc.player.getOffhandItem(), mob.main())));
 			int level = mc.player.experienceLevel;
@@ -493,7 +509,7 @@ public final class SkyShaman {
 	/** For the test: the recipe read from a window's item, as one line. */
 	public static String readForTest(ItemStack stack) {
 		Learned r = read(Minecraft.getInstance(), stack);
-		return r == null ? "none" : r.count + " x " + r.name + " " + r.wand + "/" + r.main + " " + r.level + " " + r.materials;
+		return r == null ? "none" : r.count + " x " + r.name + " " + r.block + ":" + r.wand + "/" + r.main + " " + r.level + " " + r.materials;
 	}
 
 	/** For the test: the module's rows as text, and the slots lit in the window. */
