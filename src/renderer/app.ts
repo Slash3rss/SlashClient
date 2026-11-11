@@ -4490,11 +4490,32 @@ async function wearCape(id: string) {
   await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
   const frames = capeFrames.get(id);
   if (!frames || turn !== capeTurn) return;
+  // every frame loaded once and put on at once: loading each by its address as it comes up took a
+  // moment, and a slower frame arriving after a newer one made the cape jump back (it stuttered)
+  const images = await capeFrameImages(id, frames);
+  if (turn !== capeTurn) return;
   let f = 0;
   capeTimer = setInterval(() => {
     if (turn !== capeTurn) return;
-    if (!document.hidden) void skinViewer?.loadCape(`img/capes/${id}_${(f = (f + 1) % frames)}.png`, { backEquipment: 'cape' });
+    if (!document.hidden) skinViewer?.loadCape(images[(f = (f + 1) % frames)], { backEquipment: 'cape' });
   }, FRAME_MS);
+}
+
+/** An animated cape's frames, loaded and decoded, kept for when it is worn again. */
+const capeFrameCache = new Map<string, Promise<HTMLImageElement[]>>();
+function capeFrameImages(id: string, frames: number): Promise<HTMLImageElement[]> {
+  let ready = capeFrameCache.get(id);
+  if (!ready) {
+    ready = Promise.all(Array.from({ length: frames }, (_, f) => {
+      const img = new Image();
+      img.src = `img/capes/${id}_${f}.png`;
+      return img.decode().then(() => img);
+    }));
+    // a frame that failed to load is tried again next time
+    ready.catch(() => capeFrameCache.delete(id));
+    capeFrameCache.set(id, ready);
+  }
+  return ready;
 }
 
 /** Anything else on the back stops an animated cape (and one still loading). */

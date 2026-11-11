@@ -12,6 +12,23 @@ const ASSET_V = new URL(import.meta.url).search;
 /** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
 const still = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** An animated cape's frames, loaded and decoded, kept for when it is worn again. */
+const frameCache = new Map();
+function capeFrameImages(id, frames) {
+  let ready = frameCache.get(id);
+  if (!ready) {
+    ready = Promise.all(Array.from({ length: frames }, (_, f) => {
+      const img = new Image();
+      img.src = `/vendor/capes/${id}_${f}.png${ASSET_V}`;
+      return img.decode().then(() => img);
+    }));
+    // a frame that failed to load is tried again next time
+    ready.catch(() => frameCache.delete(id));
+    frameCache.set(id, ready);
+  }
+  return ready;
+}
+
 /** Capes drawn as a loop of frames (vendor/capes/<id>_<n>.png), as in the game. */
 const ANIMATED = new Map([
   ...['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury', 'streak100', 'streak365'].map((id) => [id, 8]),
@@ -95,6 +112,8 @@ export class Preview {
   /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, suit, shield, weapon, shoes, hands, face, ears, back, tail, ring, move, prop, walk } (ids or empty; a kill effect plays every few seconds, a movement effect in a loop; a suit hides the hat, the top, the shoes, the hands, the face and the ears; the shield and weapon are held; `walk`: seen from the side, walking with the prop). */
   async show(worn) {
     clearInterval(this.capeTimer);
+    // what is worn now: a cape still loading when something newer came starts no frames
+    const turn = this.turn = (this.turn ?? 0) + 1;
     this.cosmetics.show(Object.fromEntries(Object.entries(worn).map(([slot, id]) => [slot, id || undefined])));
     // a tall hat (or ears, horns, a suit's crest or plume) stands above the head: the figure a little smaller, so it stays in view
     // (and the prop's own view, from the side, smaller still: the wheelbarrow reaches out in front)
@@ -110,8 +129,12 @@ export class Preview {
         let f = 0;
         const id = worn.cape;
         const frames = ANIMATED.get(id);
+        // every frame loaded once and put on at once: loading each by its address as it came up took a
+        // moment, and a slower frame arriving after a newer one made the cape jump back (it stuttered)
+        const images = await capeFrameImages(id, frames).catch(() => undefined);
+        if (!images || turn !== this.turn || this.disposed) return;
         this.capeTimer = setInterval(() => {
-          if (!document.hidden && !still()) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png${ASSET_V}`, { backEquipment: 'cape' });
+          if (!document.hidden && !still()) this.viewer.loadCape(images[f = (f + 1) % frames], { backEquipment: 'cape' });
         }, 150);
       }
     } else this.viewer.loadCape(null);
