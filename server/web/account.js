@@ -34,8 +34,10 @@ const ACCOUNT_TABS = [
   ['support', 'wsparcie', 'Wsparcie', 'Support', 'fa-solid fa-heart'],
   ['partner', 'serwer', 'Serwer partnerski', 'Partner server', 'fa-solid fa-handshake'],
 ];
-/** The tab shown: from the address (old links to #wsparcie and #prywatnosc land on theirs), cosmetics at first. */
-let accountTab = ACCOUNT_TABS.find(([, hash]) => location.hash === `#${hash}`)?.[0] ?? 'cosmetics';
+/** The first tab, at a plain /konto (its address gets no #…). */
+const FIRST_TAB = 'profile';
+/** The tab shown: from the address (old links to #wsparcie and #prywatnosc land on theirs), the profile at first. */
+let accountTab = ACCOUNT_TABS.find(([, hash]) => location.hash === `#${hash}`)?.[0] ?? FIRST_TAB;
 /**
  * The cards beside the cosmetics (channels, support, privacy, achievements, notices, partner servers):
  * loaded once and then kept, so picking a cosmetic or a tab does not ask the server for all of them again.
@@ -371,13 +373,13 @@ function renderAccount(reload = false) {
       b.setAttribute('aria-selected', String(tab === id));
     }
     for (const [tab, panel] of Object.entries(panels)) panel.classList.toggle('hidden', tab !== id);
-    const hash = ACCOUNT_TABS.find(([tab]) => tab === id)[1];
-    if (location.hash !== `#${hash}`) history.replaceState(null, '', `#${hash}`);
+    const hash = id === FIRST_TAB ? '' : `#${ACCOUNT_TABS.find(([tab]) => tab === id)[1]}`;
+    if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname + location.search);
   };
   const syncTabs = () => {
     for (const [tab, b] of Object.entries(buttons)) b.classList.toggle('hidden', !panels[tab].querySelector('.card'));
-    // the tab asked for is not there (no partner server): cosmetics
-    if (!panels[accountTab].querySelector('.card') && !panels[accountTab].querySelector('[class$="-slot"]')) showTab('cosmetics');
+    // the tab asked for is not there (no partner server): the first one
+    if (!panels[accountTab].querySelector('.card') && !panels[accountTab].querySelector('[class$="-slot"]')) showTab(FIRST_TAB);
   };
   $('#account').replaceChildren(el('div', { class: 'account-tabs', role: 'tablist' }, ...Object.values(buttons)), el('div', { class: 'account' }, ...Object.values(panels)));
   showTab(accountTab);
