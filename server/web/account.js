@@ -109,6 +109,9 @@ function renderSignIn() {
   $('#account').replaceChildren(box);
 }
 
+/** One setting of the profile card: its name above, the controls under it across the card. */
+const field = (label, ...controls) => el('div', { class: 'field' }, el('span', { class: 'field-label', textContent: label }), el('div', { class: 'field-body' }, ...controls));
+
 /** The player's own nick: changed here, not more often than the server allows (null: the admin switched it off). */
 function handleEditor() {
   if (me.handleChangeAt === undefined || me.handleChangeAt === null) return '';
@@ -116,7 +119,7 @@ function handleEditor() {
   const waits = me.handleChangeAt > Date.now();
   const when = waits ? new Date(me.handleChangeAt).toLocaleDateString(EN ? 'en-GB' : 'pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const save = el('button', { type: 'submit' }, icon('fa-solid fa-pen'), L('Zmień nick', 'Change nick'));
-  const form = el('form', { class: 'row small handle-edit', onsubmit: async (e) => {
+  const form = el('form', { class: 'handle-edit', onsubmit: async (e) => {
     e.preventDefault();
     const handle = input.value.trim().replace(/^@/, '');
     if (handle === me.handle) return;
@@ -130,9 +133,9 @@ function handleEditor() {
     toast(L(`Twój nick to teraz @${me.handle}.`, `Your nick is now @${me.handle}.`));
     renderNav();
     renderAccount();
-  } }, el('span', { class: 'muted', textContent: L('Nick:', 'Nick:') }), input, save,
-    waits ? el('span', { class: 'muted', textContent: L(`Kolejna zmiana od ${when} (wielkość liter możesz zmienić zawsze).`, `Next change from ${when} (letter case can be changed any time).`) }) : '');
-  return form;
+  } }, input, save);
+  return field(L('Nick', 'Nick'), form,
+    waits ? el('small', { class: 'muted field-note', textContent: L(`Kolejna zmiana od ${when} (wielkość liter możesz zmienić zawsze).`, `Next change from ${when} (letter case can be changed any time).`) }) : '');
 }
 
 /** "Odznaka przy nicku": the most important rank (the default), one of the others, or none. */
@@ -142,7 +145,7 @@ function badgePicker() {
     el('option', { value: '', textContent: L(`Najważniejsza ranga (${me.ranks[0].name})`, `Most important rank (${rankName(me.ranks[0])})`), selected: !me.badgeChoice }),
     ...me.ranks.map((r) => el('option', { value: r.id, textContent: rankName(r), selected: me.badgeChoice === r.id })),
     el('option', { value: 'none', textContent: L('Bez odznaki rangi', 'No rank badge'), selected: me.badgeChoice === 'none' }));
-  const shown = el('span', { class: 'row' });
+  const shown = el('span', { class: 'row badge-preview' });
   const draw = () => shown.replaceChildren(me.badgeRank ? rankBadge(me.badgeRank) : '', el('b', { textContent: me.name }));
   draw();
   sel.addEventListener('change', async () => {
@@ -152,7 +155,7 @@ function badgePicker() {
     toast(L('Odznaka przy nicku zmieniona.', 'Badge next to the nick changed.'));
     draw();
   });
-  return el('div', { class: 'row small badge-choice' }, el('span', { class: 'muted', textContent: L('Odznaka przy nicku:', 'Badge next to the nick:') }), sel, el('span', { class: 'muted', textContent: L('wygląda tak:', 'looks like this:') }), shown);
+  return field(L('Odznaka przy nicku', 'Badge next to the nick'), sel, shown);
 }
 
 /** With two or more Minecraft accounts linked: the badge each one shows in game, or the same as the account's. */
@@ -172,7 +175,7 @@ function characterBadgePickers() {
       Object.assign(me, r);
       toast(L(`Odznaka konta ${mc.name} zmieniona.`, `${mc.name}'s badge changed.`));
     });
-    return el('div', { class: 'row small badge-choice' }, el('span', { class: 'muted', textContent: L(`W grze jako ${mc.name}:`, `In game as ${mc.name}:`) }), sel);
+    return field(L(`W grze jako ${mc.name}`, `In game as ${mc.name}`), sel);
   });
 }
 
@@ -210,8 +213,7 @@ function renderAccount(reload = false) {
       },
     }, el('img', { src, alt: '' }), el('span', { textContent: label }));
     const provider = PROVIDERS[me.providers.find((p) => p !== 'minecraft' && p !== 'dev') ?? '']?.[0] ?? L('Logowanie', 'Sign-in');
-    profile.append(el('div', { class: 'row small avatar-choice' }, el('span', { class: 'muted', textContent: 'Avatar:' }),
-      ...faces.map((f) => pick(f.uuid, f.url, f.name)),
+    profile.append(field('Avatar', ...faces.map((f) => pick(f.uuid, f.url, f.name)),
       me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
   profile.append(handleEditor());
@@ -224,7 +226,7 @@ function renderAccount(reload = false) {
   });
   // the Minecraft accounts of this account; one can go while another way to sign in is left
   if (me.minecraft?.length) {
-    profile.append(el('div', { class: 'row small mc-accounts' }, el('span', { class: 'muted', textContent: 'Minecraft:' }),
+    profile.append(field(L('Konta Minecraft (kliknij, żeby odłączyć)', 'Minecraft accounts (click to unlink)'),
       ...me.minecraft.map((mc) => el('button', { class: 'chip', title: L('Kliknij, żeby odłączyć', 'Click to unlink'), onclick: async () => {
         if (!await confirmModal({ title: L(`Odłączyć konto Minecraft ${mc.name}?`, `Unlink the Minecraft account ${mc.name}?`), ok: L('Odłącz', 'Unlink'), okIcon: 'fa-solid fa-link-slash', danger: true })) return;
         const u = await guard(() => api('DELETE', `/v1/me/minecraft/${mc.uuid}`));
@@ -236,7 +238,7 @@ function renderAccount(reload = false) {
   }
   profile.append(
     el('label', { class: 'row small' }, el('span', { class: 'switch' }, share, el('span')), L('Pokazuj znajomym, na jakim serwerze gram', 'Show friends which server I play on')),
-    el('div', { class: 'row' },
+    el('div', { class: 'row profile-actions' },
       me.admin ? el('a', { class: 'btn', href: '/admin' }, icon('fa-solid fa-shield-halved'), L('Panel admina', 'Admin panel')) : '',
       el('button', { onclick: async () => { await signOut(); me = undefined; renderNav(); renderAccount(); } }, icon('fa-solid fa-right-from-bracket'), L('Wyloguj', 'Sign out'))));
 

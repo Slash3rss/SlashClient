@@ -90,7 +90,6 @@ div.worn { display: flex; flex-direction: column; gap: 6px; }
 .chip.blue { background: rgba(59, 130, 246, .15); color: var(--accent-light); }
 .chip.red { background: rgba(239, 68, 68, .14); color: #fca5a5; }
 .chip.gold { background: rgba(250, 204, 21, .14); color: var(--gold); }
-.avatar-choice { gap: 8px; flex-wrap: wrap; }
 .avatar-pick { height: auto; padding: 4px 10px 4px 4px; gap: 8px; border-radius: 10px; font-size: 13px; }
 .avatar-pick img { width: 28px; height: 28px; border-radius: 6px; image-rendering: pixelated; }
 .avatar-pick.selected { border-color: var(--accent); background: rgba(59, 130, 246, .12); }
@@ -146,9 +145,19 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .signin { max-width: 460px; margin-inline: auto; }
 .signin .providers { display: grid; gap: 10px; margin-top: 16px; }
 .signin .providers button { justify-content: flex-start; height: 46px; }
-.handle-edit { flex-wrap: wrap; gap: 8px; }
-.handle-edit input { width: 200px; max-width: 100%; }
 .profile-card { display: flex; flex-direction: column; gap: 14px; }
+/* the profile card's settings: the name above, the controls under it, all lined up on the card's left edge */
+.profile-card .field { display: flex; flex-direction: column; gap: 6px; }
+.profile-card .field-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.profile-card .field-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.profile-card .field-body > select { flex: 1; min-width: 0; }
+.profile-card .field-note { flex-basis: 100%; }
+.badge-preview { font-size: 13px; padding: 0 4px; }
+.handle-edit { display: flex; gap: 8px; flex: 1; min-width: 0; }
+.handle-edit input { flex: 1; min-width: 0; }
+.handle-edit button { flex-shrink: 0; }
+.profile-actions { padding-top: 4px; border-top: 1px solid rgba(255, 255, 255, .06); }
+.profile-actions > * { flex: 1; justify-content: center; }
 .cape.wing { background-size: 307px 154px; background-position: -163px -10px; }
 .cape.wing.sm { background-size: 154px 77px; background-position: -82px -5px; }
 .cape.icon-item { display: grid; place-items: center; background: rgba(255, 255, 255, .04); color: var(--accent-light, #93c5fd); font-size: 26px; }
