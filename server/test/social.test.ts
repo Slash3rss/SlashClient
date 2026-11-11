@@ -545,6 +545,11 @@ describe('social server', () => {
     assert.deepEqual(worn[tomMc], { cape: 'staff_admin', aura: 'royal' });
     // the owner's cape: Tomek is the owner (ADMIN_HANDLES); an admin by role may not wear it
     assert.equal((await call('POST', '/v1/me', tom.token, { cape: 'staff_owner' })).body.cape, 'staff_owner');
+    // a HUD that knows it shows it; older ones get the admin's cape in its place
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [tomMc], knownRanks: ['owner_cape'] })).body.cosmetics[tomMc].cape, 'staff_owner');
+    const older = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [tomMc] })).body;
+    assert.equal(older.cosmetics[tomMc].cape, 'staff_admin');
+    assert.equal(older.capes[tomMc], 'staff_admin');
     await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { role: 'admin' });
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'staff_owner' })).body.error, 'bad_cape');
     await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { role: '' });

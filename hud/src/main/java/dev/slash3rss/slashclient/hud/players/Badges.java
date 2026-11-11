@@ -270,6 +270,8 @@ public final class Badges {
 		known.add("colors");
 		// who is live on Twitch or Kick (the server's "live" map, 0.9.24+)
 		known.add("live");
+		// the owner's cape (0.9.76+): older HUDs get the admin's in its place
+		known.add("owner_cape");
 		body.add("knownRanks", known);
 		// the server we play on, as typed in the server list ('' in singleplayer or LAN): with it the server
 		// sends the skins players with offline accounts set in the launcher (newer servers; older ones ignore it)

@@ -1784,7 +1784,9 @@ export function createApp(cfg: Config) {
         }
         const entry = link ? lookupEntry(u, link, known, settingsNow) : undefined;
         if (!entry) continue;
-        const { badge, worn } = entry;
+        const { badge } = entry;
+        // HUDs before 0.9.76 have no picture of the owner's cape (they would show none): the admin's instead
+        const worn = entry.worn.cape === 'staff_owner' && !known.includes('owner_cape') ? { ...entry.worn, cape: 'staff_admin' } : entry.worn;
         if (badge) rankOf[u] = badge.rank;
         if (badge?.color) badgeColors[u] = badge.color;
         if (badge?.supporterColor) supporterColors[u] = badge.supporterColor;
