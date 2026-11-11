@@ -6,7 +6,7 @@ import { streamsCard } from './accountStreams.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
 import { rankBadge, rankChip } from './ranks.js';
-import { $, L, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, english, errorText, guard, icon, localizePage, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
+import { $, ApiError, L, linkWith, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, english, errorText, guard, icon, localizePage, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
 
 localizePage('SlashClient – Your account');
 const EN = english();
@@ -140,6 +140,62 @@ function handleEditor() {
     waits ? el('small', { class: 'muted field-note', textContent: L(`Kolejna zmiana od ${when} (wielkość liter możesz zmienić zawsze).`, `Next change from ${when} (letter case can be changed any time).`) }) : '');
 }
 
+/**
+ * "Sposoby logowania": each sign-in the server has, linked (unlinked while another way is left) or to link.
+ * A login that has another account of the player's can be moved here, as in the launcher.
+ */
+function loginsField() {
+  const linked = new Set(me.providers ?? []);
+  const ways = Object.keys(PROVIDERS).filter((p) => p !== 'minecraft' && (linked.has(p) || health.providers.includes(p)));
+  if (!ways.length) return '';
+  // every way in counts, each Minecraft account on its own: the last one cannot go
+  const total = me.providers.filter((p) => p !== 'minecraft').length + (me.minecraft?.length ?? 0);
+  const after = (u) => {
+    if (!u) return;
+    me = { ...me, ...u };
+    renderNav();
+    renderAccount();
+  };
+  const row = (p) => {
+    const [name, ic] = PROVIDERS[p];
+    const has = linked.has(p);
+    return el('div', { class: 'login-way' }, el('span', { class: 'login-way-name' }, icon(ic), name),
+      has
+        ? el('button', { class: 'btn small ghost', disabled: total < 2, title: total < 2 ? L('To jedyny sposób logowania. Najpierw podepnij inny.', 'This is your only way of signing in. Link another one first.') : '', onclick: async () => {
+          if (!await confirmModal({ title: L(`Odłączyć ${name}?`, `Unlink ${name}?`), text: L(`Nie zalogujesz się już przez ${name}, dopóki go znowu nie połączysz.`, `You will not sign in with ${name} until you link it again.`), ok: L('Odłącz', 'Unlink'), okIcon: 'fa-solid fa-link-slash', danger: true })) return;
+          const u = await guard(() => api('DELETE', `/v1/me/providers/${p}`));
+          if (u) toast(L(`Odłączono ${name}.`, `${name} unlinked.`));
+          after(u);
+        } }, icon('fa-solid fa-link-slash'), L('Odłącz', 'Unlink'))
+        : el('button', { class: 'btn small', onclick: async () => {
+          const res = await guard(() => linkWith(p));
+          if (!res) return;
+          if (res.move) return moveLogin(p, res.move, after);
+          toast(L(`Połączono ${name}.`, `${name} linked.`));
+          after(res.user);
+        } }, icon('fa-solid fa-link'), L('Połącz', 'Link')));
+  };
+  return field(L('Sposoby logowania', 'Ways to sign in'), el('div', { class: 'login-ways' }, ...ways.map(row)));
+}
+
+/** The login has another SlashClient account of the player's: moved here when they agree (and that account may go). */
+async function moveLogin(provider, offer, after) {
+  const name = PROVIDERS[provider]?.[0] ?? provider;
+  if (offer.blocked) return toast(errorText(new ApiError(offer.blocked, 409)), true);
+  const about = [L(`Konto @${offer.handle}: ${offer.friends} znajomych`, `Account @${offer.handle}: ${offer.friends} friends`),
+    ...(offer.minecraft.length ? [L(`Konta Minecraft: ${offer.minecraft.join(', ')}`, `Minecraft accounts: ${offer.minecraft.join(', ')}`)] : [])].join(' · ');
+  const detail = offer.removes
+    ? L('To jedyny sposób logowania tamtego konta, więc zostanie ono usunięte razem ze znajomymi, Iskrami i kosmetykami – nic z niego nie przejdzie na to konto. Admin może je przywrócić przez jakiś czas.',
+      'It is that account\'s only way to sign in, so it will be deleted with its friends, sparks and cosmetics – nothing of it moves to this account. The admin can bring it back for a while.')
+    : L(`Tamto konto zostaje i dalej loguje się innymi sposobami; przenosi się tylko ${name}.`, `That account stays and keeps signing in other ways; only ${name} moves.`);
+  if (!await confirmModal({ title: L(`${name} ma już inne konto SlashClient. Przenieść logowanie tutaj?`, `${name} already has another SlashClient account. Move the login here?`),
+    text: about, warning: detail, ok: offer.removes ? L('Przenieś i usuń tamto konto', 'Move and delete that account') : L('Przenieś', 'Move'), okIcon: 'fa-solid fa-right-left', danger: offer.removes })) return;
+  const res = await guard(() => api('POST', '/v1/me/move-login', { ticket: offer.ticket }));
+  if (!res) return;
+  toast(offer.removes ? L(`Przeniesiono ${name}, konto @${offer.handle} usunięte.`, `${name} moved, account @${offer.handle} deleted.`) : L(`Przeniesiono ${name} z konta @${offer.handle}.`, `${name} moved from account @${offer.handle}.`));
+  after(res);
+}
+
 /** "Odznaka przy nicku": the most important rank (the default), one of the others, or none. */
 function badgePicker() {
   const rankName = (r) => (EN ? r.nameEn || r.name : r.name);
@@ -220,7 +276,7 @@ function renderAccount(reload = false) {
     profile.append(field('Avatar', ...faces.map((f) => pick(f.uuid, f.url, f.name)),
       me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
-  profile.append(handleEditor());
+  profile.append(handleEditor(), loginsField());
   // which rank's badge goes next to the nick in game, in the launcher and on the friends list
   if (me.ranks?.length) profile.append(badgePicker(), ...characterBadgePickers());
   const share = el('input', { type: 'checkbox', checked: me.showServer });

@@ -207,6 +207,9 @@ const ERRORS = {
   empty: 'Nic nie wpisano.',
   forbidden: 'Nie możesz tego zrobić.',
   last_provider: 'To jedyny sposób logowania. Najpierw podepnij inny.',
+  already_linked: 'To konto jest już połączone z innym kontem SlashClient.',
+  move_has_files: 'Tamto konto ma zrzuty, klipy, zdjęcia w czacie albo profile w chmurze. Zaloguj się na nie i najpierw je usuń albo podepnij tam inny sposób logowania.',
+  move_banned: 'Tamto konto jest zablokowane, więc tego logowania nie da się przenieść.',
   not_enough_sparks: 'Za mało Iskier.',
   owned: 'Masz już ten przedmiot.',
   not_for_sale: 'Tego nie ma w sklepie.',
@@ -294,6 +297,9 @@ const ERRORS_EN = {
   empty: 'Nothing was entered.',
   forbidden: 'You cannot do this.',
   last_provider: 'This is your only way of signing in. Link another one first.',
+  already_linked: 'This account is already linked to another SlashClient account.',
+  move_has_files: 'That account has screenshots, clips, chat pictures or cloud profiles. Sign in to it and delete them first, or link another way to sign in there.',
+  move_banned: 'That account is banned, so this login cannot be moved.',
   not_enough_sparks: 'Not enough Sparks.',
   owned: 'You already have this item.',
   not_for_sale: 'This is not in the shop.',
@@ -755,11 +761,28 @@ export const PROVIDERS = {
  * this page asks the server until that window is done (the same flow the launcher uses).
  */
 export async function signInWith(provider, { askHandle = false } = {}) {
-  const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
   // `askHandle`: with no account yet, the server asks for a nick after the sign-in instead of making one up
+  const res = await providerWindow(provider, askHandle ? { askHandle: true } : undefined);
+  const done = res.signup ? await pickNewHandle(res.signup) : res;
+  token.set(done.token);
+  return done.user;
+}
+
+/**
+ * Links Discord, Microsoft, Google or GitHub to the signed-in account (the same window as signing in).
+ * Resolves with { linked, user } or, when that login has another account of the player's, { move } (servers
+ * from 0.9.75; then /v1/me/move-login takes it over).
+ */
+export function linkWith(provider) {
+  return providerWindow(provider, { askMove: true });
+}
+
+/** The provider's page in a new window, and the server asked until that window is done: what the sign-in gave. */
+async function providerWindow(provider, startBody) {
+  const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
   let started;
   try {
-    started = await api('POST', `/v1/auth/${provider}/start`, askHandle ? { askHandle: true } : undefined);
+    started = await api('POST', `/v1/auth/${provider}/start`, startBody);
   } catch (err) {
     popup?.close();
     throw err;
@@ -781,9 +804,7 @@ export async function signInWith(provider, { askHandle = false } = {}) {
       const res = await api('GET', `/v1/auth/poll?state=${encodeURIComponent(state)}`);
       if (res.pending) continue;
       popup?.close();
-      const done = res.signup ? await pickNewHandle(res.signup) : res;
-      token.set(done.token);
-      return done.user;
+      return res;
     }
     throw new ApiError('login_expired', 400);
   } finally {

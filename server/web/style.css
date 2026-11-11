@@ -152,6 +152,10 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .profile-card .field-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .profile-card .field-body > select { flex: 1; min-width: 0; }
 .profile-card .field-note { flex-basis: 100%; }
+/* "Sposoby logowania": one line per sign-in, its name on the left and Połącz / Odłącz on the right */
+.login-ways { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.login-way { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.login-way-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
 .badge-preview { font-size: 13px; padding: 0 4px; }
 .handle-edit { display: flex; gap: 8px; flex: 1; min-width: 0; }
 .handle-edit input { flex: 1; min-width: 0; }
