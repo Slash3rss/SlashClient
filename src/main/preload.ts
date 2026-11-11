@@ -116,6 +116,7 @@ const api = {
   getStats: (days: number) => invoke('stats:get', days),
   sessionSummaries: () => invoke('sessionSummary:list'),
   setWindowIcon: (dataUrl: string | null) => invoke('window:setIcon', dataUrl),
+  setWindowBadge: (count: number, dataUrl: string | null) => invoke('window:setBadge', count, dataUrl),
   setSeasonAllowed: (on: boolean) => invoke('season:allowed', on),
   removeSessionSummary: (id: string) => invoke('sessionSummary:remove', id),
   findInstances: () => invoke('import:find'),

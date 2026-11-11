@@ -98,6 +98,8 @@ export interface Settings {
   systemNotifications?: boolean;
   /** Whether those notifications play the system's sound; missing = off. */
   notificationSound?: boolean;
+  /** Unread messages and invites as a number on the launcher's icon (taskbar, Dock); missing = on. */
+  taskbarBadge?: boolean;
   /** Fewer animations (slower computers): no transitions, a still starry sky, 3D previews that don't spin. */
   reduceMotion?: boolean;
   /** The seasonal look (Halloween, season.ts); missing = on. */

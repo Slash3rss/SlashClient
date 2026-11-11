@@ -814,6 +814,21 @@ handle('window:setIcon', (dataUrl: unknown) => {
   win?.setIcon(img);
   if (process.platform === 'darwin') app.dock?.setIcon(img);
 });
+/**
+ * The Friends tab's red number (unread messages and invites) on the launcher's icon too, as Discord has it: a red dot
+ * with the number over the taskbar's icon (Windows, the picture made by the page), the Dock's badge (macOS) or the
+ * launcher's count (Linux, where the desktop shows one); 0, or the setting off, takes it away.
+ */
+handle('window:setBadge', (count: unknown, dataUrl: unknown) => {
+  const n = store.settings.taskbarBadge === false ? 0 : Math.max(0, Math.min(9999, Math.floor(Number(count) || 0)));
+  const label = n > 99 ? '99+' : String(n);
+  if (process.platform === 'win32') {
+    const own = n > 0 && typeof dataUrl === 'string' && dataUrl.length < 200_000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl);
+    const img = own ? nativeImage.createFromDataURL(dataUrl) : null;
+    win?.setOverlayIcon(img && !img.isEmpty() ? img : null, img ? label : '');
+  } else if (process.platform === 'darwin') app.dock?.setBadge(n ? label : '');
+  else app.setBadgeCount(n);
+});
 handle('sessionSummary:remove', (id: string) => (typeof id === 'string' ? removeSummary(id) : undefined));
 
 async function finishSessionSummary(o: { profile: Profile; versionId: string; startedAt: number; endedAt: number; joins: { address: string; at: number }[]; code: number | null; byUser: boolean; benchmark: boolean }) {

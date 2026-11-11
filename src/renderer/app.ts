@@ -87,7 +87,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; theme?: string; themeAccent?: string; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; theme?: string; themeAccent?: string; systemNotifications?: boolean; notificationSound?: boolean; taskbarBadge?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1260,6 +1260,7 @@ function renderSettings() {
   const sound = form.elements.namedItem('notificationSound') as HTMLInputElement;
   notifications.checked = store.settings.systemNotifications !== false;
   sound.checked = store.settings.notificationSound === true;
+  (form.elements.namedItem('taskbarBadge') as HTMLInputElement).checked = store.settings.taskbarBadge !== false;
   // the sound only means something with the notifications on
   sound.disabled = !notifications.checked;
   notifications.onchange = () => (sound.disabled = !notifications.checked);
@@ -2093,17 +2094,52 @@ $('#settings-form').addEventListener('submit', async (e) => {
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
       notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,
+      taskbarBadge: (form.elements.namedItem('taskbarBadge') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
       updateChannel: (form.elements.namedItem('updateChannel') as HTMLSelectElement).value === 'beta' ? 'beta' : 'stable',
     }),
   );
   settingsUnsaved.clean();
+  // the number on the icon shown or taken away at once
+  pushIconBadge(true);
   toast('Zapisano ustawienia');
   store = await api.getStore();
   friends.init();
 });
 
 // ---------- friends ----------
+
+/**
+ * The Friends tab's red number (unread messages, invites) on the launcher's icon too, as Discord has it: a red dot
+ * with the number over the taskbar's icon on Windows (drawn here), the Dock's badge on macOS. Sent when it changes.
+ */
+let iconBadgeSent = -1;
+function pushIconBadge(force = false) {
+  const badge = document.getElementById('friends-badge');
+  if (!badge) return;
+  const label = badge.classList.contains('hidden') ? '' : (badge.textContent ?? '').trim();
+  const n = Number.parseInt(label, 10) || 0;
+  if (n === iconBadgeSent && !force) return;
+  iconBadgeSent = n;
+  void api.setWindowBadge?.(n, n ? iconBadgePicture(label) : null)?.catch?.(() => undefined);
+}
+
+/** The red dot with the number, as a PNG small enough for the taskbar's corner (Windows draws it at 16 px). */
+function iconBadgePicture(label: string): string {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const x = c.getContext('2d')!;
+  x.fillStyle = '#ef4444';
+  x.beginPath();
+  x.arc(16, 16, 16, 0, Math.PI * 2);
+  x.fill();
+  x.fillStyle = '#ffffff';
+  x.font = `bold ${label.length > 2 ? 13 : label.length > 1 ? 18 : 22}px "Segoe UI", system-ui, sans-serif`;
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText(label, 16, 17);
+  return c.toDataURL('image/png');
+}
 
 const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   api,
@@ -2135,6 +2171,7 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
     votes: 0, online: true, playersOnline: 0, playersMax: 0, hasIcon: false, promoted: false, featured: false,
   }),
 });
+new MutationObserver(() => pushIconBadge()).observe($('#friends-badge'), { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
 document.querySelector('.nav[data-view="friends"]')?.addEventListener('click', () => friends.show());
 
 // ---------- achievements ----------
