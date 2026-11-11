@@ -240,7 +240,7 @@ describe('ranks', () => {
     const before = (await call('GET', '/v1/admin/ranks', boss.token)).body.ranks;
     // the first ranks, in the game's colours, most important first
     assert.deepEqual(before.map((r: any) => [r.id, r.color, r.auto]), [
-      ['admin', '#ef4444', 'role'], ['support', '#38bdf8', ''], ['partner', '#facc15', ''], ['friend', '#22c55e', ''], ['friend_pink', '#ec4899', ''], ['supporter', '#f472b6', 'payment'],
+      ['owner', '#8b5cf6', 'owner'], ['admin', '#ef4444', 'role'], ['support', '#38bdf8', ''], ['partner', '#facc15', ''], ['friend', '#22c55e', ''], ['friend_pink', '#ec4899', ''], ['supporter', '#f472b6', 'payment'],
     ]);
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'Bad Id', name: 'X', color: '#ffffff' })).body.error, 'bad_rank_id');
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'none', name: 'X', color: '#ffffff' })).body.error, 'bad_rank_id');
@@ -311,7 +311,8 @@ describe('ranks', () => {
 
   it('lets admins pick the badge of any enabled rank, without holding it', async () => {
     const mine = await me(boss.token);
-    assert.equal(mine.ranks[0].id, 'admin');
+    // the owner (ADMIN_HANDLES): the owner's rank and the admin's, both held
+    assert.deepEqual(mine.ranks.slice(0, 2).map((r: any) => [r.id, r.source, !!r.pickOnly]), [['owner', 'owner', false], ['admin', 'role', false]]);
     const friend = mine.ranks.find((r: any) => r.id === 'friend');
     assert.equal(friend.pickOnly, true);
     assert.equal((await call('POST', '/v1/me/badge', boss.token, { rank: 'friend' })).status, 200);
@@ -321,11 +322,11 @@ describe('ranks', () => {
     assert.equal((await lookup(uuid, NEW_HUD)).ranks[uuid], 'friend');
     const profile = (await call('GET', '/v1/profiles/Szef')).body.profile;
     assert.equal(profile.badge, 'friend');
-    assert.deepEqual(profile.ranks.map((r: any) => r.id), ['admin']);
+    assert.deepEqual(profile.ranks.map((r: any) => r.id), ['owner', 'admin']);
     // switched off in the panel: back to the ranks held
     await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.adminAnyBadge': false } });
-    assert.deepEqual((await me(boss.token)).ranks.map((r: any) => r.id), ['admin']);
-    assert.equal((await me(boss.token)).badgeRank.id, 'admin');
+    assert.deepEqual((await me(boss.token)).ranks.map((r: any) => r.id), ['owner', 'admin']);
+    assert.equal((await me(boss.token)).badgeRank.id, 'owner');
     assert.equal((await call('POST', '/v1/me/badge', boss.token, { rank: 'partner' })).body.error, 'not_your_rank');
     await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.adminAnyBadge': true } });
     await call('POST', '/v1/me/badge', boss.token, { rank: '' });

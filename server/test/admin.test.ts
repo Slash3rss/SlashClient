@@ -98,7 +98,8 @@ describe('admin panel', () => {
   it('gives ranks: support, partner and friend (green or pink), admins are red anyway; only admins can', async () => {
     const boss = await login('Szef');
     const kuba = await login('Kuba');
-    assert.equal((await call('GET', '/v1/me', boss.token)).body.badge, 'admin');
+    // the owner (ADMIN_HANDLES) shows the owner's badge, before the admin's
+    assert.equal((await call('GET', '/v1/me', boss.token)).body.badge, 'owner');
     assert.equal((await call('POST', `/v1/admin/users/${kuba.user.id}`, boss.token, { rank: 'king' })).body.error, 'bad_rank');
     const after = (await call('POST', `/v1/admin/users/${kuba.user.id}`, boss.token, { rank: 'partner' })).body;
     assert.equal(after.rank, 'partner');

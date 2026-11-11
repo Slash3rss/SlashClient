@@ -737,6 +737,7 @@ export function createApp(cfg: Config) {
   const ranks = createRanks({
     sql: db.sql, authed, admin, body, user: (uuid) => db.user(uuid),
     isAdmin: (u) => u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()),
+    isOwner: (u) => configAdmins.has(u.handle.toLowerCase()),
     supporter: (uuid) => support.rank(uuid),
     characters: (uuid) => db.minecraftAccounts(uuid).map((m) => m.uuid),
     changed: (uuid) => cosmeticsChanged(uuid),

@@ -4,8 +4,8 @@
 import { $, ApiError, api, confirmModal, el, fmtDate, guard, icon, toast, token } from './common.js';
 import { rankBadge, rankChip } from './ranks.js';
 
-const AUTO = { role: 'automatyczna: rola admina', payment: 'automatyczna: aktywne wsparcie (kolor i nazwa z poziomu wsparcia)' };
-const SOURCES = { admin: 'nadana', migration: 'sprzed wielu rang', payment: 'wsparcie', role: 'rola admina', achievement: 'osiągnięcie' };
+const AUTO = { owner: 'automatyczna: konto z ADMIN_HANDLES (konfiguracja serwera)', role: 'automatyczna: rola admina', payment: 'automatyczna: aktywne wsparcie (kolor i nazwa z poziomu wsparcia)' };
+const SOURCES = { owner: 'właściciel (ADMIN_HANDLES)', admin: 'nadana', migration: 'sprzed wielu rang', payment: 'wsparcie', role: 'rola admina', achievement: 'osiągnięcie' };
 
 /** The ranks there are, for the drawer's picker (loaded with the tab or the drawer). */
 let defs = [];
@@ -104,7 +104,7 @@ export function userRanksSection(userId, changed) {
         if (r) { toast('Ranga odebrana.'); draw(r); changed?.(); }
       } }, icon('fa-solid fa-xmark'))));
     // the automatic ones (admin role, supporters) are listed, not given
-    const auto = res.held.filter((h) => h.source === 'role' || h.source === 'payment').map((h) => el('div', { class: 'rank-grant' }, rankChip(h), el('span', { class: 'muted', textContent: SOURCES[h.source] })));
+    const auto = res.held.filter((h) => h.source === 'role' || h.source === 'payment' || h.source === 'owner').map((h) => el('div', { class: 'rank-grant' }, rankChip(h), el('span', { class: 'muted', textContent: SOURCES[h.source] })));
     const pick = el('select', {}, ...defs.filter((d) => !d.auto).map((d) => el('option', { value: d.id, textContent: `${d.name} (${d.id})${d.enabled ? '' : ' – wyłączona'}`, disabled: !!held[d.id] })));
     const until = el('input', { type: 'date', title: 'Do kiedy (puste: na zawsze)' });
     const give = el('button', { class: 'primary', onclick: async () => {

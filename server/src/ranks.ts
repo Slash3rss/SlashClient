@@ -21,10 +21,10 @@ import { statements } from './statements.ts';
  * (or the first of them) for whatever reads it.
  */
 
-/** How a rank comes: given by an admin (''), with the admin role, or with an active supporter tier. */
-export type RankAuto = '' | 'role' | 'payment';
+/** How a rank comes: given by an admin (''), with the admin role, with an active supporter tier, or for the owner (ADMIN_HANDLES). */
+export type RankAuto = '' | 'role' | 'payment' | 'owner';
 /** Where a player's rank came from. */
-export type RankSource = 'admin' | 'payment' | 'achievement' | 'role' | 'migration';
+export type RankSource = 'admin' | 'payment' | 'achievement' | 'role' | 'migration' | 'owner';
 
 export interface RankDef {
   id: string; name: string; nameEn: string; color: string; priority: number;
@@ -49,6 +49,8 @@ export interface HeldRank {
 
 /** The first ranks, as the game drew them before ranks could be edited (hud Badges.java's colours). */
 export const SEED: Omit<RankDef, 'builtin' | 'enabled' | 'icon'>[] = [
+  // added later: servers that already had ranks get it on their next start (seeding skips the ones there)
+  { id: 'owner', name: 'Właściciel', nameEn: 'Owner', color: '#8b5cf6', priority: 110, description: 'Właściciel SlashClient (konto z ADMIN_HANDLES w konfiguracji serwera).', descriptionEn: 'SlashClient owner (the account in the server configuration\'s ADMIN_HANDLES).', auto: 'owner' },
   { id: 'admin', name: 'Admin', nameEn: 'Admin', color: '#ef4444', priority: 100, description: 'Administrator SlashClient (z roli admina).', descriptionEn: 'SlashClient administrator (from the admin role).', auto: 'role' },
   { id: 'support', name: 'Support', nameEn: 'Support', color: '#38bdf8', priority: 90, description: 'Pomoc dla graczy.', descriptionEn: 'Player support.', auto: '' },
   { id: 'partner', name: 'Partner', nameEn: 'Partner', color: '#facc15', priority: 80, description: 'Partner projektu.', descriptionEn: 'Project partner.', auto: '' },
@@ -258,6 +260,8 @@ export interface RankDeps {
   user: (uuid: string) => RankUser | undefined;
   /** By role or by the configuration. */
   isAdmin: (user: RankUser) => boolean;
+  /** Named in the configuration (ADMIN_HANDLES): the owner's rank. */
+  isOwner?: (user: RankUser) => boolean;
   /** The active supporter tier's colour and name (payments/support.ts), undefined when none. */
   supporter: (uuid: string) => { color: string; name?: string; nameEn?: string } | undefined;
   /** The Minecraft accounts linked to a player (uuids without dashes), each of which may show a badge of its own. */
@@ -291,6 +295,7 @@ export function createRanks(deps: RankDeps) {
     };
     for (const d of defs.values()) {
       if (d.auto === 'role' && deps.isAdmin(user)) add(d, { source: 'role' });
+      if (d.auto === 'owner' && deps.isOwner?.(user)) add(d, { source: 'owner' });
       if (d.auto === 'payment') {
         const tier = deps.supporter(user.id);
         // in the tier's colour and with its name, as the supporters' pages show it
