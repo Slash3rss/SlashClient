@@ -1441,6 +1441,7 @@
 	"slashclient-hud.levelEta.title": "Time to next level",
 	"slashclient-hud.levelEta.player": "Player (level %s): %s",
 	"slashclient-hud.levelEta.job": "%s (level %s): %s",
+	"slashclient-hud.levelEta.counting": "estimating…",
 	"slashclient-hud.dungeonXp.eta": " · next level in %s",
 	"slashclient-hud.dungeon.sum.gained": "Got",
 	"slashclient-hud.dungeon.sum.nothing": "Nothing got",

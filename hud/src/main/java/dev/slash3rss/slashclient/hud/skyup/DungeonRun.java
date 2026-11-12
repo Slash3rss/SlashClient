@@ -109,6 +109,7 @@ public final class DungeonRun {
 		rooms = spawners = loot = ores = kills = elites = bosses = 0;
 		xpGot = 0;
 		xpLevel = -1;
+		LevelEta.dungeonReset();
 		levelFirst = levelNow = playerLevelFirst = playerLevelNow = -1;
 		jobLevelFirst.clear();
 		playerXpLast = -1;
@@ -171,6 +172,7 @@ public final class DungeonRun {
 	static void xp(int level, float progress) {
 		if (!running || level < 1) return;
 		float fill = Math.max(0f, Math.min(1f, progress));
+		double before = xpGot;
 		// within a level a bar going back counts back too (its name and fill may come apart: a new level's name first)
 		if (xpLevel >= 1 && level == xpLevel) xpGot += (fill - xpFill) * DungeonMap.xpNeeded(level);
 		else if (xpLevel >= 1 && level > xpLevel) {
@@ -178,6 +180,7 @@ public final class DungeonRun {
 			for (int l = xpLevel + 1; l < level; l++) xpGot += DungeonMap.xpNeeded(l);
 			xpGot += fill * DungeonMap.xpNeeded(level);
 		}
+		LevelEta.dungeon(xpGot - before, (1f - fill) * DungeonMap.xpNeeded(level));
 		xpLevel = level;
 		xpFill = fill;
 		if (levelFirst < 0) levelFirst = level;
@@ -648,10 +651,10 @@ public final class DungeonRun {
 				out.add(Ui.tr("slashclient-hud.dungeonXp.job", "Górnik", 120));
 				return out;
 			}
-			// with about how long to the dungeon's next level, at the pace of the trip so far
+			// with about how long to the dungeon's next level, counting down at the pace of the last few minutes
 			Component dungeon = Ui.tr("slashclient-hud.dungeonXp.dungeon", dungeonXp());
-			long eta = LevelEta.etaSeconds(xpGot, System.currentTimeMillis() - startedAt, xpLevel >= 1 ? (1f - xpFill) * DungeonMap.xpNeeded(xpLevel) : 0);
-			out.add(eta < 0 ? dungeon : dungeon.copy().append(Ui.tr("slashclient-hud.dungeonXp.eta", LevelEta.duration(eta))));
+			String eta = LevelEta.dungeonEta();
+			out.add(eta == null ? dungeon : dungeon.copy().append(Ui.tr("slashclient-hud.dungeonXp.eta", eta)));
 			out.add(Ui.tr("slashclient-hud.dungeonXp.player", playerXp));
 			for (var e : jobsGot().entrySet()) out.add(Ui.tr("slashclient-hud.dungeonXp.job", e.getKey(), e.getValue()));
 			return out;
@@ -681,11 +684,6 @@ public final class DungeonRun {
 	}
 
 	// ---------- for the tests ----------
-
-	/** For the test: the trip began this long ago, for a pace to show. */
-	public static void startedAgoForTest(long ms) {
-		startedAt = System.currentTimeMillis() - ms;
-	}
 
 	/** For the test: the HUD module's lines, one per line. */
 	public static String liveForTest() {

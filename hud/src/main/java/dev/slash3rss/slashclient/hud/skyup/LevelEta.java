@@ -17,28 +17,28 @@ import java.util.Map;
 
 /**
  * About how long until the next level of the player's own XP (the green bar) and of each SkyUp job (its boss bar,
- * "Górnik (poziom 2) 744/3 599 xp"), at the pace the XP came in over the last few minutes. A line shows only while
- * that XP keeps coming, so the module is there while the player is levelling something and gone when they stop.
+ * "Górnik (poziom 2) 744/3 599 xp"), at the pace the XP came in over the last few minutes, counting down every
+ * second. A line shows only while that XP keeps coming, so the module is there while the player is levelling
+ * something and gone when they stop.
  */
 public final class LevelEta {
 	private LevelEta() {}
 
 	/** The pace is the XP got in this long; nothing got in it, and the line goes. */
 	static final long WINDOW_MS = 5 * 60_000;
-	/** A guess only after watching this long: the first few gains say little about the pace. */
-	static final long AFTER_MS = 30_000;
+	/** XP stopped coming for this many of its usual gaps: the time grows again instead of counting down. */
+	static final double STOPPED_GAPS = 3;
 
-	/** One thing levelled: its XP got lately (when, how much), since when it is watched, its level and the XP to the next. */
+	/** One thing levelled: its XP got lately (when, how much), its level and the XP to the next. */
 	private static final class Track {
 		final Deque<double[]> gains = new ArrayDeque<>();
-		long since;
 		int level;
 		double left;
 		/** The bar when last read, for what it grew by: level, XP in it, XP the level takes. */
 		double[] last;
 	}
 
-	private static final Track player = new Track();
+	private static final Track player = new Track(), dungeon = new Track();
 	private static final Map<String, Track> jobs = new LinkedHashMap<>();
 	private static int playerXpLast = -1;
 
@@ -79,38 +79,67 @@ public final class LevelEta {
 	}
 
 	private static void gain(Track t, double xp, long now) {
-		// watching starts with the first gain after a quiet spell
-		if (t.gains.isEmpty() || now - t.gains.peekLast()[0] > WINDOW_MS) {
-			t.gains.clear();
-			t.since = now;
-		}
 		t.gains.addLast(new double[] { now, xp });
 	}
 
-	/** Seconds to the next level at the pace of the last few minutes; -1 with no pace (yet, or any more). */
+	/** The dungeon's XP (DungeonRun, from its boss bar): what came in now, and what its level still takes. */
+	public static void dungeon(double got, double left) {
+		dungeon.left = left;
+		if (got > 0) gain(dungeon, got, System.currentTimeMillis());
+	}
+
+	/** A new trip: the dungeon's pace starts again. */
+	public static void dungeonReset() {
+		dungeon.gains.clear();
+		dungeon.left = 0;
+	}
+
+	/** The time to the dungeon's next level ("~4 min 12 s"), "estimating…" while there is no pace yet, null with none at all. */
+	public static String dungeonEta() {
+		return shown(dungeon, System.currentTimeMillis());
+	}
+
+	/** Seconds to the next level, ticking down between gains; -1 with no pace (yet, or any more). */
 	private static long eta(Track t, long now) {
 		while (!t.gains.isEmpty() && now - t.gains.peekFirst()[0] > WINDOW_MS) t.gains.pollFirst();
-		if (t.gains.isEmpty() || t.left <= 0) return -1;
-		long span = now - Math.max(t.since, now - WINDOW_MS);
-		if (span < AFTER_MS) return -1;
-		double got = 0;
-		for (double[] g : t.gains) got += g[1];
-		return Math.round(t.left / (got / (span / 1000.0)));
+		return eta(t.gains, now, t.left);
 	}
 
-	/** "<1 min", "~12 min", "~2 h 05 min"; past 99 hours just "99+ h", as a pace that slow says little. */
+	/**
+	 * Seconds until `left` more XP comes in, from the gains (when, how much) of the last few minutes: their pace is the
+	 * XP that came after the first one over the time from the first to the last, so it is there from the second gain
+	 * on and steady between gains, while the time left counts down every second. When the XP has stopped coming (for
+	 * a few of its usual gaps), the pace is taken up to now instead, so the time grows rather than running out.
+	 */
+	static long eta(java.util.Collection<double[]> gains, long now, double left) {
+		if (gains.size() < 2 || left <= 0) return -1;
+		double first = -1, last = 0, got = 0;
+		for (double[] g : gains) {
+			if (first < 0) first = g[0];
+			else got += g[1];
+			last = g[0];
+		}
+		double span = last - first;
+		if (span < 1000 || got <= 0) return -1;
+		double gap = span / (gains.size() - 1);
+		if (now - last > STOPPED_GAPS * gap) return Math.round(left / (got / ((now - first) / 1000.0)));
+		return Math.max(1, Math.round(left / (got / (span / 1000.0)) - (now - last) / 1000.0));
+	}
+
+	/** The time as a line shows it, "estimating…" while the first gains came in and there is no pace yet, null with no XP coming. */
+	private static String shown(Track t, long now) {
+		long s = eta(t, now);
+		if (s >= 0) return duration(s);
+		return t.gains.isEmpty() || t.left <= 0 ? null : Ui.tr("slashclient-hud.levelEta.counting").getString();
+	}
+
+	/** "~45 s", "~4 min 12 s", "~2 h 05 min"; past 99 hours just "99+ h", as a pace that slow says little. */
 	public static String duration(long s) {
-		if (s < 60) return "<1 min";
-		long min = (s + 30) / 60;
-		if (min < 60) return "~" + min + " min";
+		if (s < 60) return "~" + Math.max(1, s) + " s";
+		if (s < 3600) return "~" + s / 60 + " min " + String.format(java.util.Locale.ROOT, "%02d", s % 60) + " s";
+		long min = s / 60;
 		if (min >= 99 * 60) return "99+ h";
 		return "~" + min / 60 + " h " + String.format(java.util.Locale.ROOT, "%02d", min % 60) + " min";
-	}
-
-	/** Seconds until `left` more XP comes in at the pace of `got` in `ms`; -1 after too short a while or with none got. */
-	public static long etaSeconds(double got, long ms, double left) {
-		if (got <= 0 || ms < AFTER_MS || left <= 0) return -1;
-		return Math.round(left / (got / (ms / 1000.0)));
 	}
 
 	private static void reset() {
@@ -123,11 +152,11 @@ public final class LevelEta {
 	private static List<Component> lines() {
 		List<Component> out = new ArrayList<>();
 		long now = System.currentTimeMillis();
-		long p = eta(player, now);
-		if (p >= 0) out.add(Ui.tr("slashclient-hud.levelEta.player", player.level, duration(p)));
+		String p = shown(player, now);
+		if (p != null) out.add(Ui.tr("slashclient-hud.levelEta.player", player.level, p));
 		for (var e : jobs.entrySet()) {
-			long j = eta(e.getValue(), now);
-			if (j >= 0) out.add(Ui.tr("slashclient-hud.levelEta.job", e.getKey(), e.getValue().level, duration(j)));
+			String j = shown(e.getValue(), now);
+			if (j != null) out.add(Ui.tr("slashclient-hud.levelEta.job", e.getKey(), e.getValue().level, j));
 		}
 		return out;
 	}
@@ -151,8 +180,8 @@ public final class LevelEta {
 			List<Component> real = LevelEta.lines();
 			if (real.isEmpty()) {
 				// made-up numbers for the editor
-				out.add(Ui.tr("slashclient-hud.levelEta.player", 31, "~12 min"));
-				out.add(Ui.tr("slashclient-hud.levelEta.job", "Górnik", 3, "~1 h 05 min"));
+				out.add(Ui.tr("slashclient-hud.levelEta.player", 31, "~12 min 30 s"));
+				out.add(Ui.tr("slashclient-hud.levelEta.job", "Górnik", 3, "~4 min 12 s"));
 			} else out.addAll(real);
 			return out;
 		}
@@ -181,14 +210,14 @@ public final class LevelEta {
 
 	// ---------- for the tests ----------
 
-	/** For the test: everything watched as if it happened `ms` earlier, for a pace to show. */
-	public static void agoForTest(long ms) {
-		List<Track> all = new ArrayList<>(jobs.values());
-		all.add(player);
-		for (Track t : all) {
-			t.since -= ms;
-			for (double[] g : t.gains) g[0] -= ms;
+	/** For the test: the time from gains given as "seconds:xp" (seconds before now), with `left` XP to go. */
+	public static long etaForTest(double left, double nowSeconds, String... gains) {
+		List<double[]> list = new ArrayList<>();
+		for (String g : gains) {
+			String[] p = g.split(":");
+			list.add(new double[] { Double.parseDouble(p[0]) * 1000, Double.parseDouble(p[1]) });
 		}
+		return eta(list, Math.round(nowSeconds * 1000), left);
 	}
 
 	/** For the test: the module's lines, one per line. */

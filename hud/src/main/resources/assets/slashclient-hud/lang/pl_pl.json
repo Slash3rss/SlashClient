@@ -1441,6 +1441,7 @@
 	"slashclient-hud.levelEta.title": "Czas do poziomu",
 	"slashclient-hud.levelEta.player": "Postać (poz. %s): %s",
 	"slashclient-hud.levelEta.job": "%s (poz. %s): %s",
+	"slashclient-hud.levelEta.counting": "liczę…",
 	"slashclient-hud.dungeonXp.eta": " · poziom za %s",
 	"slashclient-hud.dungeon.sum.gained": "Zdobyte",
 	"slashclient-hud.dungeon.sum.nothing": "Nic nie zdobyto",
