@@ -526,6 +526,13 @@ public final class HudConfig {
 	public boolean autoClickShield = true;
 	/** In a chest's or a server's window (selling, buying) it clicks the slot under the mouse. */
 	public boolean autoClickContainers = true;
+	/**
+	 * What the autoclicker does with a window open: hits the mob under the crosshair ("mobs", so a shop can be used
+	 * by hand meanwhile), clicks the slot under the mouse in a chest's or a server's window ("slots", the mob hit
+	 * under the pause menu and the inventory), or nothing ("off"). Missing: from the old switch for chest windows.
+	 */
+	public String autoClickWindows;
+	public static final String[] AUTO_CLICK_WINDOWS = { "mobs", "slots", "off" };
 	/** With a mob under the crosshair the left button waits for full hits (the weapon charged); at the rest, the CPS. */
 	public boolean autoClickCooldown = false;
 	/** Left clicks only with a mob under the crosshair (never at a player either way). */
@@ -888,6 +895,7 @@ public final class HudConfig {
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		read.darkGuiShade = oneOf(read.darkGuiShade, dev.slash3rss.slashclient.hud.ui.DarkGui.SHADES);
 		read.moduleFont = oneOf(read.moduleFont, dev.slash3rss.slashclient.hud.ui.ModuleFont.FONTS);
+		read.autoClickWindows = read.autoClickWindows == null ? (read.autoClickContainers ? "slots" : "off") : oneOf(read.autoClickWindows, AUTO_CLICK_WINDOWS);
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
 		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
 		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
@@ -1183,6 +1191,7 @@ public final class HudConfig {
 		autoClickShield = other.autoClickShield;
 		autoClickCooldown = other.autoClickCooldown;
 		autoClickContainers = other.autoClickContainers;
+		autoClickWindows = other.autoClickWindows == null ? (other.autoClickContainers ? "slots" : "off") : oneOf(other.autoClickWindows, AUTO_CLICK_WINDOWS);
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
 		autoToolBlocks = other.autoToolBlocks;

@@ -206,6 +206,7 @@ public final class TestHooks {
 		c.autoClickShield = true;
 		c.autoClickCooldown = false;
 		c.autoClickContainers = true;
+		c.autoClickWindows = "slots";
 		Assist.arm(false);
 		Assist.leftClicks = Assist.rightClicks = 0;
 	}

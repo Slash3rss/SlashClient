@@ -122,6 +122,16 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.waitTicks(20);
 			String onMob = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (onMob.startsWith("0/")) throw new AssertionError("Did not click the mob under the crosshair: " + onMob);
+			// with the inventory open (as with the pause menu on a server) it goes on hitting the mob
+			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
+			context.waitTicks(2);
+			float before = context.computeOnClient(mc -> TestHooks.nearestHealth());
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, true, 10); TestHooks.armAutoClicker(); });
+			context.waitTicks(20);
+			String overScreen = context.computeOnClient(mc -> TestHooks.autoClicks());
+			float after = context.computeOnClient(mc -> TestHooks.nearestHealth());
+			context.setScreen(() -> null);
+			if (overScreen.startsWith("0/") || after >= before) throw new AssertionError("Did not hit the mob with the inventory open: " + overScreen + ", " + before + " -> " + after);
 
 			// in a chest's window it clicks the slot under the mouse: armed on its own, held while the button is
 			world.getServer().runCommand("execute at @a run setblock ~ ~ ~-2 chest");
@@ -142,6 +152,14 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.waitTicks(20);
 			String inChest = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (Integer.parseInt(inChest.split("/")[0]) < 5) throw new AssertionError("Too few clicks on the chest's slot in 1 s: " + inChest);
+			// "hits mobs" with a window open: the shop's slots are left to the player
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "toggle", true, false, false, 10));
+			String slotsBefore = context.computeOnClient(mc -> mc.player.containerMenu.getSlot(0).getItem().getCount() + "/" + mc.player.containerMenu.getCarried().getCount());
+			context.runOnClient(mc -> { dev.slash3rss.slashclient.hud.SlashHud.config.autoClickWindows = "mobs"; TestHooks.armAutoClicker(); });
+			context.waitTicks(20);
+			String slotsAfter = context.computeOnClient(mc -> mc.player.containerMenu.getSlot(0).getItem().getCount() + "/" + mc.player.containerMenu.getCarried().getCount());
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.autoClickWindows = "slots");
+			if (!slotsAfter.equals(slotsBefore)) throw new AssertionError("Clicked the chest's slot while set to hit mobs: " + slotsBefore + " -> " + slotsAfter);
 			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, false, false, 10));
 			context.waitTicks(10);
 			String chestIdle = context.computeOnClient(mc -> TestHooks.autoClicks());
@@ -189,13 +207,13 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
 			context.waitTicks(2);
 			if (!afterEsc.equals("0/0")) throw new AssertionError("Clicked after the chest closed with Esc: " + afterEsc);
-			// the player's own inventory: never
+			// the player's own inventory: its slots never (only a mob under the crosshair would be hit)
 			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); });
 			context.waitTicks(20);
-			String inInventory = context.computeOnClient(mc -> TestHooks.autoClicks());
+			String inInventory = context.computeOnClient(mc -> String.valueOf(mc.player.containerMenu.getCarried().getCount()));
 			context.setScreen(() -> null);
-			if (!inInventory.equals("0/0")) throw new AssertionError("Clicked in the own inventory: " + inInventory);
+			if (!inInventory.equals("0")) throw new AssertionError("Clicked a slot in the own inventory: " + inInventory);
 
 			// switched off: nothing
 			context.runOnClient(mc -> { TestHooks.autoClicker(false, "toggle", true, true, false, 10); TestHooks.armAutoClicker(); });

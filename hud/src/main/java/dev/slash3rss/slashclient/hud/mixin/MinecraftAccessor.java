@@ -26,6 +26,10 @@ public interface MinecraftAccessor {
 	@org.spongepowered.asm.mixin.gen.Invoker("startUseItem")
 	void slashclient$startUseItem();
 
+	/** The left button's click: a hit at what is under the crosshair (the autoclicker with a window open). */
+	@org.spongepowered.asm.mixin.gen.Invoker("startAttack")
+	boolean slashclient$startAttack();
+
 	/** Ticks until the use button may be used again. */
 	@Accessor("rightClickDelay")
 	int slashclient$rightClickDelay();

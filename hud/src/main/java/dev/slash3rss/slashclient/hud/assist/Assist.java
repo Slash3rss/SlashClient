@@ -165,9 +165,14 @@ public final class Assist {
 		if (clicking && inGame) autoClick(mc, player);
 		else {
 			letGoOfJump(mc);
-			// in a chest's or a server's window (selling, buying) it clicks the slot under the mouse
-			if (clicking && cfg().autoClickContainers && Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> s
+			// with a window open, as set ("Z otwartym oknem"): in a chest's or a server's window it clicks the slot
+			// under the mouse ("slots"), or it goes on hitting the mob under the crosshair (the toggle mode only:
+			// held buttons do not reach the game under a window), so a shop can be used by hand meanwhile
+			String windows = cfg().autoClickWindows;
+			var screen = Compat.screen(mc);
+			if (clicking && "slots".equals(windows) && screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> s
 				&& !holdsOver(s)) clickSlot(mc, player, s);
+			else if (clicking && !holdMode() && !"off".equals(windows) && mc.gameMode != null && !mc.isPaused()) autoClickOverScreen(mc, player);
 		}
 		// a button let go after its window closed (the server closes a shop's window on a click) is not held in the next one
 		if (inGame) screenLeft = screenRight = false;
@@ -362,6 +367,34 @@ public final class Assist {
 			jumpPressed = true;
 			jumps++;
 			nextJump = now + Math.round(1000.0 / Math.max(1, Math.min(10, cfg().autoClickJumps)));
+		}
+	}
+
+	/**
+	 * The toggle mode with a window open (the pause menu, the inventory, a shop): the game clicks nothing while a
+	 * window is open, so the mob under the crosshair is hit here as the game's own click would hit it, and the
+	 * right button used. Mobs only (no players, no blocks, no air), so a farm goes on while the player sells.
+	 */
+	private static void autoClickOverScreen(Minecraft mc, Player player) {
+		long now = System.currentTimeMillis();
+		if (cfg().autoClickLeft && now >= nextLeft && mc.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof LivingEntity mob
+			&& mob.isAlive() && !(mob instanceof Player) && !(cfg().autoClickShield && player.isBlocking())
+			&& (!cfg().autoClickCooldown || player.getAttackStrengthScale(0f) >= 1f)) {
+			Modules.CLICKS.clicked(true);
+			// the game's own click (the hit and the swing), which it keeps off while a window is open
+			int miss = mc.missTime;
+			mc.missTime = 0;
+			((dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc).slashclient$startAttack();
+			mc.missTime = miss;
+			leftClicks++;
+			nextLeft = now + (cfg().autoClickCooldown ? 100 : interval(cfg().autoClickCps));
+		}
+		var game = (dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc;
+		if (cfg().autoClickRight && now >= nextRight && game.slashclient$rightClickDelay() == 0 && !player.isUsingItem()) {
+			Modules.CLICKS.clicked(false);
+			game.slashclient$startUseItem();
+			rightClicks++;
+			nextRight = now + interval(cfg().autoClickRightCps);
 		}
 	}
 
