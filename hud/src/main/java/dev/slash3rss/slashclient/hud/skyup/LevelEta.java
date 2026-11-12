@@ -26,8 +26,12 @@ public final class LevelEta {
 
 	/** The pace is the XP got in this long; nothing got in it, and the line goes. */
 	static final long WINDOW_MS = 5 * 60_000;
-	/** XP stopped coming for this many of its usual gaps: the time grows again instead of counting down. */
+	/**
+	 * XP stopped coming for this many of its usual gaps (but at least STOPPED_MIN_MS, at most STOPPED_MAX_MS): the line
+	 * goes, and the pace starts again from the next XP that comes.
+	 */
 	static final double STOPPED_GAPS = 3;
+	static final long STOPPED_MIN_MS = 10_000, STOPPED_MAX_MS = 60_000;
 
 	/** One thing levelled: its XP got lately (when, how much), its level and the XP to the next. */
 	private static final class Track {
@@ -96,20 +100,35 @@ public final class LevelEta {
 
 	/** The time to the dungeon's next level ("~4 min 12 s"), "estimating…" while there is no pace yet, null with none at all. */
 	public static String dungeonEta() {
-		return shown(dungeon, System.currentTimeMillis());
+		long now = System.currentTimeMillis();
+		if (now - dungeonShownAt >= REFRESH_MS) {
+			dungeonShown = shown(dungeon, now);
+			dungeonShownAt = now;
+		}
+		return dungeonShown;
 	}
+
+	/**
+	 * The lines are worked out this often, not for every frame: the modules ask for them several times a frame (to
+	 * size and to draw), and the time shown moves by the second anyway.
+	 */
+	static final long REFRESH_MS = 200;
+	private static List<Component> shownLines;
+	private static long linesAt = Long.MIN_VALUE / 2, dungeonShownAt = Long.MIN_VALUE / 2;
+	private static String dungeonShown;
 
 	/** Seconds to the next level, ticking down between gains; -1 with no pace (yet, or any more). */
 	private static long eta(Track t, long now) {
 		while (!t.gains.isEmpty() && now - t.gains.peekFirst()[0] > WINDOW_MS) t.gains.pollFirst();
+		// stopped: forgotten, so the line goes and comes back with the next XP
+		if (stopped(t.gains, now)) t.gains.clear();
 		return eta(t.gains, now, t.left);
 	}
 
 	/**
 	 * Seconds until `left` more XP comes in, from the gains (when, how much) of the last few minutes: their pace is the
 	 * XP that came after the first one over the time from the first to the last, so it is there from the second gain
-	 * on and steady between gains, while the time left counts down every second. When the XP has stopped coming (for
-	 * a few of its usual gaps), the pace is taken up to now instead, so the time grows rather than running out.
+	 * on and steady between gains, while the time left counts down every second; -1 once the XP has stopped coming.
 	 */
 	static long eta(java.util.Collection<double[]> gains, long now, double left) {
 		if (gains.size() < 2 || left <= 0) return -1;
@@ -122,8 +141,20 @@ public final class LevelEta {
 		double span = last - first;
 		if (span < 1000 || got <= 0) return -1;
 		double gap = span / (gains.size() - 1);
-		if (now - last > STOPPED_GAPS * gap) return Math.round(left / (got / ((now - first) / 1000.0)));
+		if (stopped(gains, now)) return -1;
 		return Math.max(1, Math.round(left / (got / (span / 1000.0)) - (now - last) / 1000.0));
+	}
+
+	/** No XP for a few of its usual gaps (a single gain so far: for the shortest wait). */
+	static boolean stopped(java.util.Collection<double[]> gains, long now) {
+		if (gains.isEmpty()) return false;
+		double first = -1, last = 0;
+		for (double[] g : gains) {
+			if (first < 0) first = g[0];
+			last = g[0];
+		}
+		double gap = gains.size() < 2 ? 0 : (last - first) / (gains.size() - 1);
+		return now - last > Math.min(STOPPED_MAX_MS, Math.max(STOPPED_MIN_MS, STOPPED_GAPS * gap));
 	}
 
 	/** The time as a line shows it, "estimating…" while the first gains came in and there is no pace yet, null with no XP coming. */
@@ -150,6 +181,15 @@ public final class LevelEta {
 	}
 
 	private static List<Component> lines() {
+		long now = System.currentTimeMillis();
+		if (shownLines == null || now - linesAt >= REFRESH_MS) {
+			shownLines = linesNow();
+			linesAt = now;
+		}
+		return shownLines;
+	}
+
+	private static List<Component> linesNow() {
 		List<Component> out = new ArrayList<>();
 		long now = System.currentTimeMillis();
 		String p = shown(player, now);
@@ -223,7 +263,7 @@ public final class LevelEta {
 	/** For the test: the module's lines, one per line. */
 	public static String linesForTest() {
 		StringBuilder out = new StringBuilder();
-		for (Component c : lines()) out.append(c.getString()).append('\n');
+		for (Component c : linesNow()) out.append(c.getString()).append('\n');
 		return out.toString();
 	}
 }

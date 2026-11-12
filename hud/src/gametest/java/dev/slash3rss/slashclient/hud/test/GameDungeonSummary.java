@@ -81,13 +81,14 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			String eta = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.LevelEta.linesForTest());
 			if (eta.lines().noneMatch(l -> l.contains("Górnik"))) throw new AssertionError("The miner's time to the next level: " + eta);
 			// the pace: 300 XP after the first gain in 30 s, 600 to go, so 60 s at the last gain and 55 s five seconds on;
-			// stopped (no XP for over three of its 10 s gaps), the pace up to now: 300 in 200 s, so 400 s
+			// 25 s after the last gain still counting down (35 s); stopped (no XP for over three of its 10 s gaps): none
 			String times = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 30, "0:100", "10:100", "20:100", "30:100")
 				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 35, "0:100", "10:100", "20:100", "30:100")
-				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 200, "0:100", "10:100", "20:100", "30:100")
+				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 55, "0:100", "10:100", "20:100", "30:100")
+				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 65, "0:100", "10:100", "20:100", "30:100")
 				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.etaForTest(600, 1, "0:100")
 				+ " " + dev.slash3rss.slashclient.hud.skyup.LevelEta.duration(55) + "|" + dev.slash3rss.slashclient.hud.skyup.LevelEta.duration(252));
-			if (!times.equals("60 55 400 -1 ~55 s|~4 min 12 s")) throw new AssertionError("The time to the next level: " + times);
+			if (!times.equals("60 55 35 -1 -1 ~55 s|~4 min 12 s")) throw new AssertionError("The time to the next level: " + times);
 			// the jobs' and the player's show no time in the dungeon's module
 			String live = context.computeOnClient(mc -> DungeonRun.liveForTest());
 			if (live.lines().anyMatch(l -> l.contains("Górnik") && l.contains("~"))) throw new AssertionError("The dungeon's module: " + live);
