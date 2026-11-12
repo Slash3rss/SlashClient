@@ -671,6 +671,7 @@ public final class Catalog {
 			}),
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),
+			new Choice("slashclient-hud.set.moduleFont", ModuleFont.FONTS, "slashclient-hud.set.moduleFont.", () -> cfg.moduleFont, v -> cfg.moduleFont = v),
 			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v),
 			new Colors("slashclient-hud.set.backgroundColor", OUTLINE_COLORS, () -> cfg.backgroundColor, v -> cfg.backgroundColor = v),
 			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v)),

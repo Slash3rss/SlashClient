@@ -643,20 +643,20 @@ public final class DungeonRun {
 
 		private static List<Component> lines() {
 			List<Component> out = new ArrayList<>();
-			out.add(Ui.tr("slashclient-hud.dungeonXp.title"));
+			out.add(Component.translatable("slashclient-hud.dungeonXp.title"));
 			if (!running) {
 				// made-up numbers for the editor
-				out.add(Ui.tr("slashclient-hud.dungeonXp.dungeon", 256));
-				out.add(Ui.tr("slashclient-hud.dungeonXp.player", 40));
-				out.add(Ui.tr("slashclient-hud.dungeonXp.job", "Górnik", 120));
+				out.add(Component.translatable("slashclient-hud.dungeonXp.dungeon", 256));
+				out.add(Component.translatable("slashclient-hud.dungeonXp.player", 40));
+				out.add(Component.translatable("slashclient-hud.dungeonXp.job", "Górnik", 120));
 				return out;
 			}
 			// with about how long to the dungeon's next level, counting down at the pace of the last few minutes
-			Component dungeon = Ui.tr("slashclient-hud.dungeonXp.dungeon", dungeonXp());
+			Component dungeon = Component.translatable("slashclient-hud.dungeonXp.dungeon", dungeonXp());
 			String eta = LevelEta.dungeonEta();
-			out.add(eta == null ? dungeon : dungeon.copy().append(Ui.tr("slashclient-hud.dungeonXp.eta", eta)));
-			out.add(Ui.tr("slashclient-hud.dungeonXp.player", playerXp));
-			for (var e : jobsGot().entrySet()) out.add(Ui.tr("slashclient-hud.dungeonXp.job", e.getKey(), e.getValue()));
+			out.add(eta == null ? dungeon : dungeon.copy().append(Component.translatable("slashclient-hud.dungeonXp.eta", eta)));
+			out.add(Component.translatable("slashclient-hud.dungeonXp.player", playerXp));
+			for (var e : jobsGot().entrySet()) out.add(Component.translatable("slashclient-hud.dungeonXp.job", e.getKey(), e.getValue()));
 			return out;
 		}
 

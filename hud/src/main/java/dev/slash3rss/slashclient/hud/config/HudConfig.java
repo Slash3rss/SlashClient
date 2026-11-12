@@ -152,6 +152,8 @@ public final class HudConfig {
 	public List<String> favoriteModules = new ArrayList<>();
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
+	/** The font of the modules' text: the game's own, or the launcher's Outfit (ui/ModuleFont.FONTS). */
+	public String moduleFont = "minecraft";
 	/** The modules' boxes (their see-through is each module's own) and outlines. */
 	public int backgroundColor = 0xFF000000, outlineColor = 0xFF60A5FA;
 	/** SlashClient's windows' accent (buttons, switches, frames): the launcher's blue, or the player's own colour (ui/Season). */
@@ -885,6 +887,7 @@ public final class HudConfig {
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		read.darkGuiShade = oneOf(read.darkGuiShade, dev.slash3rss.slashclient.hud.ui.DarkGui.SHADES);
+		read.moduleFont = oneOf(read.moduleFont, dev.slash3rss.slashclient.hud.ui.ModuleFont.FONTS);
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
 		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
 		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
@@ -919,6 +922,7 @@ public final class HudConfig {
 		background = other.background;
 		cornerRadius = Math.max(0, Math.min(MAX_RADIUS, other.cornerRadius));
 		textShadow = other.textShadow;
+		moduleFont = oneOf(other.moduleFont, dev.slash3rss.slashclient.hud.ui.ModuleFont.FONTS);
 		zoom = other.zoom;
 		zoomFactor = other.zoomFactor;
 		zoomSmooth = other.zoomSmooth;

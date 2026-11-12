@@ -2,7 +2,6 @@ package dev.slash3rss.slashclient.hud.skyup;
 
 import dev.slash3rss.slashclient.hud.modules.HudModule;
 import dev.slash3rss.slashclient.hud.modules.Modules;
-import dev.slash3rss.slashclient.hud.ui.Ui;
 import dev.slash3rss.slashclient.hud.world.XpMath;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -161,7 +160,7 @@ public final class LevelEta {
 	private static String shown(Track t, long now) {
 		long s = eta(t, now);
 		if (s >= 0) return duration(s);
-		return t.gains.isEmpty() || t.left <= 0 ? null : Ui.tr("slashclient-hud.levelEta.counting").getString();
+		return t.gains.isEmpty() || t.left <= 0 ? null : Component.translatable("slashclient-hud.levelEta.counting").getString();
 	}
 
 	/** "~45 s", "~4 min 12 s", "~2 h 05 min"; past 99 hours just "99+ h", as a pace that slow says little. */
@@ -193,10 +192,10 @@ public final class LevelEta {
 		List<Component> out = new ArrayList<>();
 		long now = System.currentTimeMillis();
 		String p = shown(player, now);
-		if (p != null) out.add(Ui.tr("slashclient-hud.levelEta.player", player.level, p));
+		if (p != null) out.add(Component.translatable("slashclient-hud.levelEta.player", player.level, p));
 		for (var e : jobs.entrySet()) {
 			String j = shown(e.getValue(), now);
-			if (j != null) out.add(Ui.tr("slashclient-hud.levelEta.job", e.getKey(), e.getValue().level, j));
+			if (j != null) out.add(Component.translatable("slashclient-hud.levelEta.job", e.getKey(), e.getValue().level, j));
 		}
 		return out;
 	}
@@ -216,12 +215,12 @@ public final class LevelEta {
 
 		private static List<Component> shown() {
 			List<Component> out = new ArrayList<>();
-			out.add(Ui.tr("slashclient-hud.levelEta.title"));
+			out.add(Component.translatable("slashclient-hud.levelEta.title"));
 			List<Component> real = LevelEta.lines();
 			if (real.isEmpty()) {
 				// made-up numbers for the editor
-				out.add(Ui.tr("slashclient-hud.levelEta.player", 31, "~12 min 30 s"));
-				out.add(Ui.tr("slashclient-hud.levelEta.job", "Górnik", 3, "~4 min 12 s"));
+				out.add(Component.translatable("slashclient-hud.levelEta.player", 31, "~12 min 30 s"));
+				out.add(Component.translatable("slashclient-hud.levelEta.job", "Górnik", 3, "~4 min 12 s"));
 			} else out.addAll(real);
 			return out;
 		}

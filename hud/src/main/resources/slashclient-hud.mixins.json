@@ -90,6 +90,7 @@
 		"LightmapMixin",
 		"LineWidthMixin",
 		"MinecraftAccessor",
+		"FontAccessor",
 		"MouseHandlerMixin",
 		"WindowTitleMixin",
 		"OverlayMessageAccessor",

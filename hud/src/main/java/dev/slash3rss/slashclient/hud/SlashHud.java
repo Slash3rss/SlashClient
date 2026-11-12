@@ -522,7 +522,12 @@ public class SlashHud implements ClientModInitializer {
 
 	/** On-screen size of a module, with its scale. */
 	public static int[] size(HudModule m, Minecraft mc, HudConfig.Placement p) {
-		return new int[] { Math.round(m.width(mc) * p.scale()), Math.round(m.height(mc) * p.scale()) };
+		var font = dev.slash3rss.slashclient.hud.ui.ModuleFont.begin(mc);
+		try {
+			return new int[] { Math.round(m.width(mc) * p.scale()), Math.round(m.height(mc) * p.scale()) };
+		} finally {
+			dev.slash3rss.slashclient.hud.ui.ModuleFont.end(mc, font);
+		}
 	}
 
 	public static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview) {
@@ -568,13 +573,18 @@ public class SlashHud implements ClientModInitializer {
 	private static final int FOLDED_H = 9 + Modules.PAD * 2;
 
 	private static net.minecraft.network.chat.Component foldedName(HudModule m) {
-		return net.minecraft.network.chat.Component.literal("▸ ").append(dev.slash3rss.slashclient.hud.ui.Ui.tr("slashclient-hud.module." + m.id()));
+		return net.minecraft.network.chat.Component.literal("▸ ").append(net.minecraft.network.chat.Component.translatable("slashclient-hud.module." + m.id()));
 	}
 
 	/** A module's size as drawn now (folded: its name's), unscaled. */
 	private static int[] shownSize(HudModule m, Minecraft mc, HudConfig.Placement p) {
-		if (p.folded && foldable(m)) return new int[] { mc.font.width(foldedName(m)) + Modules.PAD * 2, FOLDED_H };
-		return new int[] { m.width(mc), m.height(mc) };
+		var font = dev.slash3rss.slashclient.hud.ui.ModuleFont.begin(mc);
+		try {
+			if (p.folded && foldable(m)) return new int[] { mc.font.width(foldedName(m)) + Modules.PAD * 2, FOLDED_H };
+			return new int[] { m.width(mc), m.height(mc) };
+		} finally {
+			dev.slash3rss.slashclient.hud.ui.ModuleFont.end(mc, font);
+		}
 	}
 
 	/**
@@ -629,6 +639,16 @@ public class SlashHud implements ClientModInitializer {
 	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
 		HudConfig.Placement p = config.placement(m.id());
 		if (!p.enabled || (!preview && !drawnNow(m, p, mc))) return;
+		// measured and drawn in the modules' font (the HUD's setting)
+		var font = dev.slash3rss.slashclient.hud.ui.ModuleFont.begin(mc);
+		try {
+			drawOne(g, mc, preview, m, p);
+		} finally {
+			dev.slash3rss.slashclient.hud.ui.ModuleFont.end(mc, font);
+		}
+	}
+
+	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m, HudConfig.Placement p) {
 		// folded, only its name shows (the editor shows it whole, to set it up)
 		boolean folded = !preview && p.folded && foldable(m);
 		// measured once a frame (some modules work out their whole content to know their size)

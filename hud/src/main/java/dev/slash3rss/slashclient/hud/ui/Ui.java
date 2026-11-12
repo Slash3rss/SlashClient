@@ -48,8 +48,8 @@ public final class Ui {
 	 * being shrunk from a bigger bitmap.
 	 */
 	//#if MC >= 1.21.9
-	private static final FontDescription[] OUTFIT = new FontDescription[7];
-	private static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
+	static final FontDescription[] OUTFIT = new FontDescription[7];
+	static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
 	static {
 		for (int s = 1; s <= 6; s++) {
 			OUTFIT[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
@@ -58,8 +58,8 @@ public final class Ui {
 	}
 	//#else
 	//$ // fonts were named by their id before 1.21.9
-	//$ private static final Identifier[] OUTFIT = new Identifier[7];
-	//$ private static final Identifier[] OUTFIT_BOLD = new Identifier[7];
+	//$ static final Identifier[] OUTFIT = new Identifier[7];
+	//$ static final Identifier[] OUTFIT_BOLD = new Identifier[7];
 	//$ static {
 	//$ 	for (int s = 1; s <= 6; s++) {
 	//$ 		OUTFIT[s] = Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s);
@@ -68,7 +68,7 @@ public final class Ui {
 	//$ }
 	//#endif
 
-	private static int scale() {
+	static int scale() {
 		return Math.max(1, Math.min(6, (int) Minecraft.getInstance().getWindow().getGuiScale()));
 	}
 

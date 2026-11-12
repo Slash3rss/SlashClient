@@ -102,6 +102,22 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.getInput().holdKey(o -> o.keyUp);
 			context.waitTicks(10);
 			context.takeScreenshot("hud-in-game");
+			// the modules' text in the launcher's font: measured in it too (the coordinates' box changes width),
+			// the game's own font back after each module
+			String fonts = context.computeOnClient(mc -> {
+				var config = dev.slash3rss.slashclient.hud.SlashHud.config;
+				var coords = dev.slash3rss.slashclient.hud.SlashHud.MODULES.stream().filter(m -> m.id().equals("coords")).findFirst().orElseThrow();
+				var p = config.placement("coords");
+				int game = dev.slash3rss.slashclient.hud.SlashHud.size(coords, mc, p)[0];
+				config.moduleFont = "outfit";
+				int outfit = dev.slash3rss.slashclient.hud.SlashHud.size(coords, mc, p)[0];
+				return game + " " + outfit + " " + (mc.font == dev.slash3rss.slashclient.hud.ui.ModuleFont.font(mc));
+			});
+			String[] f = fonts.split(" ");
+			if (f[0].equals(f[1]) || !f[2].equals("false")) throw new AssertionError("module font: " + fonts);
+			context.waitTicks(5);
+			context.takeScreenshot("hud-in-game-outfit");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.moduleFont = "minecraft");
 			context.getInput().releaseKey(o -> o.keyUp);
 			// the advancement toasts from the armour would cover the editor
 			context.waitTicks(160);

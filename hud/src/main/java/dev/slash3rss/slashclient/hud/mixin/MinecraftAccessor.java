@@ -30,6 +30,11 @@ public interface MinecraftAccessor {
 	@Accessor("rightClickDelay")
 	int slashclient$rightClickDelay();
 
+	/** The modules' font while they draw (ui/ModuleFont). */
+	@Mutable
+	@Accessor("font")
+	void slashclient$setFont(net.minecraft.client.gui.Font font);
+
 	@Mutable
 	@Accessor("user")
 	void slashclient$setUser(User user);
