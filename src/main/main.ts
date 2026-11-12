@@ -4,7 +4,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionAccount, gameSessionMargin, LAUNCH_RENEW_MS, pollDeviceCode, startDeviceCode } from './auth';
+import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionAccount, gameSessionMargin, LAUNCH_MIN_MS, LAUNCH_RENEW_MS, needsRefresh, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
@@ -1888,6 +1888,21 @@ async function freshMsa(accountId: string, marginMs = 0): Promise<MicrosoftAccou
   return fresh;
 }
 
+/**
+ * The account for a game that starts (or switches to it): renewed early, but when that fails and its token still
+ * has a while left, the game starts with it instead of showing the outage (the game renews it later itself).
+ */
+async function launchMsa(accountId: string): Promise<MicrosoftAccount> {
+  try {
+    return await freshMsa(accountId, LAUNCH_RENEW_MS);
+  } catch (err) {
+    const now = store.accounts.find((a) => a.id === accountId);
+    if (now?.type !== 'msa' || needsRefresh(now.expiresAt, Date.now(), LAUNCH_MIN_MS)) throw err;
+    console.error('odświeżenie sesji przed grą nie wyszło, gra z dotychczasową:', (err as Error).message);
+    return now;
+  }
+}
+
 /** The skin file the player picked, kept here until they confirm (the page only gets a preview). */
 let pendingSkin: Buffer | undefined;
 /** The picked file's name, for the library entry the skin gets once it is set. */
@@ -2104,7 +2119,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (account.type === 'msa') {
     send('launch:stage', { stage: t('Odświeżanie sesji Microsoft'), done: 0, total: 1 });
     // through the same renewal as the skin panel and the running game: one request to Microsoft
-    account = await freshMsa(account.id, LAUNCH_RENEW_MS);
+    account = await launchMsa(account.id);
   }
   await persist();
 
@@ -2530,7 +2545,7 @@ const bridge = new GameBridge({
     const account = store.accounts.find((a) => a.id === id);
     if (!account) throw new Error('no_account');
     const session = account.type === 'msa'
-      ? await freshMsa(id, LAUNCH_RENEW_MS).then((a) => ({ name: a.name, uuid: a.uuid, accessToken: a.accessToken, xuid: a.xuid, type: 'msa' }))
+      ? await launchMsa(id).then((a) => ({ name: a.name, uuid: a.uuid, accessToken: a.accessToken, xuid: a.xuid, type: 'msa' }))
       : { name: account.name, uuid: account.uuid, accessToken: randomBytes(16).toString('hex'), xuid: '', type: 'offline' };
     gameAccountId = id;
     store.settings.selectedAccountId = id;

@@ -173,6 +173,11 @@ export const GAME_RENEW_MS = 2 * 60 * 60_000;
  * keeps asking Mojang with it (an expired one gets "invalid token" every few minutes).
  */
 export const LAUNCH_RENEW_MS = 12 * 60 * 60_000;
+/**
+ * When that early renewal fails (Microsoft or Mojang down for a moment, a 504), a token with at least this much
+ * left still starts the game: the game renews it itself later, and the player is not kept out by an outage.
+ */
+export const LAUNCH_MIN_MS = 30 * 60_000;
 /** A forced renewal (a server said "invalid session") at most this often, so a broken server can't make us hammer Microsoft. */
 export const FORCED_RENEW_GAP_MS = 5 * 60_000;
 
