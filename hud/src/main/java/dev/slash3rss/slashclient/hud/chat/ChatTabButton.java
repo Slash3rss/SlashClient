@@ -130,7 +130,8 @@ final class ChatTabButton extends Button {
 			int bx = tx + Ui.width(text) + 3, by = y + (h - 9) / 2;
 			int dot = mention ? 0xFFDC2626 : Ui.ACCENT;
 			Ui.round(g, bx, by, bw, 9, 4, on ? 0xFFFFFFFF : dot);
-			Ui.draw(g, badge, bx + 3, by + 1, on ? (mention ? 0xFFDC2626 : Ui.ACCENT_DARK) : 0xFFFFFFFF);
+			// at the pill's top: the module font's digits sit a pixel low in their line, so this centres them
+			Ui.draw(g, badge, bx + 3, by, on ? (mention ? 0xFFDC2626 : Ui.ACCENT_DARK) : 0xFFFFFFFF);
 		}
 	}
 }

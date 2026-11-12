@@ -849,6 +849,8 @@ public final class HudConfig {
 		// the backpack's slots low on the right, above the item counter; off until switched on
 		c.modules.put("inventory", new Placement(false, 1, 0.8f, -2, 0));
 		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
+		// left empty in the field so an older file is read from its old switch; a new one starts as that switch did
+		c.autoClickWindows = "slots";
 		// private messages look different on every server; these catch the common ones
 		c.chatTabs.add(new ChatTab("PM", true, "(?i)(whispers to you|szepcze|\\[msg\\]|-> ?(me|ja)\\b|\\bfrom \\w+:)"));
 		// a slower computer (the launcher's saving mode): only the game's own parts on to begin with, SlashClient's
