@@ -969,6 +969,17 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** The newest chat message's text and the first click event in it ("<text> -> <event>"), or "none". */
+	public static String newestChatClick() {
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		for (Object m : ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$allMessages()) {
+			var content = ((net.minecraft.client.multiplayer.chat.GuiMessage) m).content();
+			var click = content.visit((style, text) -> java.util.Optional.ofNullable(style.getClickEvent()), net.minecraft.network.chat.Style.EMPTY);
+			return content.getString() + " -> " + click.map(String::valueOf).orElse("none");
+		}
+		return "none";
+	}
+
 	/** The chat's wrapped lines as drawn, newest first, as plain text. */
 	public static String chatShownLines() {
 		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());

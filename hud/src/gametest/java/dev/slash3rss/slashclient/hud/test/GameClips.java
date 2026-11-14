@@ -36,7 +36,18 @@ public class GameClips implements FabricClientGameTest {
 			if (c.length < 4 || !c[3].equals("RIFFAVI") || Integer.parseInt(c[2]) < 20 || Long.parseLong(c[1]) < 50_000)
 				throw new AssertionError("No proper clip written: " + clip);
 			context.waitTicks(5);
+			// as with a screenshot: the clip's name in the chat, a click opens the file
+			String name = c[0];
+			String said = "none";
+			for (int i = 0; i < 200 && !said.contains(name); i++) {
+				context.waitTick();
+				said = context.computeOnClient(mc -> TestHooks.newestChatClick());
+			}
+			if (!said.contains(" -> ") || !said.substring(said.indexOf(" -> ")).contains(name)) throw new AssertionError("No link to the clip in the chat: " + said);
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+			context.waitTicks(5);
 			context.takeScreenshot("clips-saved");
+			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.clips(false));
 			context.waitTicks(2);
 			if (context.computeOnClient(mc -> TestHooks.clipFrames()) != 0) throw new AssertionError("Frames kept after clips were turned off");

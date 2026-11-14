@@ -346,7 +346,7 @@ public final class Clips {
 	static Path write(Minecraft mc, List<Frame> clip, String prefix) {
 		if (saving || clip.size() < 2) return null;
 		saving = true;
-		Path dir = FabricLoader.getInstance().getGameDir().resolve("clips");
+		Path dir = folder();
 		String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
 		Path named = dir.resolve(prefix + "-" + stamp + ".avi");
 		// two saves in one second (a range saved twice) do not overwrite each other
@@ -361,6 +361,8 @@ public final class Clips {
 				AviWriter.write(file, clip.stream().map(Frame::jpeg).toList(), clip.getLast().width(), clip.getLast().height(), fps);
 				mc.execute(SessionStats::clip);
 				dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.clips.saved", Math.round(seconds)).getString(), file.getFileName().toString(), "m-clips");
+				// as with a screenshot: the file's name in the chat, a click opens the clip
+				mc.execute(() -> Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.clips.savedAs", link(file))));
 			} catch (Exception e) {
 				SlashHud.LOG.warn("Could not save the clip", e);
 				mc.execute(() -> Compat.overlay(mc, Component.translatable("slashclient-hud.clips.failed")));
@@ -369,6 +371,32 @@ public final class Clips {
 			}
 		});
 		return file;
+	}
+
+	/** Where the clips go: the game folder's "clips". */
+	public static Path folder() {
+		return FabricLoader.getInstance().getGameDir().resolve("clips");
+	}
+
+	/** The same folder made if it is not there yet, for the "open the folder" button. */
+	public static Path folderMade() {
+		Path dir = folder();
+		try {
+			Files.createDirectories(dir);
+		} catch (java.io.IOException e) {
+			SlashHud.LOG.warn("Could not make the clips folder", e);
+		}
+		return dir;
+	}
+
+	/** The clip's name, underlined; a click opens it in the system's player, as the game's screenshot links do. */
+	static Component link(Path file) {
+		//#if MC >= 1.21.5
+		var click = new net.minecraft.network.chat.ClickEvent.OpenFile(file.toAbsolutePath());
+		//#else
+		//$ var click = new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.OPEN_FILE, file.toAbsolutePath().toString());
+		//#endif
+		return Component.literal(file.getFileName().toString()).withStyle(s -> s.withUnderlined(true).withClickEvent(click));
 	}
 
 	/** For the test: frames in memory. */
