@@ -88,6 +88,13 @@ public class GameMapExtras implements FabricClientGameTest {
 			}
 			trail = context.computeOnClient(mc -> MapSortTestHooks.trail());
 			if (trail < 6) throw new AssertionError("No new trail after the old one faded: " + trail);
+			// a long run round one place: the trail painted into the minimap's picture (as dots drawn one by one it cost frames)
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.map.MapTrail.walkInCirclesForTest(mc, 2000));
+			context.waitTicks(5);
+			int drawn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.map.MapTrail.drawnForTest());
+			context.takeScreenshot("map-trail-circles");
+			if (drawn < 30) throw new AssertionError("The minimap painted " + drawn + " dots of a 2000-point trail round one place");
+			trail = context.computeOnClient(mc -> MapSortTestHooks.trail());
 
 			// the biome under the player is known
 			String biome = context.computeOnClient(mc -> MapSortTestHooks.exploredBiome(0, 0));

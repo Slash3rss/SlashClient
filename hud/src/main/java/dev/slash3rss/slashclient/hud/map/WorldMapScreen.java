@@ -251,7 +251,10 @@ public class WorldMapScreen extends Screen {
 	private void drawTrail(GuiGraphicsExtractor g, Minecraft mc) {
 		List<int[]> points = MapTrail.shown(mc);
 		int size = zoom >= 2 ? 3 : zoom >= 0.5f ? 2 : 1;
-		for (int[] p : points) {
+		MapTrail.start(ox, oy, aw, ah, size);
+		// the newest first: where points lie on one spot only the brightest is drawn
+		for (int i = points.size() - 1; i >= 0; i--) {
+			int[] p = points.get(i);
 			float x = sx(p[0] + 0.5), y = sy(p[1] + 0.5);
 			if (x < ox || y < oy || x > ox + aw || y > oy + ah) continue;
 			MapTrail.dot(g, x, y, size, p);

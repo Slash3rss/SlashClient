@@ -72,13 +72,81 @@ public final class MapTrail {
 		return list;
 	}
 
-	/** A dot of the trail: bright when just walked, fading out as it gets older. */
-	static void dot(GuiGraphicsExtractor g, float x, float y, int size, int[] point) {
+	/**
+	 * The map's area cut in cells of a dot's size, each taken by the first (newest) dot drawn in it: a long walk
+	 * around one place puts hundreds of points on the same few pixels, and drawing each of them cost frames.
+	 */
+	private static final java.util.BitSet taken = new java.util.BitSet();
+	private static int areaX, areaY, cols, rows, cell = 1;
+	/** For the test: the dots drawn in the last map drawn. */
+	static int drawn;
+
+	/** Before the dots of one map: its area on the screen and the dots' size. */
+	static void start(int x, int y, int w, int h, int size) {
+		taken.clear();
+		cell = Math.max(1, size);
+		areaX = x;
+		areaY = y;
+		cols = w / cell + 2;
+		rows = h / cell + 2;
+		drawn = 0;
+	}
+
+	/** How strong a point shows: 240 when just walked, fading to 0 over the trail's length. */
+	static int alpha(int[] point) {
 		float left = 1f - (float) (now() - point[2]) / length();
-		int alpha = Math.round(240 * Math.min(1f, left));
+		return Math.round(240 * Math.max(0f, Math.min(1f, left)));
+	}
+
+	/** The trail's colour at this strength, laid over `under` (both 0xAARRGGBB), for a picture painted by hand. */
+	static int over(int under, int alpha) {
+		int r = ((under >> 16 & 0xFF) * (255 - alpha) + (COLOR >> 16 & 0xFF) * alpha) / 255;
+		int gr = ((under >> 8 & 0xFF) * (255 - alpha) + (COLOR >> 8 & 0xFF) * alpha) / 255;
+		int b = ((under & 0xFF) * (255 - alpha) + (COLOR & 0xFF) * alpha) / 255;
+		return under & 0xFF000000 | r << 16 | gr << 8 | b;
+	}
+
+	/**
+	 * What the trail looks like now, for the minimap to paint it again only when this changes: a point added or gone,
+	 * and every two seconds as the dots fade.
+	 */
+	static long look(Minecraft mc) {
+		List<int[]> list = shown(mc);
+		if (list.isEmpty()) return 0;
+		int[] first = list.get(0), last = list.get(list.size() - 1);
+		return ((long) list.size() * 31 + first[2]) * 31 * 31 + (long) last[2] * 31 + now() / 2 + 1;
+	}
+
+	/** A dot of the trail: bright when just walked, fading out as it gets older; none where a newer one is drawn. */
+	static void dot(GuiGraphicsExtractor g, float x, float y, int size, int[] point) {
+		int alpha = alpha(point);
 		if (alpha < 8) return;
 		int px = Math.round(x - size / 2f), py = Math.round(y - size / 2f);
+		int col = Math.floorDiv(px - areaX, cell) + 1, row = Math.floorDiv(py - areaY, cell) + 1;
+		if (col >= 0 && row >= 0 && col < cols && row < rows) {
+			int at = row * cols + col;
+			if (taken.get(at)) return;
+			taken.set(at);
+		}
+		drawn++;
 		g.fill(px, py, px + size, py + size, alpha << 24 | COLOR & 0xFFFFFF);
+	}
+
+	/** For the test: the dots drawn in the last map drawn. */
+	public static int drawnForTest() {
+		return drawn;
+	}
+
+	/** For the test: a long walk round and round one place, `count` points (a few minutes of running in circles). */
+	public static void walkInCirclesForTest(Minecraft mc, int count) {
+		List<int[]> list = trails.computeIfAbsent(Waypoints.dimension(mc), k -> new ArrayList<>());
+		int x = mc.player.getBlockX(), z = mc.player.getBlockZ(), t = now();
+		for (int i = 0; i < count; i++) {
+			double a = i * 0.21;
+			int r = 6 + i % 20;
+			list.add(new int[] { x + (int) Math.round(Math.cos(a) * r), z + (int) Math.round(Math.sin(a) * r), t });
+		}
+		if (list.size() > MAX) list.subList(0, list.size() - MAX).clear();
 	}
 
 	/** For the test: the clock moved on by `seconds`, as if that much time had passed. */

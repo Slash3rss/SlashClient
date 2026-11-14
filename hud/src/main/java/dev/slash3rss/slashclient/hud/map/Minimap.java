@@ -133,6 +133,7 @@ public final class Minimap implements HudModule {
 		long key = MinimapTerrain.version;
 		night = MinimapTerrain.night(mc);
 		key = key * 31 + Float.floatToIntBits(scale) + (circle ? 1 : 0) + W * 7L + Float.floatToIntBits(night) * 13L;
+		key = key * 31 + MapTrail.look(mc);
 		boolean again;
 		if (rotate) {
 			// what the picture shows, in its own steps: half a pixel of movement, a quarter of a degree
@@ -155,6 +156,7 @@ public final class Minimap implements HudModule {
 				paintedCols = cols.clone();
 				paintedRows = rows.clone();
 			}
+			trail(mc, at, scale, yaw, circle);
 			viewTexture.upload();
 			paintNanos += System.nanoTime() - t0;
 			paints++;
@@ -169,7 +171,6 @@ public final class Minimap implements HudModule {
 		float[] n = edge(north[0], north[1], r - 6, circle);
 		String letter = "N";
 		g.text(mc.font, letter, cx + Math.round(n[0]) - mc.font.width(letter) / 2 + 1, cy + Math.round(n[1]) - 3, 0xFFF87171, true);
-		trail(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		if (cfg.minimapWaypoints) waypoints(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		entities(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		friends(g, mc, cx, cy, at, scale, cos, sin, r, circle);
@@ -269,18 +270,33 @@ public final class Minimap implements HudModule {
 		return new float[] { sx * k, sy * k };
 	}
 
-	/** The trail walked, as dots inside the map. */
-	private static void trail(GuiGraphicsExtractor g, Minecraft mc, int cx, int cy, double[] at, float scale, float cos, float sin, float r, boolean circle) {
+	/**
+	 * The trail walked, as dots painted into the map's picture with the ground: a dot drawn on its own each frame cost
+	 * a lot once a long walk put a thousand of them on the map, painted here it costs nothing between paints.
+	 */
+	private static void trail(Minecraft mc, double[] at, float scale, float yaw, boolean circle) {
 		List<int[]> points = MapTrail.shown(mc);
-		float reach = r - 2;
+		if (points.isEmpty()) return;
+		NativeImage image = view;
+		float r = W / 2f, reach = r - 2;
 		double far = reach * 1.42 / scale;
+		double a = Math.toRadians(yaw);
+		float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+		int drawn = 0;
 		for (int[] p : points) {
 			double dx = p[0] + 0.5 - at[0], dz = p[1] + 0.5 - at[1];
 			if (dx * dx + dz * dz > far * far) continue;
 			float[] s = toScreen(dx, dz, scale, cos, sin);
 			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
-			if (inside) MapTrail.dot(g, cx + s[0], cy + s[1], 1, p);
+			int alpha = MapTrail.alpha(p);
+			if (!inside || alpha < 8) continue;
+			int qx = (int) Math.floor(r + s[0]), qy = (int) Math.floor(r + s[1]);
+			if (qx < 1 || qy < 1 || qx > W - 2 || qy > W - 2) continue;
+			// the oldest first, so a newer point on the same pixel shows over it
+			image.setPixel(qx, qy, MapTrail.over(image.getPixel(qx, qy), alpha));
+			drawn++;
 		}
+		MapTrail.drawn = drawn;
 	}
 
 	/** The player's waypoints in this dimension: a diamond on the map, or an arrow on its edge pointing to it. */
