@@ -471,6 +471,11 @@ export function createApp(cfg: Config) {
    * A HUD sees the account's skin and set only while the game on that address reports this uuid itself.
    */
   const offlineLinked = new Map<string, { user: string; at: number; name: string; ip: string }>();
+  /**
+   * SlashClient account → when its launcher last said it plays on an offline account: such a game counts for the
+   * play time of challenges and achievements like a linked Minecraft account (even with the offline skins off).
+   */
+  const offlinePlaying = new Map<string, number>();
   const limitGame = limiter('security.gamePerMinute');
   const limitEmotes = limiter('security.emotesPerMinute');
   /** Sprays: one every 3 seconds, 20 a minute, per account (the admin panel's settings). */
@@ -896,6 +901,12 @@ export function createApp(cfg: Config) {
         const a = presences.get(l.user)?.activity;
         if (now - l.at >= IN_GAME_TTL_MS || !sockets.get(l.user)?.size || (a?.kind !== 'singleplayer' && a?.kind !== 'server')) continue;
         out.set(l.user, a.kind === 'server' ? a.server : undefined);
+      }
+      // players on an offline account (no Minecraft account to link) play just the same
+      for (const [user, at] of offlinePlaying) {
+        const a = presences.get(user)?.activity;
+        if (now - at >= IN_GAME_TTL_MS || !sockets.get(user)?.size || (a?.kind !== 'singleplayer' && a?.kind !== 'server')) continue;
+        out.set(user, a.kind === 'server' ? a.server : undefined);
       }
       return out;
     },
@@ -1815,6 +1826,7 @@ export function createApp(cfg: Config) {
       if (offline === true) {
         // an offline account (launchers from 0.9.71): any nick, but only its own uuid, and only where this launcher's game is
         if (typeof offlineName !== 'string' || !OFFLINE_NAME.test(offlineName) || dashedUuid(uuid) !== offlineUuid(offlineName)) throw new HttpError(400, 'bad_request');
+        offlinePlaying.set(me, Date.now());
         if (!settings.bool(featureKey('offlineSkins'))) throw new HttpError(503, 'feature_disabled');
         const where = presences.get(me)?.activity;
         const key = `${where?.kind === 'server' ? serverKeyOf(where.server) : ''}|${dashedUuid(uuid)}`;
@@ -2870,6 +2882,7 @@ export function createApp(cfg: Config) {
     for (const [ip, seen] of gameReporters) if ([...seen.values()].every((at) => Date.now() - at > IN_GAME_TTL_MS)) gameReporters.delete(ip);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
     for (const [key, l] of offlineLinked) if (Date.now() - l.at > IN_GAME_TTL_MS) offlineLinked.delete(key);
+    for (const [user, at] of offlinePlaying) if (Date.now() - at > IN_GAME_TTL_MS) offlinePlaying.delete(user);
     const now = live();
     activity.sample(now.online, now.inGame);
   }, 30_000);

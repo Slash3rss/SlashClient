@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import WebSocket from 'ws';
-import { createApp } from '../src/app.ts';
+import { createApp, offlineUuid } from '../src/app.ts';
 import { DAY_CAP_SECONDS, dayOf, serverKey, streaks } from '../src/achievements.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-achievements-'));
@@ -132,6 +132,24 @@ describe('achievements', () => {
     app.achievements.tick(t0 + 570_000);
     app.achievements.tick(t0 + 580_000);
     assert.equal(app.achievements.store.stats(ala.user.id, t0 + 580_000).todaySeconds, 180);
+  });
+
+  it('credits play time on an offline account too (no Minecraft account to link), even with offline skins off', async () => {
+    const eli = await login('EliOffline');
+    const live = await connect(eli.token, { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } });
+    app.settings.set({ 'feature.offlineSkins': false }, 'test');
+    try {
+      assert.equal((await call('POST', '/v1/mc/link', eli.token, { uuid: offlineUuid('EliGra'), name: 'EliGra', offline: true })).status, 503);
+    } finally {
+      app.settings.set({ 'feature.offlineSkins': null }, 'test');
+    }
+    const t0 = Date.now();
+    app.achievements.tick(t0);
+    app.achievements.tick(t0 + 60_000);
+    const s = app.achievements.store.stats(eli.user.id, t0 + 60_000);
+    assert.equal(s.todaySeconds, 60);
+    assert.equal(s.servers, 1);
+    live.ws.close();
   });
 
   it('caps a day at 12 hours', async () => {
