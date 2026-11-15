@@ -23,6 +23,26 @@ public final class Compat {
 		//#endif
 	}
 
+	/**
+	 * Whether the F3 text is on screen, for the HUD to step aside. From 1.21.9 the game counts the hitboxes (F3 + B)
+	 * and the chunk borders (F3 + G) as debug entries too, though they only draw in the world: those keep the HUD.
+	 */
+	public static boolean debugText(Minecraft mc) {
+		//#if MC >= 1.21.9
+		var list = mc.debugEntries;
+		//#if MC >= 1.21.11
+		if (list.isOverlayVisible()) return true;
+		//#else
+		//$ if (list.isF3Visible()) return true;
+		//#endif
+		for (var id : list.getCurrentlyEnabled())
+			if (!(net.minecraft.client.gui.components.debug.DebugScreenEntries.getEntry(id) instanceof net.minecraft.client.gui.components.debug.DebugEntryNoop)) return true;
+		return false;
+		//#else
+		//$ return mc.getDebugOverlay().showDebugScreen();
+		//#endif
+	}
+
 	public static ChatComponent chat(Minecraft mc) {
 		//#if MC >= 26.2
 		return mc.gui.hud.getChat();

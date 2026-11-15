@@ -489,7 +489,7 @@ public class SlashHud implements ClientModInitializer {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
 			Minecraft mc = Minecraft.getInstance();
 			Benchmark.frame(g, mc);
-			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
+			if (Compat.debugText(mc) || Compat.screen(mc) instanceof HudEditScreen) return;
 			drawAll(g, mc, false);
 			Waypoints.draw(g, mc);
 			DamageNumbers.draw(g, mc);
@@ -629,7 +629,7 @@ public class SlashHud implements ClientModInitializer {
 
 	/** With the chat open: the top of the module under the mouse lit, to show it can be clicked. */
 	public static void drawFoldHover(GuiGraphicsExtractor g, Minecraft mc, int mx, int my) {
-		if (config == null || mc.level == null || mc.getDebugOverlay().showDebugScreen()) return;
+		if (config == null || mc.level == null || Compat.debugText(mc)) return;
 		HudModule m = foldableAt(mc, mx, my, g.guiWidth(), g.guiHeight());
 		if (m == null) return;
 		int[] r = foldTarget(m, mc, g.guiWidth(), g.guiHeight());
