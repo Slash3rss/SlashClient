@@ -14,6 +14,8 @@ const api = {
   newProfile: () => invoke('profile:new'),
   saveProfile: (p: unknown) => invoke('profile:save', p),
   deleteProfile: (id: string, trashFiles = false) => invoke('profile:delete', id, trashFiles),
+  renameProfile: (id: string, name: string) => invoke('profile:rename', id, name),
+  moveProfile: (id: string, delta: number) => invoke('profile:move', id, delta),
   recoveredProfiles: () => invoke('profiles:recovered'),
   orphanProfiles: () => invoke('profiles:orphans'),
   orphanList: () => invoke('profiles:orphanList'),
@@ -42,6 +44,8 @@ const api = {
   deleteAccount: (id: string) => invoke('account:delete', id),
   loginMicrosoft: () => invoke('account:loginMicrosoft'),
   cancelLogin: () => invoke('account:cancelLogin'),
+  /** A Windows jump list click that came before the page was ready (jumpList.ts), once. */
+  jumpPending: () => invoke('jump:pending'),
   launch: (profileId: string, accountId: string, server?: string, world?: string, benchmark?: boolean | 'scene') => invoke('game:launch', profileId, accountId, server, world, benchmark),
   listBenchmarks: (profileId: string) => invoke('benchmark:list', profileId),
   shareBenchmark: (run: unknown) => invoke('benchmark:share', run),

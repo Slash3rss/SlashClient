@@ -45,6 +45,7 @@ import { trackUnsaved } from './unsaved';
 import { createSessionSummary } from './sessionSummary';
 import { createLauncherNews } from './launcherNews';
 import { askDependants, depsDetails, modsCount, pickOrphans } from './modDepsUi';
+import { showContextMenu } from './contextMenu';
 import { brokenBy, orphansAfter, planChange, type ModNode } from '../shared/modDeps';
 import { selectAllVisible, selectRange, visibleSelection } from '../shared/selection';
 
@@ -835,7 +836,8 @@ function renderPlay() {
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
-  // a long name is cut to two lines; the whole of it on hover
+  // a long name in smaller letters, cut to two lines; the whole of it on hover
+  $('#hero-title').classList.toggle('long', (profile?.name.length ?? 0) > 22);
   $('#hero-title').title = profile?.name ?? '';
   const heroIcon = $<HTMLImageElement>('#hero-icon');
   if (profile && heroIcon.getAttribute('src') !== profileIconUrl(profile)) heroIcon.src = profileIconUrl(profile);
@@ -864,18 +866,102 @@ function renderProfiles() {
         profileIconImg(p),
         el('div', { className: 'grow' }, p.name, el('small', { textContent: [profileLabel(p), p.playTimeMs ? fmtPlaytime(p.playTimeMs) : ''].filter(Boolean).join(' · ') })));
       li.title = p.name;
-      li.addEventListener('click', () => {
+      const pick = () => {
         const changed = editingId !== p.id;
         editingId = p.id;
         if (profilePane === 'stats') showPane('settings');
         renderProfiles();
         if (changed) refreshPane();
+      };
+      li.addEventListener('click', () => {
+        if (!li.querySelector('input')) pick();
+      });
+      li.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        profileMenu(p, li, pick, e.clientX, e.clientY);
       });
       return li;
     }),
   );
   const profile = store.profiles.find((p) => p.id === editingId);
   if (profile && !(profileUnsaved.isDirty() && profile.id === loadedProfileId)) loadProfileForm(profile);
+}
+
+/** Right-click on a profile in the list: its quick actions. */
+function profileMenu(p: Profile, li: HTMLElement, pick: () => void, x: number, y: number) {
+  const i = store.profiles.findIndex((o) => o.id === p.id);
+  const running = (store.runningProfiles ?? []).includes(p.id);
+  // the actions of the profile's own buttons, on it
+  const onIt = (button: string) => () => {
+    if (editingId !== p.id) pick();
+    $(button).click();
+  };
+  const move = (delta: number) => () => void guard(() => api.moveProfile(p.id, delta));
+  const pane = (name: ProfilePane) => () => openProfilePane(name, p.id);
+  const last = p.lastTarget;
+  const lastName = last?.kind === 'server' ? servers.find((s) => s.ip.toLowerCase() === last.address.toLowerCase())?.name ?? last.address : last?.name;
+  showContextMenu(x, y, [
+    running
+      ? { icon: 'fa-stop', label: t('Zatrzymaj grę'), run: () => void guard(() => api.kill(p.id)), danger: true }
+      : { icon: 'fa-play', label: t('Graj'), run: () => playFromJump({ profileId: p.id }), disabled: launching },
+    // "Wróć do gry": where the last session ended, a server or a world
+    ...(last && !running ? [{ icon: last.kind === 'server' ? 'fa-server' : 'fa-earth-europe', label: t('Wróć: {0}', lastName ?? ''), disabled: launching,
+      run: () => playFromJump(last.kind === 'server' ? { profileId: p.id, server: last.address } : { profileId: p.id, world: last.folder }) }] : []),
+    'line',
+    { icon: 'fa-pen', label: t('Zmień nazwę'), run: () => renameInList(p, li) },
+    { icon: 'fa-angles-up', label: t('Przenieś na górę'), run: move(-i), disabled: i <= 0 },
+    { icon: 'fa-arrow-up', label: t('Przenieś wyżej'), run: move(-1), disabled: i <= 0 },
+    { icon: 'fa-arrow-down', label: t('Przenieś niżej'), run: move(1), disabled: i >= store.profiles.length - 1 },
+    'line',
+    { icon: 'fa-puzzle-piece', label: t('Mody i zasoby'), run: pane('content') },
+    { icon: 'fa-images', label: t('Światy i zrzuty'), run: pane('worlds') },
+    { icon: 'fa-folder-open', label: t('Otwórz folder'), run: () => void guard(() => api.openProfileDir(p.id)) },
+    { icon: 'fa-folder-tree', label: t('Folder modów'), run: () => void guard(() => api.openModsDir(p.id)) },
+    'line',
+    { icon: 'fa-camera', label: t('Zrób migawkę'), run: onIt('#snapshot-make'), disabled: running },
+    { icon: 'fa-copy', label: t('Kopiuj profil'), run: onIt('#profile-duplicate') },
+    { icon: 'fa-file-export', label: t('Eksportuj do pliku'), run: onIt('#profile-export') },
+    { icon: 'fa-share-nodes', label: t('Udostępnij kodem'), run: onIt('#profile-share') },
+    'line',
+    { icon: 'fa-trash', label: t('Usuń profil'), run: onIt('#profile-delete'), danger: true, disabled: running },
+  ]);
+}
+
+/** "Zmień nazwę": the name turns into a field on the row; Enter (or leaving it) saves, Esc puts it back. */
+function renameInList(p: Profile, li: HTMLElement) {
+  const box = li.querySelector('.grow');
+  if (!box) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'rename-input';
+  input.value = p.name;
+  input.maxLength = 64;
+  input.setAttribute('aria-label', t('Nazwa profilu'));
+  box.replaceChildren(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = (save: boolean) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (save && name && name !== p.name) {
+      void guard(async () => {
+        await api.renameProfile(p.id, name);
+        // the form shows this profile with changes not saved yet: its name field follows, so saving keeps the new name
+        if (loadedProfileId === p.id) ($<HTMLFormElement>('#profile-form').elements.namedItem('name') as HTMLInputElement).value = name;
+      });
+    } else renderProfiles();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') finish(true);
+    else if (e.key === 'Escape') {
+      e.stopPropagation();
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('click', (e) => e.stopPropagation());
 }
 
 // ---------- profile panes: settings, mods, worlds, and the statistics of all profiles ----------
@@ -1508,6 +1594,23 @@ async function startGame(server?: string, world?: string, benchmark: boolean | '
     renderPlay();
   }
 }
+
+/** A Windows jump list click (recent profiles and servers): that profile picked and started, joining the server. */
+function playFromJump(target: { profileId: string; server?: string; world?: string } | undefined) {
+  if (!target) return;
+  const profile = store.profiles.find((p) => p.id === target.profileId);
+  if (!profile) return toast(t('Tego profilu już nie ma.'), true);
+  if (launching) return;
+  store.settings.selectedProfileId = profile.id;
+  api.saveSettings({ selectedProfileId: profile.id });
+  const own = profile.accountId;
+  if (own && own !== store.settings.selectedAccountId && store.accounts.some((a) => a.id === own)) selectAccount(own);
+  renderPlay();
+  showView('play');
+  if (selectedRunning()) return toast(t('Ten profil już działa.'), true);
+  void startGame(target.server, target.world);
+}
+api.on('jump:play', (target: { profileId: string; server?: string }) => playFromJump(target));
 
 $('#play-btn').addEventListener('click', () => (selectedRunning() ? void api.kill($<HTMLSelectElement>('#play-profile').value) : startGame()));
 
@@ -5913,6 +6016,8 @@ function finishBoot() {
   // a brand new installation: the first-run wizard
   wizard.maybeShow(store);
   void offerLinuxInstall();
+  // started from the jump list: the profile clicked
+  playFromJump(await api.jumpPending().catch(() => undefined));
   // the launcher's releases; after an update "Co nowego w SlashClient X"
   void launcherNews?.init();
   versions =(await guard(() => api.listVersions())) ?? [];

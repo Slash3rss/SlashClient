@@ -16,6 +16,7 @@ import { createPositionSharing } from './positionSharing';
 import { createChatKeys } from './chatKeys';
 import { createPopularSharing } from './friendsPopular';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
+import { showContextMenu, type MenuItem as ContextItem } from './contextMenu';
 import { canDelete, canEdit, editHint, editedLabel, fitChatHead, openMenu, refitChatHead, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { directSource } from './chatMediaSources';
@@ -1098,6 +1099,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         f.muted ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Wyciszony') }) : '',
         f.unread ? el('span', { className: `fr-unread${f.muted ? ' muted' : ''}`, textContent: String(f.unread) }) : '');
       row.addEventListener('click', () => select(f.id));
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        friendMenu(f, e.clientX, e.clientY);
+      });
       sections.push(row);
     }
     if (list.outgoing.length) {
@@ -1122,6 +1127,70 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   /** A clan's tag in front of a name, as in game: [TAG]. */
   /** The rank badge before a nick (rankBadge.ts); a custom icon that arrives later draws the list again. */
+  /** Right-click on a friend in the list: what the chat's head offers, without opening the chat first. */
+  function friendMenu(f: Friend, x: number, y: number) {
+    const on = f.presence.status !== 'offline';
+    const a = f.presence.activity;
+    // (a click on the row opens the chat: the menu has the rest)
+    const items: (ContextItem | 'line')[] = [];
+    if (on && a?.kind === 'server' && a.server) items.push({ icon: 'fa-right-to-bracket', label: t('Dołącz: {0}', a.server), run: () => deps.join(a.server!, a.version?.split(' · ')[0]) });
+    if (on && f.presence.lan) items.push({ icon: 'fa-right-to-bracket', label: t('Dołącz do świata'), run: () => void joinLan(f) });
+    if (f.stream) items.push({ icon: 'fa-play', label: t('Oglądaj'), run: () => window.open(f.stream!.url, '_blank') });
+    items.push({ icon: 'fa-gamepad', label: t('Zaproś do gry'), run: () => void select(f.id).then(() => openInvite(f)) });
+    items.push('line');
+    if (!document.body.classList.contains('no-feature-profiles')) items.push({ icon: 'fa-id-card', label: t('Pokaż profil'), run: () => (deps.showProfile ? deps.showProfile(f.handle) : profileLink(deps, f.handle, 'open')) });
+    items.push({ icon: 'fa-photo-film', label: t('Multimedia'), run: () => openMedia(f) });
+    if (deps.showAchievements) items.push({ icon: 'fa-trophy', label: t('Osiągnięcia'), run: () => deps.showAchievements!(f.id, f.name) });
+    items.push({ icon: 'fa-at', label: t('Kopiuj nick'), run: () => void navigator.clipboard.writeText(f.handle).then(() => deps.toast(t('Skopiowano: {0}', `@${f.handle}`))) });
+    items.push('line');
+    if (f.unread) items.push({ icon: 'fa-check-double', label: t('Oznacz jako przeczytane'), run: () => void markRead(f.id) });
+    items.push({ icon: f.muted ? 'fa-bell' : 'fa-bell-slash', label: f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia'), run: () => toggleMute(f) });
+    items.push({ icon: 'fa-user-minus', label: t('Usuń ze znajomych'), run: () => void removeFriend(f), danger: true });
+    items.push({ icon: 'fa-ban', label: t('Zablokuj'), run: () => void blockFriend(f), danger: true });
+    showContextMenu(x, y, items);
+  }
+
+  /** Blocked: no longer friends, and they cannot invite again (until unblocked under "Zablokowani"). */
+  async function blockFriend(f: Friend) {
+    const ok = await confirmDialog({
+      title: t('Zablokować {0}?', f.name),
+      body: [
+        el('div', { className: 'confirm-person' }, avatar(f, f.presence), el('b', {}, ...rankTag(f.badgeRank), f.name)),
+        el('p', { className: 'muted', textContent: t('Znikniecie sobie nawzajem z list znajomych i ta osoba nie zaprosi Cię ponownie. Odblokować możesz na dole listy znajomych.') }),
+      ],
+      ok: t('Zablokuj'), okIcon: 'fa-ban', danger: true,
+    });
+    // an older server has no blocking of friends: act() says why it failed, and "Usuń ze znajomych" still works
+    if (ok) await act(() => api.socialApi('POST', `/v1/friends/${f.id}/block`), t('Zablokowano {0}.', f.name));
+  }
+
+  function toggleMute(f: Friend) {
+    void act(() => api.socialApi('POST', `/v1/friends/${f.id}/mute`, { muted: !f.muted }),
+      f.muted ? t('{0} znowu może Cię powiadamiać.', f.name) : t('Wyciszono {0}: wiadomości przyjdą bez powiadomień.', f.name));
+  }
+
+  async function removeFriend(f: Friend) {
+    const ok = await confirmDialog({
+      title: t('Usunąć ze znajomych?'),
+      body: [
+        el('div', { className: 'confirm-person' }, avatar(f, f.presence), el('b', {}, ...rankTag(f.badgeRank), f.name)),
+        el('p', { className: 'muted', textContent: t('Znikniecie sobie nawzajem z list znajomych. Zaproszenie możesz wysłać ponownie w każdej chwili.') }),
+      ],
+      ok: t('Usuń ze znajomych'), okIcon: 'fa-user-minus', danger: true,
+    });
+    if (ok) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
+  }
+
+  /** Their world open to LAN: the same relay the game uses, then the game started on it. */
+  async function joinLan(f: Friend) {
+    try {
+      const port = await api.lanJoin(f.id);
+      deps.join(`127.0.0.1:${port}`, f.presence.activity?.version?.split(' · ')[0]);
+    } catch (err) {
+      deps.toast(t('Nie udało się dołączyć do świata: {0}', deps.errorText(err)), true);
+    }
+  }
+
   function rankTag(r: RankView | undefined): (Node | string)[] {
     return r ? [rankBadge(r, api.socialRankIcon, () => { renderList(); if (state?.user) renderMe(); }, rankName(r, getLang() === 'en')), ' '] : [];
   }
@@ -1492,14 +1561,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz do świata'));
       join.addEventListener('click', async () => {
         join.disabled = true;
-        try {
-          const port = await api.lanJoin(f.id);
-          deps.join(`127.0.0.1:${port}`, a?.version?.split(' · ')[0]);
-        } catch (err) {
-          deps.toast(t('Nie udało się dołączyć do świata: {0}', deps.errorText(err)), true);
-        } finally {
-          join.disabled = false;
-        }
+        await joinLan(f);
+        join.disabled = false;
       });
       actions.push(join);
     }
@@ -1528,21 +1591,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
     // muted: still a friend, messages still come, but no toasts or notifications (on the account, so everywhere)
     const mute = el('button', { type: 'button', className: `icon-btn${f.muted ? ' on' : ''}`, title: f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia') }, icon(f.muted ? 'fa-bell-slash' : 'fa-bell'));
-    mute.addEventListener('click', () => act(() => api.socialApi('POST', `/v1/friends/${f.id}/mute`, { muted: !f.muted }),
-      f.muted ? t('{0} znowu może Cię powiadamiać.', f.name) : t('Wyciszono {0}: wiadomości przyjdą bez powiadomień.', f.name)));
+    mute.addEventListener('click', () => toggleMute(f));
     extra(mute, f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia'), f.muted ? 'fa-bell-slash' : 'fa-bell');
     const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń ze znajomych') }, icon('fa-user-minus'));
-    remove.addEventListener('click', async () => {
-      const ok = await confirmDialog({
-        title: t('Usunąć ze znajomych?'),
-        body: [
-          el('div', { className: 'confirm-person' }, avatar(f, f.presence), el('b', {}, ...rankTag(f.badgeRank), f.name)),
-          el('p', { className: 'muted', textContent: t('Znikniecie sobie nawzajem z list znajomych. Zaproszenie możesz wysłać ponownie w każdej chwili.') }),
-        ],
-        ok: t('Usuń ze znajomych'), okIcon: 'fa-user-minus', danger: true,
-      });
-      if (ok) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
-    });
+    remove.addEventListener('click', () => void removeFriend(f));
     extra(remove, t('Usuń ze znajomych'), 'fa-user-minus', true);
     const more = el('button', { type: 'button', className: 'icon-btn hidden', title: t('Więcej') }, icon('fa-ellipsis'));
     more.addEventListener('click', () => openMenu(more, extras.filter((x) => x.btn.classList.contains('fr-folded')).map((x) => x.item)));

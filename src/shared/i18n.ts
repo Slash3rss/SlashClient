@@ -8,6 +8,7 @@ import { TOOLS_EN } from './i18nTools';
 import { SPARKS_EN } from './i18nSparks';
 import { REFERRALS_EN } from './i18nReferrals';
 import { PROFILES_EN } from './i18nProfiles';
+import { QUICK_ACTIONS_EN } from './i18nQuickActions';
 import { SUPPORT_EN } from './i18nSupport';
 import { RANKS_EN } from './i18nRanks';
 import { LEGAL_EN } from './i18nLegal';
@@ -66,6 +67,7 @@ const EN: Record<string, string> = {
   ...MOD_DEPS_EN,
   // public profiles (own file)
   ...PROFILES_EN,
+  ...QUICK_ACTIONS_EN,
   ...RANKS_EN,
   // supporting the project (own file)
   ...SUPPORT_EN,

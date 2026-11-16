@@ -107,6 +107,7 @@ import { benchSharePayload, benchShareText, cpuName, gpuName } from '../shared/b
 import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { contentOf, PopularReporter, recentServers } from './friendsPopular';
+import { jumpLists, jumpTarget, type JumpTarget } from './jumpList';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -268,7 +269,52 @@ function send(channel: string, payload: unknown) {
 async function persist() {
   await saveStore(store);
   send('store', publicStore());
+  updateJumpList();
 }
+
+// ---------- Windows' jump list (jumpList.ts) ----------
+
+let jumpTimer: NodeJS.Timeout | undefined;
+/** The recent profiles and servers in the Start menu and the taskbar's menu, a moment after things change. */
+function updateJumpList() {
+  if (process.platform !== 'win32') return;
+  clearTimeout(jumpTimer);
+  jumpTimer = setTimeout(() => void writeJumpList().catch((err) => console.error('jump list:', (err as Error).message)), 2_000);
+}
+async function writeJumpList() {
+  const removed = new Set(app.getJumpListSettings().removedItems.map((i) => (i.args ?? '').replace(/^.*?(?=--play=)/, '')));
+  const lists = jumpLists(store.profiles, await readSessions().catch(() => []), removed, {
+    profile: (versionId) => t('Uruchom profil · {0}', versionId),
+    server: (profile) => t('Dołącz do serwera · profil {0}', profile),
+  });
+  // run from the code (development): Electron's own executable needs the app's folder, and the test data folder
+  const prefix = app.isPackaged ? '' : [`"${app.getAppPath()}"`, ...process.argv.filter((a) => a.startsWith('--user-data-dir=')).map((a) => `"${a}"`)].join(' ') + ' ';
+  const items = (list: typeof lists.profiles) => list.map((e) => ({
+    type: 'task' as const, title: e.title, description: e.description, program: process.execPath, args: prefix + e.args, iconPath: process.execPath, iconIndex: 0,
+  }));
+  const categories: Electron.JumpListCategory[] = [];
+  if (lists.profiles.length) categories.push({ type: 'custom', name: t('Ostatnie profile'), items: items(lists.profiles) });
+  if (lists.servers.length) categories.push({ type: 'custom', name: t('Ostatnie serwery'), items: items(lists.servers) });
+  let res = app.setJumpList(categories.length ? categories : null);
+  // "Pokaż ostatnio otwierane elementy" off in Windows' settings: lists of recent ones are refused, but the app's
+  // own tasks are not, so the profiles and servers go there (without the headings)
+  if (res === 'customCategoryAccessDeniedError') res = app.setJumpList([{ type: 'tasks', items: [...items(lists.profiles), ...items(lists.servers)] }]);
+  if (res !== 'ok') console.error('jump list:', res);
+}
+
+/** A jump list click before the page was ready: it asks for it once it is. */
+let pendingJump: JumpTarget | undefined = jumpTarget(process.argv);
+/** A jump list click: the launcher to the front, the profile started as from Play (and the server joined). */
+function playFromJump(target: JumpTarget) {
+  focusWindow();
+  if (win && !win.isDestroyed() && !win.webContents.isLoading()) send('jump:play', target);
+  else pendingJump = target;
+}
+handle('jump:pending', () => {
+  const target = pendingJump;
+  pendingJump = undefined;
+  return target;
+});
 
 /** The store as the renderer sees it: no tokens ever leave the main process. */
 function publicStore() {
@@ -465,6 +511,25 @@ handle('profile:save', async (profile: Profile) => {
   else store.profiles.push(clean);
   await persist();
   return clean.id;
+});
+/** The right-click menu's "Zmień nazwę": only the name, so the profile's form being edited keeps the rest. */
+handle('profile:rename', async (id: string, name: unknown) => {
+  const profile = store.profiles.find((p) => p.id === id);
+  const clean = typeof name === 'string' ? name.trim().slice(0, 64) : '';
+  if (!profile || !clean) return false;
+  profile.name = clean;
+  await persist();
+  return true;
+});
+/** "Przenieś wyżej / niżej / na górę": the profile's place in the list (the Play tab's picker follows the same order). */
+handle('profile:move', async (id: string, delta: number) => {
+  const i = store.profiles.findIndex((p) => p.id === id);
+  const to = Math.max(0, Math.min(store.profiles.length - 1, i + Math.trunc(Number(delta) || 0)));
+  if (i < 0 || to === i) return false;
+  const [profile] = store.profiles.splice(i, 1);
+  store.profiles.splice(to, 0, profile);
+  await persist();
+  return true;
 });
 /** New profiles (made, imported, from a modpack) start with the memory set in Settings. */
 const systemMemoryMb = () => Math.round(os.totalmem() / 1024 / 1024);
@@ -2284,6 +2349,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
     const endedAt = Date.now();
     resolveVersionId(profile.versionId).then(async (versionId) => {
       await appendSession({ start: startedAt, end: endedAt, profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins }).catch(() => {});
+      updateJumpList();
       // "Podsumowanie sesji" (sessionSummary.ts): kept for the statistics, shown when the setting allows
       await finishSessionSummary({ profile, versionId, startedAt, endedAt, joins, code, byUser: killRequested, benchmark: !!benchmark });
     }).catch((err) => console.error('podsumowanie sesji:', (err as Error).message));
@@ -3240,6 +3306,16 @@ handle('notify:show', (title: unknown, body: unknown, target: unknown) => {
 // run from the code: an id of its own, so the taskbar shows the window's DEV icon, not Electron's
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? APP_USER_MODEL_ID : `${APP_USER_MODEL_ID}.dev`);
 
+// one launcher at a time (per data folder): starting it again, from a shortcut or the jump list, brings the open one
+// to the front and passes on what was clicked
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', (_event, argv) => {
+  if (!windowOpened) return;
+  const target = jumpTarget(argv);
+  if (target) playFromJump(target);
+  else focusWindow();
+});
+
 // Lets the page show screenshots and world icons (only images inside profile folders).
 protocol.registerSchemesAsPrivileged([
   { scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -3294,6 +3370,7 @@ app.whenReady().then(async () => {
   });
   createWindow();
   windowOpened = true;
+  updateJumpList();
   startUpdateChecks({
     serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m),
     pause: { get: () => store.settings.updatesPausedUntil, set: (v) => { store.settings.updatesPausedUntil = v; return persist(); } },
