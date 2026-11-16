@@ -1678,6 +1678,7 @@
 	"slashclient-hud.skyPlan.day.7": "Sun",
 	"slashclient-hud.skyPlan.starts": "Starts in %s min (at %s)",
 	"slashclient-hud.skyPlan.rows": "How many coming ones to show",
+	"slashclient-hud.skyPlan.others": "Other kinds below (the next of each)",
 	"slashclient-hud.skyPlan.time": "Start time",
 	"slashclient-hud.skyPlan.time.relative": "Time left (in 1 h 5 min)",
 	"slashclient-hud.skyPlan.time.clock": "Hour (20:00)",

@@ -237,6 +237,18 @@ public final class SkyPlan {
 		return all.subList(0, Math.min(count, all.size()));
 	}
 
+	/**
+	 * Below the coming ones: the next of each kind not among them (the boss arena on Wednesday while today has only
+	 * events and fishing), soonest first, so the player knows when it is even when it is not today.
+	 */
+	static List<Next> others(ZonedDateTime now, List<Next> shown) {
+		java.util.Set<Kind> seen = java.util.EnumSet.noneOf(Kind.class);
+		for (Next n : shown) seen.add(Kind.of(n.slot().name()));
+		List<Next> out = new ArrayList<>();
+		for (Next n : coming(now, Integer.MAX_VALUE)) if (seen.add(Kind.of(n.slot().name()))) out.add(n);
+		return out;
+	}
+
 	/** Whether a slot starting then is over: as the chat said, or (heard nothing of it) after its usual length. */
 	private static boolean over(Kind kind, ZonedDateTime at, ZonedDateTime now) {
 		if (now.isBefore(at)) return false;
@@ -432,28 +444,53 @@ public final class SkyPlan {
 			return Math.max(1, Math.min(8, SlashHud.config.skyPlanRows));
 		}
 
+		/** The next of the kinds not among the coming ones, when the player wants them. */
+		private static List<Next> later(ZonedDateTime now, List<Next> shown) {
+			return SlashHud.config.skyPlanOthers ? others(now, shown) : List.of();
+		}
+
 		public int width(Minecraft mc) {
 			ZonedDateTime now = ZonedDateTime.now(ZONE);
 			int w = mc.font.width(Component.translatable("slashclient-hud.skyPlan.title"));
-			for (Next n : coming(now, rows())) w = Math.max(w, mc.font.width(label(n, now)) + 8 + mc.font.width(whenOf(n, now)));
+			List<Next> shown = coming(now, rows());
+			List<Next> all = new ArrayList<>(shown);
+			all.addAll(later(now, shown));
+			for (Next n : all) w = Math.max(w, mc.font.width(label(n, now)) + 8 + mc.font.width(whenOf(n, now)));
 			return Math.max(110, w) + Modules.PAD * 2;
 		}
 
 		public int height(Minecraft mc) {
-			return 10 + rows() * 10 + Modules.PAD * 2 - 1;
+			int others = later(ZonedDateTime.now(ZONE), coming(ZonedDateTime.now(ZONE), rows())).size();
+			return 10 + rows() * 10 + (others > 0 ? GAP + others * 10 : 0) + Modules.PAD * 2 - 1;
 		}
+
+		/** The space between today's rows and the later ones of other kinds, so they do not read as next in line. */
+		private static final int GAP = 5;
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			ZonedDateTime now = ZonedDateTime.now(ZONE);
 			int w = width(mc) - Modules.PAD * 2, left = x + Modules.PAD, top = y + Modules.PAD;
 			Modules.text(g, mc, Component.translatable("slashclient-hud.skyPlan.title"), left, top, 0xFFFACC15);
 			int row = top + 10;
-			for (Next n : coming(now, rows())) {
+			List<Next> shown = coming(now, rows());
+			for (Next n : shown) {
 				Kind kind = Kind.of(n.slot().name());
 				Modules.text(g, mc, label(n, now), left, row, kind.look.light);
 				Component when = whenOf(n, now);
 				boolean going = !n.at().isAfter(now);
 				Modules.text(g, mc, when, left + w - mc.font.width(when), row, going ? 0xFF4ADE80 : 0xFFE5E7EB);
+				row += 10;
+			}
+			List<Next> later = later(now, shown);
+			if (later.isEmpty()) return;
+			// a thin line in the gap: what follows is further off
+			row += GAP;
+			g.fill(left, row - 3, left + w, row - 2, 0x40FFFFFF);
+			for (Next n : later) {
+				Kind kind = Kind.of(n.slot().name());
+				Modules.text(g, mc, label(n, now), left, row, kind.look.light);
+				Component when = whenOf(n, now);
+				Modules.text(g, mc, when, left + w - mc.font.width(when), row, 0xFF9CA3AF);
 				row += 10;
 			}
 		}
@@ -514,6 +551,10 @@ public final class SkyPlan {
 		c.skyPlanRemind = remind;
 		out.append('|').append(off == null ? "-" : off.slot().name()).append(',').append(on == null ? "-" : on.slot().name()).append(',').append(again == null ? "-" : again.slot().name());
 		out.append('|').append(liveForTest());
+		// the kinds not among the coming three: Wednesday 18:56 has them all, Monday 18:56 no boss arena until Wednesday
+		ZonedDateTime monday = ZonedDateTime.of(2026, 10, 26, 18, 56, 0, 0, ZONE);
+		out.append('|').append(others(now, coming(now, 3)).size());
+		for (Next n : others(monday, coming(monday, 3))) out.append(',').append(n.at().getDayOfWeek()).append(' ').append(hour(n.at())).append(' ').append(n.slot().name());
 		return out.toString();
 	}
 

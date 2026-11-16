@@ -311,6 +311,8 @@ public final class HudConfig {
 	public int skyPlanRemind = 5;
 	/** Which of the plan's kinds the banner is for: SkyUp's events, its fishing contests, its boss arena. */
 	public boolean skyPlanEvents = true, skyPlanFishing = true, skyPlanBoss = true;
+	/** Below the coming ones, the next of each kind not among them (the boss arena on Wednesday), set apart. */
+	public boolean skyPlanOthers = true;
 	/** The plan's banner sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
 	public String skyPlanSound = "default";
 	/** How the plan says when today's events start: "relative" (za 45 min), "clock" (19:00) or "both" (za 45 min (19:00)). */
@@ -1037,6 +1039,7 @@ public final class HudConfig {
 		skyPlanEvents = other.skyPlanEvents;
 		skyPlanFishing = other.skyPlanFishing;
 		skyPlanBoss = other.skyPlanBoss;
+		skyPlanOthers = other.skyPlanOthers;
 		skyPlanSound = other.skyPlanSound == null ? "default" : other.skyPlanSound;
 		skyPlanTime = java.util.Arrays.asList(SKY_PLAN_TIMES).contains(other.skyPlanTime) ? other.skyPlanTime : "both";
 		mcWikiEnglish = other.mcWikiEnglish;
