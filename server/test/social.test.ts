@@ -828,6 +828,21 @@ describe('social server', () => {
     assert.deepEqual((await call('GET', '/v1/friends', me.token)).body.blocked, []);
   });
 
+  it('blocks a friend: no longer friends, and no invites from them until unblocked', async () => {
+    const a = await login('BlokujacaA');
+    const b = await login('BlokowanyB');
+    await call('POST', '/v1/friends/requests', a.token, { handle: 'BlokowanyB' });
+    await call('POST', `/v1/friends/requests/${a.user.id}/accept`, b.token);
+    const res = await call('POST', `/v1/friends/${b.user.id}/block`, a.token);
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.friends, []);
+    assert.deepEqual(res.body.blocked.map((x: any) => x.handle), ['BlokowanyB']);
+    assert.deepEqual((await call('GET', '/v1/friends', b.token)).body.friends, []);
+    assert.equal((await call('POST', '/v1/friends/requests', b.token, { handle: 'BlokujacaA' })).body.error, 'blocked');
+    // only a friend can be blocked this way
+    assert.equal((await call('POST', `/v1/friends/${b.user.id}/block`, a.token)).status, 404);
+  });
+
   it('knows which Minecraft players use SlashClient', async () => {
     const steve = '8667ba71-b85a-4004-af54-457a9734eed7';
     const alex = 'ec561538-f3fd-461d-aff5-086b22154bce';

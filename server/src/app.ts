@@ -1731,6 +1731,15 @@ export function createApp(cfg: Config) {
       push(other, { type: 'friends' });
       return friendList(me);
     }],
+    // a friend blocked (the launcher's right-click menu, 0.9.78+): no longer friends, and no invites from them again
+    ['POST', /^\/v1\/friends\/([\w-]+)\/block$/, (req, [other]) => {
+      const me = authed(req);
+      if (!db.removeFriendship(me, other)) throw new HttpError(404, 'not_found');
+      mutes.store.forget(me, other);
+      db.block(me, other);
+      push(other, { type: 'friends' });
+      return friendList(me);
+    }],
 
     // -- who plays with SlashClient (the logo on the tab list and above heads) --
     ['POST', /^\/v1\/mc\/heartbeat$/, async (req) => {
