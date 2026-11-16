@@ -116,6 +116,8 @@ export interface Settings {
   autoMemory?: boolean;
   /** Show the game status on Discord (Rich Presence). */
   discordEnabled: boolean;
+  /** On a server: the "Dołącz do gry" button under the Discord status (joinLink.ts); unset = on. */
+  discordJoinButton?: boolean;
   /** UI language ('pl' | 'en'); empty = follow the system. */
   language: string;
   /** The profile last used for each server address, offered first next time. */

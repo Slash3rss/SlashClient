@@ -88,7 +88,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; theme?: string; themeAccent?: string; systemNotifications?: boolean; notificationSound?: boolean; taskbarBadge?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; consoleWindow?: boolean; theme?: string; themeAccent?: string; systemNotifications?: boolean; notificationSound?: boolean; taskbarBadge?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; discordJoinButton?: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[]; referralPromptSkipped?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1342,6 +1342,7 @@ function renderSettings() {
   showDefaultMemory();
   javaChoice.renderSettings();
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
+  (form.elements.namedItem('discordJoinButton') as HTMLInputElement).checked = store.settings.discordJoinButton ?? true;
   const notifications = form.elements.namedItem('systemNotifications') as HTMLInputElement;
   const sound = form.elements.namedItem('notificationSound') as HTMLInputElement;
   notifications.checked = store.settings.systemNotifications !== false;
@@ -1611,6 +1612,18 @@ function playFromJump(target: { profileId: string; server?: string; world?: stri
   void startGame(target.server, target.world);
 }
 api.on('jump:play', (target: { profileId: string; server?: string }) => playFromJump(target));
+
+/** A `slashclient://join` link (the website's /dolacz, from a Discord status): the usual "join a server" window. */
+function joinFromLink(target: { server: string; version?: string } | undefined) {
+  if (!target) return;
+  showView('servers');
+  const listed = servers.find((s) => s.ip.toLowerCase() === target.server.toLowerCase());
+  openJoin(listed ?? {
+    id: '', name: target.server, ip: target.server, description: '', motdHtml: [], motdClean: [], modes: [], versions: target.version ? [target.version] : [],
+    votes: 0, online: true, playersOnline: 0, playersMax: 0, hasIcon: false, promoted: false, featured: false,
+  });
+}
+api.on('link:join', joinFromLink);
 
 $('#play-btn').addEventListener('click', () => (selectedRunning() ? void api.kill($<HTMLSelectElement>('#play-profile').value) : startGame()));
 
@@ -2195,6 +2208,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       autoMemory: (form.elements.namedItem('autoMemory') as HTMLInputElement).checked,
       javaVendor: javaChoice.settingsValue(),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
+      discordJoinButton: (form.elements.namedItem('discordJoinButton') as HTMLInputElement).checked,
       systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
       notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,
       taskbarBadge: (form.elements.namedItem('taskbarBadge') as HTMLInputElement).checked,
@@ -6018,6 +6032,8 @@ function finishBoot() {
   void offerLinuxInstall();
   // started from the jump list: the profile clicked
   playFromJump(await api.jumpPending().catch(() => undefined));
+  // started from a join link: its server
+  joinFromLink(await api.linkPending().catch(() => undefined));
   // the launcher's releases; after an update "Co nowego w SlashClient X"
   void launcherNews?.init();
   versions =(await guard(() => api.listVersions())) ?? [];

@@ -21,6 +21,8 @@ export interface Presence {
   /** A second, small picture in the corner (a server's rule, serverStatus.ts). */
   smallImageKey?: string;
   smallImageText?: string;
+  /** Up to two buttons under the status, each opening an address (others see them, the player does not). */
+  buttons?: { label: string; url: string }[];
 }
 
 function socketPaths(): string[] {
@@ -123,6 +125,7 @@ export class DiscordPresence {
         ...(p.largeImageKey ? { large_image: p.largeImageKey, large_text: p.largeImageText } : {}),
         ...(p.smallImageKey ? { small_image: p.smallImageKey, small_text: p.smallImageText } : {}),
       } : undefined,
+      ...(p.buttons?.length ? { buttons: p.buttons.slice(0, 2).map((b) => ({ label: b.label.slice(0, 32), url: b.url.slice(0, 512) })) } : {}),
       instance: false,
     };
     this.socket.write(encode(OP_FRAME, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce: randomUUID() }));

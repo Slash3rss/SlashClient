@@ -26,6 +26,8 @@ export const QUICK_ACTIONS_EN: Record<string, string> = {
   'Skopiowano: {0}': 'Copied: {0}',
   'Oznacz jako przeczytane': 'Mark as read',
   'Zablokuj': 'Block',
+  'Dołącz do gry': 'Join the game',
+  'Przycisk „Dołącz do gry” na Discordzie (inni dołączą na Twój serwer)': 'The “Join the game” button on Discord (others join your server)',
   'Zablokować {0}?': 'Block {0}?',
   'Znikniecie sobie nawzajem z list znajomych i ta osoba nie zaprosi Cię ponownie. Odblokować możesz na dole listy znajomych.':
     'You will disappear from each other\'s friends lists and this person will not be able to invite you again. You can unblock them at the bottom of the friends list.',

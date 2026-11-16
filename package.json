@@ -52,6 +52,14 @@
     "appId": "dev.slash3rss.slashclient",
     "productName": "SlashClient",
     "copyright": "© slash3rss",
+    "protocols": [
+      {
+        "name": "SlashClient",
+        "schemes": [
+          "slashclient"
+        ]
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"

@@ -46,6 +46,8 @@ const api = {
   cancelLogin: () => invoke('account:cancelLogin'),
   /** A Windows jump list click that came before the page was ready (jumpList.ts), once. */
   jumpPending: () => invoke('jump:pending'),
+  /** A `slashclient://join` link that came before the page was ready (joinLink.ts), once. */
+  linkPending: () => invoke('link:pending'),
   launch: (profileId: string, accountId: string, server?: string, world?: string, benchmark?: boolean | 'scene') => invoke('game:launch', profileId, accountId, server, world, benchmark),
   listBenchmarks: (profileId: string) => invoke('benchmark:list', profileId),
   shareBenchmark: (run: unknown) => invoke('benchmark:share', run),

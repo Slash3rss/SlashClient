@@ -108,6 +108,7 @@ import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { contentOf, PopularReporter, recentServers } from './friendsPopular';
 import { jumpLists, jumpTarget, type JumpTarget } from './jumpList';
+import { gameVersion, joinLinkIn, joinPageUrl, parseJoinLink, PROTOCOL, publicServer, type JoinTarget } from './joinLink';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -195,7 +196,13 @@ function discordLook(p: Presence): Presence {
   const game = [...games.values()].find((g) => g.presence === p)?.discord;
   const a = game?.activity ?? social.currentActivity();
   const user = social.state().user;
-  return decorate(p, { server: a.kind === 'server' ? a.server : undefined, status: game?.status ?? gameStatus, rules: statusRules.current(), hideServer: !!user && !user.showServer });
+  const hideServer = !!user && !user.showServer;
+  const look = decorate(p, { server: a.kind === 'server' ? a.server : undefined, status: game?.status ?? gameStatus, rules: statusRules.current(), hideServer });
+  // "Dołącz do gry": others on Discord open the website's page, which joins with the launcher or offers the download
+  // (only for a server on the internet, and not when the player hides their server from others)
+  const server = a.kind === 'server' && !hideServer && store.settings.discordJoinButton !== false ? publicServer(a.server) : undefined;
+  if (server) look.buttons = [{ label: t('Dołącz do gry'), url: joinPageUrl(store.settings.socialUrl, { server, version: gameVersion(a.version) }) }];
+  return look;
 }
 function onGameStatus(status: GameStatus | undefined, gameId?: string) {
   void statusRules.refresh();
@@ -313,6 +320,20 @@ function playFromJump(target: JumpTarget) {
 handle('jump:pending', () => {
   const target = pendingJump;
   pendingJump = undefined;
+  return target;
+});
+
+/** A `slashclient://join` link (the website's /dolacz page, from the Discord button) before the page was ready. */
+let pendingLink: JoinTarget | undefined = joinLinkIn(process.argv);
+/** A join link: the launcher to the front with the "join a server" window (the player picks the profile and starts). */
+function joinFromLink(target: JoinTarget) {
+  focusWindow();
+  if (win && !win.isDestroyed() && !win.webContents.isLoading()) send('link:join', target);
+  else pendingLink = target;
+}
+handle('link:pending', () => {
+  const target = pendingLink;
+  pendingLink = undefined;
   return target;
 });
 
@@ -3312,8 +3333,18 @@ if (!app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance', (_event, argv) => {
   if (!windowOpened) return;
   const target = jumpTarget(argv);
+  const link = joinLinkIn(argv);
   if (target) playFromJump(target);
+  else if (link) joinFromLink(link);
   else focusWindow();
+});
+// macOS hands the launcher's links over this way (also the one that started it)
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  const link = parseJoinLink(url);
+  if (!link) return;
+  if (windowOpened) joinFromLink(link);
+  else pendingLink = link;
 });
 
 // Lets the page show screenshots and world icons (only images inside profile folders).
@@ -3371,6 +3402,9 @@ app.whenReady().then(async () => {
   createWindow();
   windowOpened = true;
   updateJumpList();
+  // the launcher's own address (slashclient://), for the website's "Dołącz do gry"; only the installed launcher
+  // (one run from the code would take it over from the installed one)
+  if (app.isPackaged && !app.isDefaultProtocolClient(PROTOCOL)) app.setAsDefaultProtocolClient(PROTOCOL);
   startUpdateChecks({
     serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m),
     pause: { get: () => store.settings.updatesPausedUntil, set: (v) => { store.settings.updatesPausedUntil = v; return persist(); } },
