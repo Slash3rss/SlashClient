@@ -108,7 +108,7 @@ import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { contentOf, PopularReporter, recentServers } from './friendsPopular';
 import { jumpLists, jumpTarget, type JumpTarget } from './jumpList';
-import { gameVersion, joinLinkIn, joinPageUrl, parseJoinLink, PROTOCOL, publicServer, type JoinTarget } from './joinLink';
+import { gameVersion, joinLinkIn, joinPageUrl, parseJoinLink, PROTOCOL, publicServer, serverIconUrl, type JoinTarget } from './joinLink';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -200,9 +200,38 @@ function discordLook(p: Presence): Presence {
   const look = decorate(p, { server: a.kind === 'server' ? a.server : undefined, status: game?.status ?? gameStatus, rules: statusRules.current(), hideServer });
   // "Dołącz do gry": others on Discord open the website's page, which joins with the launcher or offers the download
   // (only for a server on the internet, and not when the player hides their server from others)
-  const server = a.kind === 'server' && !hideServer && store.settings.discordJoinButton !== false ? publicServer(a.server) : undefined;
+  const shown = a.kind === 'server' && !hideServer ? publicServer(a.server) : undefined;
+  const server = shown && store.settings.discordJoinButton !== false ? shown : undefined;
   if (server) look.buttons = [{ label: t('Dołącz do gry'), url: joinPageUrl(store.settings.socialUrl, { server, version: gameVersion(a.version) }) }];
+  // a server without its own picture in the status rules (not a partner): its icon from the game's server list,
+  // and SlashClient's logo in the corner
+  if (shown && look.largeImageKey === p.largeImageKey && serverIconKnown(shown)) {
+    look.smallImageKey ??= p.largeImageKey;
+    look.smallImageText ??= p.largeImageText;
+    look.largeImageKey = serverIconUrl(store.settings.socialUrl, shown);
+    look.largeImageText = shown;
+  }
   return look;
+}
+/** Servers whose icon the SlashClient server has (true) or not (false), asked once a launcher run (or an hour). */
+const serverIcons = new Map<string, { has: boolean; at: number }>();
+const askingIcons = new Set<string>();
+/** Whether the status may show a server's icon now; the first time it asks, and the status follows when it knows. */
+function serverIconKnown(server: string): boolean {
+  const hit = serverIcons.get(server);
+  if (hit && Date.now() - hit.at < 3_600_000) return hit.has;
+  if (!askingIcons.has(server)) {
+    askingIcons.add(server);
+    // an older server without icons answers 404 too, and the logo stays
+    void fetch(serverIconUrl(store.settings.socialUrl, server), { method: 'HEAD', signal: AbortSignal.timeout(10_000) })
+      .then((res) => res.ok && res.headers.get('content-type') === 'image/png', () => false)
+      .then((has) => {
+        serverIcons.set(server, { has, at: Date.now() });
+        askingIcons.delete(server);
+        if (has) discordStatusThrottle.run(() => currentPresence && showPresence(currentPresence));
+      });
+  }
+  return hit?.has ?? false;
 }
 function onGameStatus(status: GameStatus | undefined, gameId?: string) {
   void statusRules.refresh();

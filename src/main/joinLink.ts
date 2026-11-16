@@ -36,6 +36,9 @@ export function joinPageUrl(site: string, target: JoinTarget): string {
   return `${site.replace(/\/+$/, '')}/dolacz?${q}`;
 }
 
+/** The server's own icon, read by the SlashClient server (serverIcons.ts there; 404 when it has none). */
+export const serverIconUrl = (site: string, server: string): string => `${site.replace(/\/+$/, '')}/v1/public/server-icon/${encodeURIComponent(server)}.png`;
+
 /** The join a `slashclient://join?…` link asks for (from the command line on Windows and Linux, `open-url` on macOS). */
 export function parseJoinLink(link: string | undefined): JoinTarget | undefined {
   if (!link?.toLowerCase().startsWith(`${PROTOCOL}://`)) return undefined;
