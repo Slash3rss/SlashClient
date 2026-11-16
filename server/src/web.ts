@@ -19,7 +19,9 @@ const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html
   '/support/thanks': 'wsparcie.html', '/support/cancelled': 'wsparcie.html',
   '/wsparcie/regulamin': 'wsparcie-regulamin.html', '/support/terms': 'wsparcie-regulamin.html',
   // the phone app (installed from the browser), its own pages under /app/
-  '/app': 'app/index.html', '/app/': 'app/index.html' };
+  '/app': 'app/index.html', '/app/': 'app/index.html',
+  // "Dołącz do gry" under a player's Discord status (the launcher's joinLink.ts): opens the launcher, or offers it
+  '/dolacz': 'dolacz.html', '/join': 'dolacz.html' };
 
 /**
  * Cloudflare keeps .css and .js in browsers for hours whatever we answer, so the site's own

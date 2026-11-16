@@ -12,3 +12,5 @@
 .invite-server i { color: var(--green); }
 .invite-meta { margin-top: 10px; }
 @media (max-width: 560px) { .invite-code { font-size: 18px; } }
+/* "Dołącz do gry" (/dolacz, dolacz.js) */
+.join-actions { gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
