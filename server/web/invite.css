@@ -14,3 +14,7 @@
 @media (max-width: 560px) { .invite-code { font-size: 18px; } }
 /* "Dołącz do gry" (/dolacz, dolacz.js) */
 .join-actions { gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.join-title { gap: 16px; align-items: center; flex-wrap: nowrap; }
+.join-title h1 { margin: 0; overflow-wrap: anywhere; }
+.join-icon { width: 64px; height: 64px; flex-shrink: 0; border-radius: 12px; image-rendering: pixelated; }
+div.join-icon { display: grid; place-items: center; font-size: 26px; }

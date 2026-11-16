@@ -64,6 +64,7 @@ import { createSuggestions } from './suggestions.ts';
 import { popularRoutes } from './friendsPopular.ts';
 import { fishAtlasRoutes } from './fishAtlas.ts';
 import { OFFLINE_NAME, offlineSkinRoutes } from './offlineSkins.ts';
+import { createServerIcons, iconAddress, type IconDeps } from './serverIcons.ts';
 import { createPush } from './push.ts';
 import { behindProxies, proxyList } from './proxies.ts';
 
@@ -86,6 +87,8 @@ export interface Config {
   /** Sign-in with just a name, for local testing only. */
   allowDevLogin: boolean;
   fetchImpl?: typeof fetch;
+  /** How Minecraft servers are reached for their icons (serverIcons.ts); tests give their own. */
+  serverIcons?: IconDeps;
   /** Handles that are admins whatever the database says (ADMIN_HANDLES), so the first admin can get in. */
   adminHandles?: string[];
   /** The website's files (web/); without it only the API is served. */
@@ -477,6 +480,8 @@ export function createApp(cfg: Config) {
    */
   const offlinePlaying = new Map<string, number>();
   const limitGame = limiter('security.gamePerMinute');
+  const serverIcons = createServerIcons(cfg.serverIcons);
+  const limitServerIcons = limiter('security.serverIconsPerMinute');
   const limitEmotes = limiter('security.emotesPerMinute');
   /** Sprays: one every 3 seconds, 20 a minute, per account (the admin panel's settings). */
   const sprayLimit = new SprayLimit(() => settings.num('security.sprayGapSeconds') * 1000, () => settings.num('security.spraysPerMinute'));
@@ -2242,6 +2247,37 @@ export function createApp(cfg: Config) {
       }
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600', 'X-Skin-Model': found.slim ? 'slim' : 'default', 'X-Content-Type-Options': 'nosniff' });
       res.end(found.data);
+      return;
+    }
+
+    // a Minecraft server's own icon (serverIcons.ts), for the /dolacz page and the Discord status of players there
+    const serverIcon = /^\/v1\/public\/server-icon\/([^/]{1,260})\.png$/.exec(url.pathname);
+    if ((req.method === 'GET' || req.method === 'HEAD') && serverIcon) {
+      let address: string | undefined;
+      try {
+        address = iconAddress(decodeURIComponent(serverIcon[1]));
+      } catch {
+        address = undefined;
+      }
+      // one already read costs nothing; a new one is a connection from here, so those are limited per address
+      const kept = address ? serverIcons.known(address) : undefined;
+      if (address && !kept) {
+        try {
+          limitServerIcons(clientIp(req));
+        } catch {
+          res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
+          res.end(JSON.stringify({ error: 'rate_limited' }));
+          return;
+        }
+      }
+      const png = kept ? kept.png : address ? await serverIcons.icon(address, { hours: settings.num('serverIcons.hours') }) : null;
+      if (!png) {
+        res.writeHead(404, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': `public, max-age=${settings.num('serverIcons.hours') * 3600}`, 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*' });
+      res.end(req.method === 'HEAD' ? undefined : png);
       return;
     }
 

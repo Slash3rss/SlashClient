@@ -22,6 +22,14 @@ function copyButton(text) {
   return b;
 }
 
+/** The server's own icon (as in the game's server list), read by our server; a block when it has none. */
+function serverIcon() {
+  const fallback = () => el('div', { class: 'avatar big join-icon' }, icon('fa-solid fa-cube'));
+  const img = el('img', { class: 'join-icon', alt: '', src: `/v1/public/server-icon/${encodeURIComponent(server)}.png` });
+  img.addEventListener('error', () => img.replaceWith(fallback()));
+  return img;
+}
+
 function main() {
   if (!ADDRESS.test(server)) {
     document.title = L('Nieprawidłowy link – SlashClient', 'Invalid link – SlashClient');
@@ -36,7 +44,7 @@ function main() {
   $('#invite').replaceChildren(
     el('div', { class: 'glass card' },
       el('p', { class: 'invite-kicker', textContent: L('Zaproszenie do gry', 'You are invited to play') }),
-      el('h1', { textContent: server }),
+      el('div', { class: 'row join-title' }, serverIcon(), el('h1', { textContent: server })),
       el('div', { class: 'invite-server' }, icon('fa-solid fa-cube'), el('span', {}, L('Serwer Minecraft', 'Minecraft server'),
         ...(goodVersion ? [' · ', L('wersja ', 'version '), el('b', { textContent: goodVersion })] : []))),
       el('div', { class: 'row join-actions' }, open, copyButton(server)),
