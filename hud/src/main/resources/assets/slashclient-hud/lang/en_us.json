@@ -1693,7 +1693,7 @@
 	"slashclient-hud.dungeonParty.solo": "Solo",
 	"slashclient-hud.dungeonParty.far": "far",
 	"slashclient-hud.dungeonParty.invited": "invited",
-	"slashclient-hud.dungeonParty.hint": "Party: type /dng druzyna info",
+	"slashclient-hud.dungeonParty.hint": "Party: type",
 	"slashclient-hud.dungeonParty.hideSolo": "Hide when playing solo",
 	"slashclient-hud.dungeonParty.health": "Show health",
 	"slashclient-hud.dungeonParty.distance": "Show distance",

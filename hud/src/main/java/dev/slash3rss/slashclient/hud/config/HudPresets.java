@@ -291,8 +291,8 @@ public final class HudPresets {
 				m.put("skyxp", at(0.5f, 0, 0, 26));
 				m.put("effects", at(1, 0, -2, 2));
 				m.put("skyplan", at(1, 0, -2, 68));
-				// the dungeon party under the plan (shown only with someone in the party)
-				m.put("dungeonparty", at(1, 0, -2, 142));
+				// the dungeon party under the wardrobe, left of the scoreboard (shown only with someone in the party)
+				m.put("dungeonparty", at(1, 0, -104, 172));
 				m.put("skywardrobe", at(1, 0, -104, 116));
 				m.put("skycase", at(1, 0, -2, 228));
 				m.put("skyfish", at(1, 0, -135, 228));

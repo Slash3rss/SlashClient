@@ -252,6 +252,9 @@ public final class DungeonParty {
 			return Component.translatable(together() ? "slashclient-hud.dungeonParty.title" : "slashclient-hud.dungeonParty.solo");
 		}
 
+		/** The command on a line of its own under the words, so the module stays narrow. */
+		private static final Component COMMAND = Component.literal("/dng druzyna info");
+
 		private static Component hintText() {
 			return Component.translatable("slashclient-hud.dungeonParty.hint");
 		}
@@ -263,7 +266,7 @@ public final class DungeonParty {
 		private static int width(Minecraft mc, List<Row> rows, boolean hint) {
 			int w = mc.font.width(title());
 			for (Row r : rows) w = Math.max(w, FACE + 3 + mc.font.width(name(r)) + 8 + mc.font.width(state(mc, r)));
-			if (hint) w = Math.max(w, mc.font.width(hintText()));
+			if (hint) w = Math.max(w, Math.max(mc.font.width(hintText()), mc.font.width(COMMAND)));
 			return Math.max(90, w) + Modules.PAD * 2;
 		}
 
@@ -272,7 +275,7 @@ public final class DungeonParty {
 		}
 
 		private static int height(int rows, boolean hint) {
-			return ROW + rows * ROW + (hint ? ROW : 0) + Modules.PAD * 2 - 1;
+			return ROW + rows * ROW + (hint ? ROW * 2 : 0) + Modules.PAD * 2 - 1;
 		}
 
 		private static String name(Row r) {
@@ -295,7 +298,9 @@ public final class DungeonParty {
 				Modules.text(g, mc, state, left + w - mc.font.width(state), row, r.invite() ? 0xFF9CA3AF : stateColor(r));
 				row += ROW;
 			}
-			if (hint) Modules.text(g, mc, hintText(), left, row, 0xFF9CA3AF);
+			if (!hint) return;
+			Modules.text(g, mc, hintText(), left, row, 0xFF9CA3AF);
+			Modules.text(g, mc, COMMAND, left, row + ROW, 0xFFE5E7EB);
 		}
 
 		/** A face from the skin with its hat layer: of the player near, else from the tab list, else a grey square. */
