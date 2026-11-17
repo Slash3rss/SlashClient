@@ -2282,6 +2282,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
     hud.jvmArgs.push(`-Dslashclient.game=${profile.id}`);
     // the mod names SlashClient with its version: on F3 and to the servers (the client's brand)
     hud.jvmArgs.push(`-Dslashclient.version=${app.getVersion()}`);
+    // the launcher makes each new clip a WebM and trashes the AVI: the game's chat names and opens the WebM
+    if (autoWebm()) hud.jvmArgs.push('-Dslashclient.clipsWebm=true');
     // an offline account's skin for SlashClient players: the player sees it on themselves too, in the
     // menu as well, where no server has named it yet (OfflineSkins in the mod)
     if (account.type === 'offline') hud.jvmArgs.push(...offlineSkinArgs(offlineSkinOf(await offlineSkinList(), account.name)));

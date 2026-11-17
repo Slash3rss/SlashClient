@@ -389,8 +389,14 @@ public final class Clips {
 		return dir;
 	}
 
-	/** The clip's name, underlined; a click opens it in the system's player, as the game's screenshot links do. */
+	/**
+	 * The clip's name, underlined; a click opens it in the system's player, as the game's screenshot links do.
+	 * When the launcher makes new clips WebM (and trashes the AVI), the name and the link are the WebM's.
+	 */
 	static Component link(Path file) {
+		String name = file.getFileName().toString();
+		if (Boolean.getBoolean("slashclient.clipsWebm") && name.endsWith(".avi"))
+			file = file.resolveSibling(name.substring(0, name.length() - 4) + ".webm");
 		//#if MC >= 1.21.5
 		var click = new net.minecraft.network.chat.ClickEvent.OpenFile(file.toAbsolutePath());
 		//#else
