@@ -1,6 +1,7 @@
-// A shared screenshot or clip (/media/<id>). A picture is shown as it is; a clip is the game's
-// Motion-JPEG AVI, which browsers cannot play in <video>, so its frames (each a whole JPEG) are
-// read out of the file here and drawn one after another on a canvas.
+// A shared screenshot or clip (/media/<id>). A picture is shown as it is; a WebM clip (newer
+// launchers) plays in the browser's own player; an older clip is the game's Motion-JPEG AVI, which
+// browsers cannot play in <video>, so its frames (each a whole JPEG) are read out of the file here
+// and drawn one after another on a canvas.
 import { $, L, ShownError, api, confirmModal, copyText, el, errorText, fmtDate, icon, localizePage, toast, token } from './common.js';
 
 localizePage();
@@ -118,6 +119,16 @@ async function clipPlayer(m, box) {
   setPlaying(true);
 }
 
+/** A WebM clip: the browser plays it, with the first frame shown until it starts. */
+function videoPlayer(m, box) {
+  const video = el('video', { class: 'media-video', controls: true, playsInline: true, loop: true, preload: 'metadata', width: m.width, height: m.height,
+    src: `/v1/media/${encodeURIComponent(id)}/file`, ...(m.poster ? { poster: `/v1/media/${encodeURIComponent(id)}/poster` } : {}) });
+  video.addEventListener('error', () => {
+    box.replaceChildren(el('div', { class: 'media-loading muted' }, L('Nie udało się odtworzyć klipu.', 'Could not play the clip.')));
+  });
+  box.replaceChildren(el('div', { class: 'media-stage' }, video));
+}
+
 async function load() {
   try {
     const { media: m, mine } = await api('GET', `/v1/media/${encodeURIComponent(id)}`);
@@ -137,7 +148,8 @@ async function load() {
     $('#media-delete').classList.toggle('hidden', !mine);
     const box = $('#media-view');
     box.classList.remove('hidden');
-    if (clip) await clipPlayer(m, box);
+    if (clip && m.type === 'video/webm') videoPlayer(m, box);
+    else if (clip) await clipPlayer(m, box);
     else box.replaceChildren(el('a', { href: `/v1/media/${encodeURIComponent(id)}/file`, target: '_blank', rel: 'noopener' },
       el('img', { class: 'media-image', src: `/v1/media/${encodeURIComponent(id)}/file`, alt: m.title || L('Zrzut ekranu', 'Screenshot'), width: m.width, height: m.height })));
   } catch (err) {

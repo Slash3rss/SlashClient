@@ -8,9 +8,10 @@ import { withDefaults } from './settings.ts';
 
 /**
  * Screenshots and clips shared by link, like logs: a signed-in player uploads a picture (PNG or
- * JPEG) or a clip (the game's Motion-JPEG AVI) from the launcher's gallery and gets /media/<id>.
- * Anyone with the link sees it without signing in; the page carries an OpenGraph preview (the
- * picture, or a clip's first frame) for Discord and the like. Files live outside the database, on
+ * JPEG) or a clip (the game's Motion-JPEG AVI, or the WebM newer launchers turn it into) from the
+ * launcher's gallery and gets /media/<id>. Anyone with the link sees it without signing in; the page
+ * carries an OpenGraph preview (the picture, or a clip's first frame; a WebM clip also as a video
+ * Discord plays in the chat) for Discord and the like. Files live outside the database, on
  * the server's disk or in a bucket (storage.ts; the row's `store` says where), and go away after
  * `days`; the owner (or an admin) may take one down sooner.
  */
@@ -114,6 +115,154 @@ export function parseAvi(buf: Buffer): AviClip | undefined {
   return ok && clip.frames.length ? clip : undefined;
 }
 
+export interface WebmClip { width: number; height: number; codec: string; frames: number; durationMs: number }
+
+// the Matroska elements a WebM clip is read by (https://www.matroska.org/technical/elements.html)
+const EBML = 0x1a45dfa3, DOC_TYPE = 0x4282, SEGMENT = 0x18538067, INFO = 0x1549a966, TIMESTAMP_SCALE = 0x2ad7b1, DURATION = 0x4489;
+const TRACKS = 0x1654ae6b, TRACK_ENTRY = 0xae, TRACK_NUMBER = 0xd7, TRACK_TYPE = 0x83, CODEC_ID = 0x86, VIDEO = 0xe0, PIXEL_WIDTH = 0xb0, PIXEL_HEIGHT = 0xba;
+const CLUSTER = 0x1f43b675, CLUSTER_TIMESTAMP = 0xe7, SIMPLE_BLOCK = 0xa3, BLOCK_GROUP = 0xa0, BLOCK = 0xa1;
+/** What may sit in a Cluster; anything else ends a Cluster written without a size (a recording made live). */
+const CLUSTER_CHILDREN = new Set([CLUSTER_TIMESTAMP, SIMPLE_BLOCK, BLOCK_GROUP, 0xa7, 0xab, 0x5854, 0xec, 0xbf]);
+const VIDEO_CODECS = new Set(['V_VP9', 'V_VP8']);
+const AUDIO_CODECS = new Set(['A_OPUS', 'A_VORBIS']);
+/** Elements read at most: a 90 MB clip has a few tens of thousands of blocks; a file made of tiny elements stops here. */
+const MAX_ELEMENTS = 500_000;
+
+/**
+ * A WebM clip (the launcher turns the game's AVI into one so Discord plays it): one VP8 or VP9
+ * video track, maybe Opus or Vorbis sound, its size, length and the number of video frames.
+ * Only the bytes of the buffer are read; a file cut short keeps what came before the cut.
+ * Undefined when the data is not such a file.
+ */
+export function parseWebm(buf: Buffer): WebmClip | undefined {
+  let budget = MAX_ELEMENTS;
+  const vintLength = (b: number) => (b ? 8 - Math.floor(Math.log2(b)) : 9);
+  /** An element's header at `at`: its id (marker bits kept), where its data starts and ends (unknown size: `limit`). */
+  const element = (at: number, limit: number) => {
+    if (--budget < 0 || at >= limit) return undefined;
+    const idLen = vintLength(buf[at]);
+    if (idLen > 4 || at + idLen > limit) return undefined;
+    const id = buf.readUIntBE(at, idLen);
+    const sizeAt = at + idLen;
+    if (sizeAt >= limit) return undefined;
+    const sizeLen = vintLength(buf[sizeAt]);
+    if (sizeLen > 8 || sizeAt + sizeLen > limit) return undefined;
+    let size = buf[sizeAt] & (0xff >> sizeLen);
+    let allOnes = size === 0xff >> sizeLen;
+    for (let i = 1; i < sizeLen; i++) {
+      size = size * 256 + buf[sizeAt + i];
+      if (buf[sizeAt + i] !== 0xff) allOnes = false;
+    }
+    const data = sizeAt + sizeLen;
+    const unknown = allOnes;
+    return { id, data, end: unknown ? limit : Math.min(limit, data + size), unknown, cut: !unknown && data + size > limit };
+  };
+  const uint = (start: number, end: number) => (end - start >= 1 && end - start <= 6 ? buf.readUIntBE(start, end - start) : 0);
+  const float = (start: number, end: number) => (end - start === 4 ? buf.readFloatBE(start) : end - start === 8 ? buf.readDoubleBE(start) : 0);
+  /** The children of a master element, until its end; false when one of them cannot be read. */
+  const each = (start: number, end: number, fn: (el: NonNullable<ReturnType<typeof element>>) => boolean | void): boolean => {
+    for (let at = start; at < end;) {
+      const el = element(at, end);
+      if (!el || el.unknown || fn(el) === false) return false;
+      if (el.cut) return true;
+      at = el.end;
+    }
+    return true;
+  };
+
+  const head = element(0, buf.length);
+  if (!head || head.id !== EBML || head.unknown || head.cut) return undefined;
+  let docType = '';
+  each(head.data, head.end, (el) => {
+    if (el.id === DOC_TYPE) docType = buf.toString('latin1', el.data, el.end).replace(/\0+$/, '');
+  });
+  if (docType !== 'webm') return undefined;
+  const segment = element(head.end, buf.length);
+  if (!segment || segment.id !== SEGMENT) return undefined;
+
+  let scale = 1_000_000;
+  let duration = 0;
+  const tracks: { number: number; type: number; codec: string; width: number; height: number }[] = [];
+  const blocks = new Map<number, { count: number; last: number }>();
+  /** A block: its track number (a vint) and its time, relative to its cluster's. */
+  const block = (start: number, end: number, clusterTime: number) => {
+    if (start >= end) return;
+    const len = vintLength(buf[start]);
+    if (len > 8 || start + len + 2 > end) return;
+    let track = buf[start] & (0xff >> len);
+    for (let i = 1; i < len; i++) track = track * 256 + buf[start + i];
+    const b = blocks.get(track) ?? { count: 0, last: 0 };
+    b.count++;
+    b.last = Math.max(b.last, clusterTime + buf.readInt16BE(start + len));
+    blocks.set(track, b);
+  };
+  /** A cluster's blocks; answers where it ended (for one without a size, where something else starts). */
+  const cluster = (start: number, end: number): number => {
+    let time = 0;
+    let at = start;
+    while (at < end) {
+      const el = element(at, end);
+      if (!el || el.unknown || !CLUSTER_CHILDREN.has(el.id)) break;
+      if (el.id === CLUSTER_TIMESTAMP) time = uint(el.data, el.end);
+      else if (el.id === SIMPLE_BLOCK && !el.cut) block(el.data, el.end, time);
+      else if (el.id === BLOCK_GROUP) each(el.data, el.end, (g) => void (g.id === BLOCK && !g.cut && block(g.data, g.end, time)));
+      if (el.cut) return end;
+      at = el.end;
+    }
+    return at;
+  };
+
+  for (let at = segment.data; at < segment.end;) {
+    const el = element(at, segment.end);
+    if (!el) break;
+    if (el.id === CLUSTER) {
+      const stop = cluster(el.data, el.end);
+      at = el.unknown ? stop : el.end;
+      if (el.unknown && stop === el.data) break;
+    } else {
+      // only a Segment or a Cluster may be written without a size
+      if (el.unknown) return undefined;
+      if (el.id === INFO) {
+        each(el.data, el.end, (c) => {
+          if (c.id === TIMESTAMP_SCALE) scale = uint(c.data, c.end);
+          else if (c.id === DURATION) duration = float(c.data, c.end);
+        });
+      } else if (el.id === TRACKS) {
+        each(el.data, el.end, (t) => {
+          if (t.id !== TRACK_ENTRY) return;
+          const track = { number: 0, type: 0, codec: '', width: 0, height: 0 };
+          each(t.data, t.end, (c) => {
+            if (c.id === TRACK_NUMBER) track.number = uint(c.data, c.end);
+            else if (c.id === TRACK_TYPE) track.type = uint(c.data, c.end);
+            else if (c.id === CODEC_ID) track.codec = buf.toString('latin1', c.data, c.end).replace(/\0+$/, '');
+            else if (c.id === VIDEO) {
+              each(c.data, c.end, (v) => {
+                if (v.id === PIXEL_WIDTH) track.width = uint(v.data, v.end);
+                else if (v.id === PIXEL_HEIGHT) track.height = uint(v.data, v.end);
+              });
+            }
+          });
+          tracks.push(track);
+        });
+      }
+      at = el.end;
+    }
+    if (el.cut) break;
+  }
+  if (budget < 0) return undefined;
+
+  // one VP8/VP9 picture, maybe sound a browser plays, nothing else
+  const video = tracks.filter((t) => t.type === 1);
+  if (video.length !== 1 || !VIDEO_CODECS.has(video[0].codec) || !video[0].number) return undefined;
+  if (tracks.some((t) => t.type !== 1 && !(t.type === 2 && AUDIO_CODECS.has(t.codec)))) return undefined;
+  const frames = blocks.get(video[0].number);
+  if (!frames?.count || !(scale > 0)) return undefined;
+  // without a Duration (a recording made live), the time of the last frame
+  const ms = Math.round(((Number.isFinite(duration) && duration > 0 ? duration : frames.last) * scale) / 1_000_000);
+  if (!(ms > 0) || ms > 86_400_000) return undefined;
+  return { width: video[0].width, height: video[0].height, codec: video[0].codec, frames: frames.count, durationMs: ms };
+}
+
 /** What an upload is, or undefined when it is none of the kinds taken. */
 export function inspectMedia(buf: Buffer): MediaInfo | undefined {
   const png = pngSize(buf);
@@ -128,6 +277,9 @@ export function inspectMedia(buf: Buffer): MediaInfo | undefined {
     const us = avi.usPerFrame > 0 && avi.usPerFrame < 10_000_000 ? avi.usPerFrame : 33_333;
     return { kind: 'clip', type: 'video/x-msvideo', ext: 'avi', ...size, frames: avi.frames.length, durationMs: Math.round((avi.frames.length * us) / 1000), poster: Buffer.from(first) };
   }
+  // the server does not decode VP8/VP9: the launcher sends the first frame afterwards (PUT /v1/media/<id>/poster)
+  const webm = parseWebm(buf);
+  if (webm) return { kind: 'clip', type: 'video/webm', ext: 'webm', width: webm.width, height: webm.height, frames: webm.frames, durationMs: webm.durationMs };
   return undefined;
 }
 
@@ -149,9 +301,15 @@ export interface SharedMedia {
   expiresAt: number;
   /** The storage backend holding the files (storage.ts). */
   store: string;
-  /** Bytes of a clip's first frame, kept next to it. */
+  /** Bytes of a clip's first frame, kept next to it (a WebM clip's comes from the launcher after the upload). */
   posterSize: number;
 }
+
+/** The first frame sent for a WebM clip, at most this big. */
+const POSTER_BYTES = 1024 * 1024;
+/** What a preview shows for a clip whose first frame never came: the site's own picture (web/img). */
+const FALLBACK_POSTER = { path: '/img/og.jpg', width: 1200, height: 630 };
+const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'video/x-msvideo': 'avi', 'video/webm': 'webm' };
 
 class MediaStore {
   private readonly sql: DatabaseSync;
@@ -213,6 +371,9 @@ CREATE INDEX IF NOT EXISTS shared_media_expires ON shared_media(expires_at);`);
   held(store: string) {
     return this.sql.prepare('SELECT id, kind, size + poster_size AS bytes FROM shared_media WHERE store = ?').all(store) as { id: string; kind: MediaKind; bytes: number }[];
   }
+  setPoster(id: string, size: number) {
+    this.sql.prepare('UPDATE shared_media SET poster_size = ? WHERE id = ?').run(size, id);
+  }
   relocate(id: string, from: string, to: string): boolean {
     return Number(this.sql.prepare('UPDATE shared_media SET store = ? WHERE id = ? AND store = ?').run(to, id, from).changes) > 0;
   }
@@ -270,7 +431,7 @@ export function mediaRoutes(ctx: MediaContext) {
     relocate: (id, from, to) => store.relocate(id, from, to),
   });
   /** What the page and the launcher see: the owner's id stays here, their handle is shown; where the files are is not theirs to know. */
-  const view = ({ owner, store: _store, posterSize: _poster, ...m }: SharedMedia) => ({ ...m, ownerHandle: store.handleOf(owner), url: `/media/${m.id}` });
+  const view = ({ owner, store: _store, posterSize, ...m }: SharedMedia) => ({ ...m, ownerHandle: store.handleOf(owner), url: `/media/${m.id}`, poster: hasPoster({ ...m, posterSize }) });
   const optionalUser = (req: http.IncomingMessage) => {
     if (!req.headers.authorization) return '';
     try {
@@ -301,6 +462,9 @@ export function mediaRoutes(ctx: MediaContext) {
     const f = Math.max(1, ctx.limitFactor?.(userId) ?? 1);
     return f === 1 ? limits : { ...limits, maxActive: Math.floor(limits.maxActive * f), quotaBytes: Math.floor(limits.quotaBytes * f) };
   };
+
+  /** Whether a link has a first frame to show: a picture is its own, an AVI's was taken from it (rows from before the size was kept say 0). */
+  const hasPoster = (m: Pick<SharedMedia, 'kind' | 'type' | 'posterSize'>) => m.kind === 'image' || m.type !== 'video/webm' || m.posterSize > 0;
 
   const removeFiles = (m: { id: string; kind: MediaKind; store: string }) => storage.remove(m.store, keysOf(m.id, m.kind));
 
@@ -347,6 +511,27 @@ export function mediaRoutes(ctx: MediaContext) {
       const me = optionalUser(req);
       return { media: view(m), mine: !!me && (m.owner === me || ctx.isAdmin(me)) };
     }],
+    // a WebM clip's first frame, sent by the launcher right after the upload (the server cannot decode VP8/VP9); once
+    ['PUT', /^\/v1\/media\/(\w+)\/poster$/, async (req, [id]) => {
+      const me = ctx.authed(req);
+      ctx.limitUploads(`media-poster:${me}`);
+      const m = MEDIA_ID.test(id) ? store.get(id) : undefined;
+      const refuse: (status: number, code: string) => never = (status, code) => {
+        req.resume();
+        return ctx.fail(status, code);
+      };
+      if (!m || m.owner !== me) refuse(404, 'not_found');
+      if (m.kind !== 'clip') refuse(400, 'not_clip');
+      if (hasPoster(m)) refuse(409, 'poster_exists');
+      const data = await readUpload(req, POSTER_BYTES);
+      const size = jpegSize(data);
+      if (!size || !size.width || !size.height || size.width > MAX_SIDE || size.height > MAX_SIDE) ctx.fail(400, 'bad_media');
+      const backend = storage.backend(m.store);
+      if (!backend) ctx.fail(503, 'storage_unavailable');
+      await backend.put(`media/${m.id}.poster.jpg`, data, 'image/jpeg');
+      store.setPoster(m.id, data.length);
+      return { media: view(store.get(m.id)!) };
+    }],
     ['DELETE', /^\/v1\/media\/(\w+)$/, async (req, [id]) => {
       const me = ctx.authed(req);
       const m = MEDIA_ID.test(id) ? store.get(id) : undefined;
@@ -367,7 +552,17 @@ export function mediaRoutes(ctx: MediaContext) {
     const kindName = m.kind === 'clip' ? 'Klip' : 'Zrzut ekranu';
     const title = m.title || `${kindName}${who ? ` od ${who}` : ''}`;
     const desc = m.kind === 'clip' ? `Klip z Minecrafta (${clock(m.durationMs)}) udostępniony przez SlashClient.` : 'Zrzut ekranu z Minecrafta udostępniony przez SlashClient.';
-    const image = `${base}/v1/media/${m.id}/${m.kind === 'clip' ? 'poster' : 'file'}`;
+    const poster = hasPoster(m);
+    const image = poster ? `${base}/v1/media/${m.id}/${m.kind === 'clip' ? 'poster' : 'file'}` : `${base}${FALLBACK_POSTER.path}`;
+    const fileUrl = escapeHtml(`${base}/v1/media/${m.id}/file`);
+    // a WebM clip is a video Discord and the like play in the chat; an AVI is not, it stays a picture
+    const video = m.type === 'video/webm' ? [
+      `<meta property="og:video" content="${fileUrl}">`,
+      `<meta property="og:video:secure_url" content="${fileUrl}">`,
+      '<meta property="og:video:type" content="video/webm">',
+      `<meta property="og:video:width" content="${m.width}">`,
+      `<meta property="og:video:height" content="${m.height}">`,
+    ] : [];
     return [
       `<title>${escapeHtml(title)} – SlashClient</title>`,
       `<meta name="description" content="${escapeHtml(desc)}">`,
@@ -378,8 +573,9 @@ export function mediaRoutes(ctx: MediaContext) {
       `<meta property="og:url" content="${escapeHtml(`${base}/media/${m.id}`)}">`,
       `<meta property="og:type" content="${m.kind === 'clip' ? 'video.other' : 'website'}">`,
       `<meta property="og:image" content="${escapeHtml(image)}">`,
-      `<meta property="og:image:width" content="${m.width}">`,
-      `<meta property="og:image:height" content="${m.height}">`,
+      `<meta property="og:image:width" content="${poster ? m.width : FALLBACK_POSTER.width}">`,
+      `<meta property="og:image:height" content="${poster ? m.height : FALLBACK_POSTER.height}">`,
+      ...video,
       '<meta name="twitter:card" content="summary_large_image">',
       `<meta name="twitter:image" content="${escapeHtml(image)}">`,
     ].join('\n  ');
@@ -426,7 +622,7 @@ export function mediaRoutes(ctx: MediaContext) {
     if (!m) return answer(404, 'not_found');
     // a picture is its own poster
     const key = poster && m.kind === 'clip' ? `media/${m.id}.poster.jpg` : `media/${m.id}`;
-    const ext = m.kind === 'clip' ? 'avi' : m.type === 'image/png' ? 'png' : 'jpg';
+    const ext = EXTENSIONS[m.type] ?? 'bin';
     // from wherever the row says, through this server (never a link to a bucket); a clip can be read in parts
     const sent = await sendObject(req, res, storage.backend(m.store), key, {
       'Content-Type': poster && m.kind === 'clip' ? 'image/jpeg' : m.type,
@@ -438,7 +634,14 @@ export function mediaRoutes(ctx: MediaContext) {
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'Access-Control-Allow-Origin': '*',
     }, { ranges: true });
-    return sent || answer(404, 'not_found');
+    if (sent) return true;
+    // a clip whose first frame has not come (yet): the site's picture, not a broken image
+    if (poster && m.kind === 'clip') {
+      res.writeHead(302, { Location: FALLBACK_POSTER.path, 'Cache-Control': 'no-cache' });
+      res.end();
+      return true;
+    }
+    return answer(404, 'not_found');
   }
 
   /** Drops links past their time, with their files, and files left by deleted accounts (their rows went with them). */

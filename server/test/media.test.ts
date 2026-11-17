@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../src/app.ts';
-import { inspectMedia, jpegSize, parseAvi, pngSize } from '../src/media.ts';
+import { inspectMedia, jpegSize, parseAvi, parseWebm, pngSize } from '../src/media.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-media-'));
 const mediaDir = path.join(dir, 'media');
@@ -61,6 +61,48 @@ function avi(frames: Buffer[], width: number, height: number, fps = 30, handler 
   return Buffer.concat([head, body]);
 }
 
+/** An EBML element: its id (with the marker bits), an 8-byte size (or unknown) and the data. */
+function ebml(id: number, data: Buffer | Buffer[], unknownSize = false): Buffer {
+  const body = Buffer.isBuffer(data) ? data : Buffer.concat(data);
+  const idBytes = Buffer.alloc(4);
+  idBytes.writeUInt32BE(id);
+  const head = idBytes.subarray(idBytes.findIndex((b) => b !== 0));
+  const size = Buffer.alloc(8);
+  if (unknownSize) size.set([0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+  else {
+    size.writeUInt32BE(body.length, 4);
+    size[0] = 0x01;
+  }
+  return Buffer.concat([head, size, body]);
+}
+const ebmlUint = (id: number, v: number) => {
+  const b = Buffer.alloc(4);
+  b.writeUInt32BE(v);
+  return ebml(id, b);
+};
+const ebmlFloat = (id: number, v: number) => {
+  const b = Buffer.alloc(8);
+  b.writeDoubleBE(v);
+  return ebml(id, b);
+};
+/** A block of track `track` at `time` (in the cluster's timescale), with a few bytes of "frame". */
+const ebmlBlock = (id: number, track: number, time: number) => ebml(id, Buffer.from([0x80 | track, (time >> 8) & 255, time & 255, 0x80, 1, 2, 3]));
+
+/** A small WebM like ffmpeg writes: EBML header, Segment ( Info, Tracks, Cluster ( SimpleBlock… ) ). */
+function webm(opts: { docType?: string; codec?: string; width?: number; height?: number; durationMs?: number | null; blocks?: number; audio?: string; unknownCluster?: boolean } = {}): Buffer {
+  const { docType = 'webm', codec = 'V_VP9', width = 320, height = 180, durationMs = 1500, blocks = 2, audio, unknownCluster = false } = opts;
+  const track = (number: number, type: number, codecId: string, video?: Buffer) =>
+    ebml(0xae, [ebmlUint(0xd7, number), ebmlUint(0x83, type), ebml(0x86, Buffer.from(codecId, 'latin1')), ...(video ? [video] : [])]);
+  const tracks = [track(1, 1, codec, ebml(0xe0, [ebmlUint(0xb0, width), ebmlUint(0xba, height)]))];
+  if (audio) tracks.push(track(2, 2, audio));
+  const info = [ebmlUint(0x2ad7b1, 1_000_000), ...(durationMs === null ? [] : [ebmlFloat(0x4489, durationMs)])];
+  const cluster = ebml(0x1f43b675, [ebmlUint(0xe7, 0), ...Array.from({ length: blocks }, (_, i) => ebmlBlock(0xa3, 1, i * 40)), ...(audio ? [ebmlBlock(0xa3, 2, 0)] : [])], unknownCluster);
+  return Buffer.concat([
+    ebml(0x1a45dfa3, [ebmlUint(0x4286, 1), ebml(0x4282, Buffer.from(docType, 'latin1'))]),
+    ebml(0x18538067, [ebml(0x1549a966, info), ebml(0x1654ae6b, tracks), cluster]),
+  ]);
+}
+
 async function call(method: string, url: string, token?: string, raw?: Buffer, type = 'application/octet-stream') {
   const res = await fetch(base + url, {
     method,
@@ -112,6 +154,31 @@ describe('media files', () => {
     // another codec, or something else entirely, is refused
     assert.equal(inspectMedia(avi([jpeg(320, 180)], 320, 180, 30, 'H264')), undefined);
     assert.equal(inspectMedia(Buffer.from('<html><script>alert(1)</script>')), undefined);
+  });
+
+  it('reads WebM clips and refuses what is not one', () => {
+    const info = inspectMedia(webm());
+    assert.deepEqual(info, { kind: 'clip', type: 'video/webm', ext: 'webm', width: 320, height: 180, frames: 2, durationMs: 1500 });
+    assert.equal(parseWebm(webm({ codec: 'V_VP8', audio: 'A_OPUS' }))?.frames, 2);
+    // a recording made live: clusters without a size, no Duration (the last frame's time)
+    assert.deepEqual(parseWebm(webm({ durationMs: null, blocks: 3, unknownCluster: true })), { width: 320, height: 180, codec: 'V_VP9', frames: 3, durationMs: 80 });
+    // a file cut short keeps the frames before the cut
+    assert.equal(parseWebm(webm({ blocks: 4 }).subarray(0, -10))?.frames, 3);
+    // another codec, other sound, another container, no frames or something broken are refused
+    assert.equal(inspectMedia(webm({ codec: 'V_MPEG4/ISO/AVC' })), undefined);
+    assert.equal(inspectMedia(webm({ audio: 'A_AAC' })), undefined);
+    assert.equal(inspectMedia(webm({ docType: 'matroska' })), undefined);
+    assert.equal(inspectMedia(webm({ blocks: 0 })), undefined);
+    assert.equal(inspectMedia(webm({ durationMs: null, blocks: 1 })), undefined);
+    assert.equal(inspectMedia(webm().subarray(0, 30)), undefined);
+    assert.equal(inspectMedia(Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])), undefined);
+    assert.equal(inspectMedia(Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x00])), undefined);
+    // damaged bytes never throw
+    for (let n = 0; n < 300; n++) {
+      const junk = Buffer.from(webm());
+      for (let i = 0; i < 6; i++) junk[Math.floor(Math.random() * junk.length)] = Math.floor(Math.random() * 256);
+      inspectMedia(junk);
+    }
   });
 });
 
@@ -193,6 +260,66 @@ describe('sharing screenshots and clips', () => {
     const missing = await fetch(`${base}/media/AAAAAAAAAA`);
     assert.equal(missing.status, 404);
     assert.match(await missing.text(), /Nie znaleziono/);
+  });
+
+  it('uploads a WebM clip, takes its first frame from the launcher and plays it in previews', async () => {
+    const owner = await login('MediaWebm');
+    const other = await login('MediaWebmOther');
+    const up = await call('POST', '/v1/media', owner.token, webm({ width: 640, height: 360 }), 'video/webm');
+    assert.equal(up.status, 200);
+    const m = up.body.media;
+    assert.equal(m.kind, 'clip');
+    assert.equal(m.type, 'video/webm');
+    assert.equal(m.durationMs, 1500);
+    assert.equal(m.poster, false);
+
+    const file = await call('GET', `/v1/media/${m.id}/file`);
+    assert.equal(file.headers.get('content-type'), 'video/webm');
+    assert.match(file.headers.get('content-disposition') ?? '', new RegExp(`slashclient-${m.id}\\.webm`));
+    assert.deepEqual(file.buf, webm({ width: 640, height: 360 }));
+    const part = await fetch(`${base}/v1/media/${m.id}/file`, { headers: { Range: 'bytes=0-3' } });
+    assert.equal(part.status, 206);
+    assert.deepEqual(Buffer.from(await part.arrayBuffer()), Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+
+    // before the first frame comes: the site's picture
+    const noPoster = await fetch(`${base}/v1/media/${m.id}/poster`, { redirect: 'manual' });
+    assert.equal(noPoster.status, 302);
+    assert.equal(noPoster.headers.get('location'), '/img/og.jpg');
+    let html = await (await fetch(`${base}/media/${m.id}`)).text();
+    assert.match(html, /<meta property="og:image" content="https:\/\/client.example\/img\/og.jpg">/);
+    assert.match(html, new RegExp(`<meta property="og:video" content="https://client.example/v1/media/${m.id}/file">`));
+    assert.match(html, new RegExp(`<meta property="og:video:secure_url" content="https://client.example/v1/media/${m.id}/file">`));
+    assert.match(html, /og:video:type" content="video\/webm"/);
+    assert.match(html, /og:video:width" content="640"/);
+    assert.match(html, /og:video:height" content="360"/);
+
+    // only the owner sends it, only a JPEG, only once
+    const frame = jpeg(640, 360);
+    assert.equal((await call('PUT', `/v1/media/${m.id}/poster`, undefined, frame, 'image/jpeg')).status, 401);
+    assert.equal((await call('PUT', `/v1/media/${m.id}/poster`, other.token, frame, 'image/jpeg')).status, 404);
+    assert.equal((await call('PUT', `/v1/media/${m.id}/poster`, owner.token, png(4, 4), 'image/jpeg')).body.error, 'bad_media');
+    assert.equal((await call('PUT', `/v1/media/${m.id}/poster`, owner.token, Buffer.concat([frame, Buffer.alloc(1024 * 1024)]), 'image/jpeg')).status, 413);
+    const put = await call('PUT', `/v1/media/${m.id}/poster`, owner.token, frame, 'image/jpeg');
+    assert.equal(put.status, 200);
+    assert.equal(put.body.media.poster, true);
+    assert.equal((await call('PUT', `/v1/media/${m.id}/poster`, owner.token, frame, 'image/jpeg')).body.error, 'poster_exists');
+    const poster = await call('GET', `/v1/media/${m.id}/poster`);
+    assert.equal(poster.headers.get('content-type'), 'image/jpeg');
+    assert.deepEqual(poster.buf, frame);
+    html = await (await fetch(`${base}/media/${m.id}`)).text();
+    assert.match(html, new RegExp(`<meta property="og:image" content="https://client.example/v1/media/${m.id}/poster">`));
+
+    // a picture or an AVI already has one
+    const pic = await call('POST', '/v1/media', owner.token, png(4, 4), 'image/png');
+    assert.equal((await call('PUT', `/v1/media/${pic.body.media.id}/poster`, owner.token, frame, 'image/jpeg')).body.error, 'not_clip');
+    const aviUp = await call('POST', '/v1/media', owner.token, avi([jpeg(16, 16)], 16, 16), 'video/x-msvideo');
+    assert.equal(aviUp.body.media.poster, true);
+    assert.equal((await call('PUT', `/v1/media/${aviUp.body.media.id}/poster`, owner.token, frame, 'image/jpeg')).body.error, 'poster_exists');
+    assert.ok(!(await (await fetch(`${base}/media/${aviUp.body.media.id}`)).text()).includes('og:video'));
+
+    // deleting takes the frame too
+    for (const id of [m.id, pic.body.media.id, aviUp.body.media.id]) assert.equal((await call('DELETE', `/v1/media/${id}`, owner.token)).status, 200);
+    assert.ok(!readdirSync(mediaDir).some((f) => f.startsWith(m.id)));
   });
 
   it('escapes the title in the preview', async () => {
