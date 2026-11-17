@@ -259,8 +259,9 @@ public final class DungeonParty {
 			return Component.translatable("slashclient-hud.dungeonParty.hint");
 		}
 
+		/** In the editor (the module hidden) the size is the sample party's, the one the preview draws. */
 		public int width(Minecraft mc) {
-			return width(mc, rows(mc), hint());
+			return visible(mc) ? width(mc, rows(mc), hint()) : sampled(mc, () -> width(mc, rows(mc), hint()));
 		}
 
 		private static int width(Minecraft mc, List<Row> rows, boolean hint) {
@@ -271,7 +272,7 @@ public final class DungeonParty {
 		}
 
 		public int height(Minecraft mc) {
-			return height(rows(mc).size(), hint());
+			return visible(mc) ? height(rows(mc).size(), hint()) : sampled(mc, () -> height(rows(mc).size(), hint()));
 		}
 
 		private static int height(int rows, boolean hint) {
@@ -327,12 +328,23 @@ public final class DungeonParty {
 				draw(g, mc, x, y);
 				return;
 			}
-			List<String> m = new ArrayList<>(members);
-			Set<String> i = new LinkedHashSet<>(invited);
-			String l = leader;
-			boolean p = partial;
-			sample(mc);
-			draw(g, mc, x, y);
+			sampled(mc, () -> {
+				draw(g, mc, x, y);
+				return null;
+			});
+		}
+	}
+
+	/** Something worked out on the sample party, the real one put back after. */
+	private static <T> T sampled(Minecraft mc, java.util.function.Supplier<T> what) {
+		List<String> m = new ArrayList<>(members);
+		Set<String> i = new LinkedHashSet<>(invited);
+		String l = leader;
+		boolean p = partial;
+		sample(mc);
+		try {
+			return what.get();
+		} finally {
 			members.clear();
 			members.addAll(m);
 			invited.clear();
@@ -345,8 +357,8 @@ public final class DungeonParty {
 	private static void sample(Minecraft mc) {
 		clear();
 		String me = mc.player == null ? "Slash3rss" : mc.player.getName().getString();
-		members.addAll(List.of(me, "KolegaodNetu", "Guardes"));
-		invited.add("Szeregowy007");
+		members.addAll(List.of(me, "Steve", "Alex"));
+		invited.add("Zuri");
 		leader = me;
 	}
 
