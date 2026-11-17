@@ -526,12 +526,26 @@ public class GameSkyTasks implements FabricClientGameTest {
 				+ "|0,WEDNESDAY 20:00 Boss arena"), "the plan's end from the chat", plan);
 			context.waitTicks(15);
 			context.takeScreenshot("skyup-plan");
+			// the dungeon party: a real party's chat through the parser, then a party of three and one invited on screen
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyplan").enabled = false;
+				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyshaman").enabled = false;
+			});
+			String party = context.computeOnClient(mc -> TestHooks.dungeonParty());
+			System.out.println("SlashClient dungeon party: " + party);
+			check(party.equals("Slash3rss:Slash3rss/;Slash3rss:Slash3rss/KolegaodNetu;Slash3rss:Slash3rss,KolegaodNetu/;Slash3rss:Slash3rss,KolegaodNetu/;"
+				+ "Slash3rss:Slash3rss,KolegaodNetu/;Slash3rss:Slash3rss/;-:/;-:/;-:Slash3rss/?;-:Guardes,Slash3rss,KolegaodNetu/;-:Guardes,Slash3rss/;"
+				+ "-:Guardes,Slash3rss/;-:/;|true"), "the dungeon party", party);
+			context.waitTicks(15);
+			context.takeScreenshot("skyup-dungeon-party");
 			world.getServer().runCommand("clear @a");
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 			// the shamanism and plan modules shown here would lie over other modules in the next tests' editor
 			context.runOnClient(mc -> {
 				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyshaman").enabled = false;
 				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyplan").enabled = false;
+				dev.slash3rss.slashclient.hud.SlashHud.config.placement("dungeonparty").enabled = false;
+				dev.slash3rss.slashclient.hud.skyup.DungeonParty.clearForTest();
 			});
 		}
 		//#endif

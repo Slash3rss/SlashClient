@@ -3157,6 +3157,11 @@ public final class TestHooks {
 		return dev.slash3rss.slashclient.hud.skyup.SkyPlan.checkForTest();
 	}
 
+	/** SkyUp's dungeon party checked (DungeonParty.checkForTest), with its module switched on for the screenshot. */
+	public static String dungeonParty() {
+		return dev.slash3rss.slashclient.hud.skyup.DungeonParty.checkForTest();
+	}
+
 	/** The daily reminder's sound set so, as it is played ("" the bell); the setting put back after. */
 	public static String skyDailySound(String set) {
 		String keep = SlashHud.config.skyDailySound;

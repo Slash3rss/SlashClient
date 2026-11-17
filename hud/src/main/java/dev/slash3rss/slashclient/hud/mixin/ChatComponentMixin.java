@@ -32,6 +32,7 @@ abstract class ChatComponentMixin {
 		dev.slash3rss.slashclient.hud.skyup.SkyTasks.onChat(message);
 		dev.slash3rss.slashclient.hud.skyup.SkyCase.onChat(line);
 		dev.slash3rss.slashclient.hud.skyup.SkyPlan.onChat(line);
+		dev.slash3rss.slashclient.hud.skyup.DungeonParty.onChat(line);
 		//#endif
 		Component shown = ChatExtras.stack((ChatComponent) (Object) this, line, Extras.timestamp(message));
 		dev.slash3rss.slashclient.hud.chat.ChatWindows.onLine(line, shown);

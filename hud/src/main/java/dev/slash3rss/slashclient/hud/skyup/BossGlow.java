@@ -28,6 +28,11 @@ public final class BossGlow {
 
 	/** The glow colour of a mob (0xRRGGBB), or -1 when it does not glow. */
 	public static int glowColor(Entity entity) {
+		//#if MC >= 26.3
+		// the dungeon party in its own colour
+		int party = DungeonParty.glowColor(entity);
+		if (party >= 0) return party;
+		//#endif
 		if (glowing.isEmpty()) return -1;
 		Integer c = glowing.get(entity.getId());
 		return c == null ? -1 : c;

@@ -169,7 +169,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("attackindicator", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("dungeonloot", "skyup"), Map.entry("dungeonxp", "skyup"), Map.entry("leveleta", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"),
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("dungeonloot", "skyup"), Map.entry("dungeonxp", "skyup"), Map.entry("leveleta", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"), Map.entry("dungeonparty", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	/** The accents to pick from: the launcher's blue first. */
@@ -417,6 +417,13 @@ public final class Catalog {
 						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v, cfg.skyPlanVolume);
 					}));
 					settings.add(new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyPlanVolume, v -> cfg.skyPlanVolume = Math.round(v)));
+				}
+				case "dungeonparty" -> {
+					settings.add(new Toggle("slashclient-hud.dungeonParty.hideSolo", () -> cfg.dungeonPartyHideSolo, v -> cfg.dungeonPartyHideSolo = v));
+					settings.add(new Toggle("slashclient-hud.dungeonParty.health", () -> cfg.dungeonPartyHealth, v -> cfg.dungeonPartyHealth = v));
+					settings.add(new Toggle("slashclient-hud.dungeonParty.distance", () -> cfg.dungeonPartyDistance, v -> cfg.dungeonPartyDistance = v));
+					settings.add(new Toggle("slashclient-hud.dungeonParty.glow", () -> cfg.dungeonPartyGlow, v -> cfg.dungeonPartyGlow = v));
+					settings.add(new Toggle("slashclient-hud.dungeonParty.showHint", () -> cfg.dungeonPartyHint, v -> cfg.dungeonPartyHint = v));
 				}
 				// the bottling countdown's rings
 				case "skyxp" -> settings.add(new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.skyXpVolume, v -> cfg.skyXpVolume = Math.round(v)));

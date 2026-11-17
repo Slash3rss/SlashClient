@@ -317,6 +317,10 @@ public final class HudConfig {
 	public String skyPlanSound = "default";
 	/** How the plan says when today's events start: "relative" (za 45 min), "clock" (19:00) or "both" (za 45 min (19:00)). */
 	public String skyPlanTime = "both";
+	/** The dungeon party module: hidden in a dungeon played alone; each member's health and distance; the hint for /dng druzyna info. */
+	public boolean dungeonPartyHideSolo = true, dungeonPartyHealth = true, dungeonPartyDistance = true, dungeonPartyHint = true;
+	/** In the dungeon the party members glow, seen through walls. */
+	public boolean dungeonPartyGlow = true;
 	/** minecraft.wiki in the game read in English although the game is in a language the wiki also has. */
 	public boolean mcWikiEnglish;
 	public static final String[] SKY_PLAN_TIMES = { "relative", "clock", "both" };
@@ -790,6 +794,8 @@ public final class HudConfig {
 		c.modules.put("skyshaman", new Placement(true, 0f, 0.55f, 2, 0));
 		// SkyUp's plan of the week under the wardrobe on the right; shown on SkyUp only
 		c.modules.put("skyplan", new Placement(true, 1f, 0.2f, -2, 0));
+		// the dungeon party on the left above the dungeon map; shown with someone in the party
+		c.modules.put("dungeonparty", new Placement(true, 0f, 0.3f, 2, 0));
 		// the minimap in the top right corner, off until switched on; its own picture needs no background
 		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
 		minimap.background = false;
@@ -1042,6 +1048,11 @@ public final class HudConfig {
 		skyPlanOthers = other.skyPlanOthers;
 		skyPlanSound = other.skyPlanSound == null ? "default" : other.skyPlanSound;
 		skyPlanTime = java.util.Arrays.asList(SKY_PLAN_TIMES).contains(other.skyPlanTime) ? other.skyPlanTime : "both";
+		dungeonPartyHideSolo = other.dungeonPartyHideSolo;
+		dungeonPartyHealth = other.dungeonPartyHealth;
+		dungeonPartyDistance = other.dungeonPartyDistance;
+		dungeonPartyHint = other.dungeonPartyHint;
+		dungeonPartyGlow = other.dungeonPartyGlow;
 		mcWikiEnglish = other.mcWikiEnglish;
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
