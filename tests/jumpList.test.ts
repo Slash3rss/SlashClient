@@ -13,7 +13,7 @@ describe('Windows jump list', () => {
     assert.equal(jumpTarget(['x', '--play=../../etc']), undefined);
   });
 
-  it('lists the profiles last played and the servers with the profile last played on each', () => {
+  it('lists the profiles last played and each server once for every profile it was played from', () => {
     const profiles = [
       { id: 'a', name: 'Fabric', versionId: '26.3', lastPlayedAt: 300 },
       { id: 'b', name: 'Vanilla', versionId: '1.21.4', lastPlayedAt: 500 },
@@ -28,8 +28,9 @@ describe('Windows jump list', () => {
     const lists = jumpLists(profiles, sessions, new Set(), texts);
     assert.deepEqual(lists.profiles.map((e) => [e.title, e.args, e.description]), [['Vanilla', '--play=b', 'profile 1.21.4'], ['Fabric', '--play=a', 'profile 26.3']]);
     assert.deepEqual(lists.servers.map((e) => [e.title, e.args, e.description]), [
-      ['skyup.pl', '--play=b --server=skyup.pl', 'server on Vanilla'],
+      ['skyup.pl · Vanilla', '--play=b --server=skyup.pl', 'server on Vanilla'],
       ['mc.example.com', '--play=a --server=mc.example.com', 'server on Fabric'],
+      ['skyup.pl · Fabric', '--play=a --server=skyup.pl', 'server on Fabric'],
     ]);
   });
 

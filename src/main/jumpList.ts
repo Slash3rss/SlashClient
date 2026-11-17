@@ -37,20 +37,29 @@ export function jumpLists(profiles: Pick<Profile, 'id' | 'name' | 'versionId' | 
     out.profiles.push({ title: p.name, description: texts.profile(p.versionId), args });
     if (out.profiles.length >= MAX_RECENT) break;
   }
-  const last = new Map<string, { at: number; profileId: string }>();
+  // a server played from several profiles gets an entry for each, with the profile's name in the title,
+  // so the player sees which one starts
+  const last = new Map<string, { at: number; address: string; profileId: string }>();
   for (const s of sessions) {
     if (!byId.has(s.profileId)) continue;
     for (const j of s.servers ?? []) {
       const address = String(j?.address ?? '').trim().toLowerCase().replace(/:25565$/, '');
-      if (!SERVER_ADDRESS.test(address) || !(j.at > (last.get(address)?.at ?? 0))) continue;
-      last.set(address, { at: j.at, profileId: s.profileId });
+      const key = `${address} ${s.profileId}`;
+      if (!SERVER_ADDRESS.test(address) || !(j.at > (last.get(key)?.at ?? 0))) continue;
+      last.set(key, { at: j.at, address, profileId: s.profileId });
     }
   }
-  for (const [address, l] of [...last].sort((a, b) => b[1].at - a[1].at)) {
-    const args = `--play=${l.profileId} --server=${address}`;
+  const recent: { address: string; profileId: string; args: string }[] = [];
+  for (const l of [...last.values()].sort((a, b) => b.at - a.at)) {
+    const args = `--play=${l.profileId} --server=${l.address}`;
     if (removed.has(args)) continue;
-    out.servers.push({ title: address, description: texts.server(byId.get(l.profileId)!.name), args });
-    if (out.servers.length >= MAX_RECENT) break;
+    recent.push({ ...l, args });
+    if (recent.length >= MAX_RECENT) break;
+  }
+  const profilesOn = (address: string) => new Set(recent.filter((r) => r.address === address).map((r) => r.profileId)).size;
+  for (const r of recent) {
+    const profile = byId.get(r.profileId)!.name;
+    out.servers.push({ title: profilesOn(r.address) > 1 ? `${r.address} · ${profile}` : r.address, description: texts.server(profile), args: r.args });
   }
   return out;
 }
