@@ -121,7 +121,9 @@ public final class MoreModules {
 	public static final class Cpu extends Modules.TextModule {
 		private static final java.lang.management.OperatingSystemMXBean OS = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
 		private static long sampledAt;
-		private static double load = -1;
+		/** Until the first reading: 0 where the JVM can tell, so the module does not blink in. */
+		private static volatile double load = OS instanceof com.sun.management.OperatingSystemMXBean ? 0 : -1;
+		private static volatile boolean sampling;
 
 		public String id() {
 			return "cpu";
@@ -132,12 +134,25 @@ public final class MoreModules {
 			return false;
 		}
 
-		/** 0..1, or -1 when the JVM cannot tell; read once a second, the call is not free. */
+		/**
+		 * 0..1, or -1 when the JVM cannot tell; read once a second on a thread of its own. On Windows the
+		 * reading itself takes up to a tenth of a second, and on the game's thread that froze the game
+		 * every second (most visibly on opening the chat, the tab list or a menu), so this gives the last one.
+		 */
 		public static double load() {
 			long now = System.currentTimeMillis();
-			if (now - sampledAt >= 1000) {
+			if (now - sampledAt >= 1000 && !sampling && OS instanceof com.sun.management.OperatingSystemMXBean sun) {
 				sampledAt = now;
-				load = OS instanceof com.sun.management.OperatingSystemMXBean sun ? sun.getProcessCpuLoad() : -1;
+				sampling = true;
+				Thread t = new Thread(() -> {
+					try {
+						load = sun.getProcessCpuLoad();
+					} finally {
+						sampling = false;
+					}
+				}, "SlashClient CPU load");
+				t.setDaemon(true);
+				t.start();
 			}
 			return load;
 		}
