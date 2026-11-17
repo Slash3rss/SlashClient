@@ -1661,6 +1661,15 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .trim-actions { gap: 8px; flex-wrap: wrap; }
 .trim-actions .push { flex: 1; }
 .trim-actions button.active { border-color: var(--accent); color: var(--accent-light); }
+/* Saving a clip as WebM (for Discord): size choice, progress, cancel */
+.webm-box { width: min(520px, 100%); }
+.webm-quality { gap: 10px; align-items: center; }
+.webm-facts { margin: 0; font-variant-numeric: tabular-nums; }
+.webm-progress { height: 8px; }
+.webm-progress div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent-dark), var(--accent), var(--accent-light)); transition: width .2s ease; }
+.webm-box .join-actions .push { flex: 1; }
+.webm-status { font-size: 13px; font-variant-numeric: tabular-nums; }
+.clip-kind { text-transform: none; }
 .media-links-box { width: min(640px, 100%); }
 .media-links-box .modal-body > p { margin: 0; }
 .media-links { max-height: 55vh; overflow-y: auto; }

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { netFetch } from './download';
-import { clipFrame, clipInfo, trimClip } from './clipTrim';
+import { clipFrame, clipFrames, clipInfo, saveWebm, trimClip } from './clipTrim';
 import { APP_VERSION } from '../shared/version';
 import { t } from '../shared/i18n';
 
@@ -124,6 +124,17 @@ export function registerMediaSharing(d: MediaDeps) {
       return await trimClip(galleryFile(d.gameDirOf(profileId), 'clips', name), start, end);
     } catch (err) {
       throw new Error((err as Error).message === 'too short' ? t('Przycięty klip musi mieć co najmniej dwie klatki.') : t('Nie udało się przyciąć klipu: {0}', (err as Error).message));
+    }
+  });
+  // a clip turned into WebM in the page (clipWebm.ts): its frames go there, the file comes back
+  d.handle('clips:frames', (profileId: string, name: string, from: number, count: number) =>
+    clipFrames(galleryFile(d.gameDirOf(profileId), 'clips', name), Number(from) || 0, Number(count) || 0));
+  d.handle('clips:saveWebm', async (profileId: string, name: string, data: Uint8Array, part: boolean) => {
+    if (!(data instanceof Uint8Array)) throw new Error(t('Nieprawidłowa nazwa'));
+    try {
+      return await saveWebm(galleryFile(d.gameDirOf(profileId), 'clips', name), data, !!part);
+    } catch (err) {
+      throw new Error(t('Nie udało się zapisać pliku WebM: {0}', (err as Error).message));
     }
   });
   d.handle('media:share', async (profileId: string, folder: MediaFolder, name: string, title?: string) => {

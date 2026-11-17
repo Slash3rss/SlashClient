@@ -2424,6 +2424,13 @@ handle('file:reveal', (file: string) => {
   // only crash reports inside the launcher's own folders
   if (path.resolve(file).startsWith(paths.root + path.sep) || store.profiles.some((p) => path.resolve(file).startsWith(path.resolve(profileGameDir(p)) + path.sep))) shell.showItemInFolder(file);
 });
+// a clip dragged out of the gallery, e.g. straight into a Discord chat (only clips of a profile)
+ipcMain.on('file:drag', (e, file: unknown) => {
+  if (typeof file !== 'string' || !/\.(webm|avi|mp4)$/i.test(file)) return;
+  const full = path.resolve(file);
+  if (!store.profiles.some((p) => path.dirname(full) === path.join(path.resolve(profileGameDir(p)), 'clips'))) return;
+  e.sender.startDrag({ file: full, icon: nativeImage.createFromPath(ICON).resize({ width: 48, height: 48 }) });
+});
 /** Stops one profile's game, or every game when no profile is given. */
 handle('game:kill', (profileId?: string) => {
   for (const [id, g] of games) {

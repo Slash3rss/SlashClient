@@ -194,3 +194,45 @@ export async function trimClip(file: string, start: number, end: number): Promis
   await fs.rename(`${out}.part`, out);
   return name;
 }
+
+/** Frames [from, from + count) of a clip as JPEGs, for turning it into a WebM in the page. */
+export async function clipFrames(file: string, from: number, count: number): Promise<Buffer[]> {
+  const index = await clipIndex(file);
+  if (!index) return [];
+  const list = index.frames.slice(Math.max(0, Math.floor(from)), Math.max(0, Math.floor(from)) + Math.max(0, Math.min(240, Math.floor(count))));
+  if (!list.length) return [];
+  const handle = await fs.open(file, 'r');
+  try {
+    // the frames lie one after another: one read for the whole run
+    const start = list[0].offset;
+    const end = list[list.length - 1].offset + list[list.length - 1].length;
+    const buf = Buffer.alloc(end - start);
+    await handle.read(buf, 0, buf.length, start);
+    return list.map((f) => buf.subarray(f.offset - start, f.offset - start + f.length));
+  } finally {
+    await handle.close();
+  }
+}
+
+/** A free name next to the clip for its WebM: clip-….webm (clip-…-trim.webm for a part), then -2, -3… */
+export async function webmName(dir: string, name: string, part: boolean): Promise<string> {
+  const base = name.replace(/\.avi$/i, '') + (part && !/-trim\d*$/i.test(name.replace(/\.avi$/i, '')) ? '-trim' : '');
+  for (let i = 1; ; i++) {
+    const candidate = `${base}${i > 1 ? `-${i}` : ''}.webm`;
+    if (!(await fs.access(path.join(dir, candidate)).then(() => true, () => false))) return candidate;
+  }
+}
+
+/** Saves a WebM made from the clip next to it and returns its name; never over another file. */
+export async function saveWebm(file: string, data: Uint8Array, part: boolean): Promise<string> {
+  const head = data.subarray(0, 4);
+  if (data.length < 64 || head[0] !== 0x1a || head[1] !== 0x45 || head[2] !== 0xdf || head[3] !== 0xa3) throw new Error('not a WebM');
+  const dir = path.dirname(file);
+  const name = await webmName(dir, path.basename(file), part);
+  const out = path.join(dir, name);
+  await fs.writeFile(`${out}.part`, data);
+  // a name taken meanwhile (two saves at once): the next free one, still never over a file
+  const target = (await fs.access(out).then(() => true, () => false)) ? path.join(dir, await webmName(dir, path.basename(file), part)) : out;
+  await fs.rename(`${out}.part`, target);
+  return path.basename(target);
+}

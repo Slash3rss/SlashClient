@@ -4322,21 +4322,30 @@ function drawWorlds(profileId: string, tab: string, list: unknown[], animate: bo
     box.replaceChildren(el('div', { className: 'project-list' }, ...clips.map((c) => {
       const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t(' Odtwórz'));
       play.addEventListener('click', () => api.openFile(c.file));
-      return el('div', { className: 'project' },
+      const card = el('div', { className: 'project' },
         el('div', { className: 'clip-icon' }, el('i', { className: 'fa-solid fa-film' })),
         el('div', { className: 'project-main' },
-          el('b', { textContent: c.name.replace(/\.(avi|mp4)$/i, '') }),
+          el('b', {}, c.name.replace(/\.(avi|mp4|webm)$/i, ''), /\.webm$/i.test(c.name) ? el('small', { className: 'clip-kind', textContent: 'WebM' }) : ''),
           el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(c.createdAt) }), el('span', { textContent: fmtSize(c.sizeBytes) }))),
         el('div', { className: 'project-actions' }, play,
           // only the game's own clips (MJPEG .avi) can be cut and shared
           ...(/\.avi$/i.test(c.name) ? [
             iconButton('fa-solid fa-scissors', t('Przytnij'), () => mediaTools.openTrim(profileId, c)),
+            iconButton('fa-brands fa-discord', t('Zapisz jako WebM (Discord)'), () => mediaTools.exportWebm(profileId, c)),
             iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name), 'feature-media'),
           ] : []),
           iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
           iconButton('fa-regular fa-trash-can', t('Usuń'), async () => {
             if (await ask(t('Usunąć ten klip?'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
           }, 'danger')));
+      // dragged out of the launcher as a file, e.g. into a Discord chat
+      card.draggable = true;
+      card.title = t('Przeciągnij, żeby wrzucić plik np. do Discorda');
+      card.addEventListener('dragstart', (e) => {
+        e.preventDefault();
+        api.dragFile(c.file);
+      });
+      return card;
     })));
     if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
     box.prepend(myLinksButton());

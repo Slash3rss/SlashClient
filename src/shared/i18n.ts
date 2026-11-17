@@ -5,6 +5,7 @@
  */
 
 import { TOOLS_EN } from './i18nTools';
+import { CLIP_WEBM_EN } from './i18nClipWebm';
 import { SPARKS_EN } from './i18nSparks';
 import { REFERRALS_EN } from './i18nReferrals';
 import { PROFILES_EN } from './i18nProfiles';
@@ -50,6 +51,7 @@ export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
 const EN: Record<string, string> = {
   // key conflicts, minecraft.wiki, download limit, dedicated GPU (own file; the entries below win)
   ...TOOLS_EN,
+  ...CLIP_WEBM_EN,
   // the Raspberry Pi notes by the Pi's preset (own file)
   ...PI_EN,
   // sparks, the shop and the achievements in categories (own file)

@@ -1,5 +1,6 @@
 import { locale, t } from '../shared/i18n';
 import { ask, confirmDialog, control, el, fmtSize, icon } from './dialog';
+import { clipToWebm, webmPlan, type WebmQuality } from './clipWebm';
 
 /**
  * The gallery's extras: trimming a clip (a window with the clip, two handles for the start and
@@ -116,6 +117,8 @@ export function createMediaTools(d: MediaToolDeps) {
     const setEnd = el('button', { type: 'button', title: t('Koniec w miejscu odtwarzania') }, t('Koniec tutaj'), ' ', icon('fa-arrow-left-long'));
     const save = el('button', { type: 'button', className: 'primary' }, icon('fa-scissors'), ' ', t('Zapisz przyciętą kopię'));
     const saveShare = el('button', { type: 'button' }, icon('fa-share-nodes'), ' ', t('Zapisz i udostępnij'));
+    const saveWebm = el('button', { type: 'button', className: 'icon-btn', title: t('Zapisz wybrany fragment jako WebM: plik, który Discord odtwarza od razu w czacie') }, el('i', { className: 'fa-brands fa-discord' }));
+    saveWebm.setAttribute('aria-label', t('Zapisz jako WebM'));
 
     const pct = (frame: number) => `${(frame / Math.max(1, total - 1)) * 100}%`;
     function paint() {
@@ -232,7 +235,7 @@ export function createMediaTools(d: MediaToolDeps) {
       el('div', { className: 'trim-stage' }, canvas),
       el('div', { className: 'trim-controls' }, playBtn, track, timeLabel),
       el('div', { className: 'trim-facts row' }, startLabel, endLabel, lengthLabel),
-      el('div', { className: 'row trim-actions' }, setStart, setEnd, previewBtn, el('span', { className: 'push' }), saveShare, save),
+      el('div', { className: 'row trim-actions' }, setStart, setEnd, previewBtn, el('span', { className: 'push' }), saveWebm, saveShare, save),
     ], () => {
       playing = false;
       cancelAnimationFrame(raf);
@@ -272,8 +275,113 @@ export function createMediaTools(d: MediaToolDeps) {
       }
     }
     save.addEventListener('click', () => saveCopy(false));
+    saveWebm.addEventListener('click', () => {
+      setPlaying(false);
+      const full = start === 0 && end === total - 1;
+      void exportWebm(profileId, clip, info, full ? undefined : [start, end], () => view.close());
+    });
     saveShare.addEventListener('click', () => saveCopy(true));
     seek(0);
+  }
+
+  // ---------- WebM for Discord ----------
+
+  const QUALITY_KEY = 'slash.webmQuality';
+  const savedQuality = (): WebmQuality => {
+    try {
+      return localStorage.getItem(QUALITY_KEY) === 'high' ? 'high' : 'discord';
+    } catch {
+      return 'discord';
+    }
+  };
+
+  /**
+   * Turns a clip (or the chosen part of it) into a WebM next to it: Discord plays those in the
+   * chat, our AVI it does not. A window with the size choice, a progress bar and cancelling.
+   */
+  async function exportWebm(profileId: string, clip: GalleryFile, known?: ClipInfo, range?: [number, number], onSaved?: () => void) {
+    const info: ClipInfo | undefined = known ?? await guard(() => api.clipInfo(profileId, clip.name));
+    if (!info) return;
+    if (!info.trimmable || info.frames < 2) {
+      toast(t('Tego klipu nie da się zapisać jako WebM (to nie jest klip zapisany w grze).'), true);
+      return;
+    }
+    if (typeof VideoEncoder === 'undefined') {
+      toast(t('Ten launcher nie potrafi kodować wideo (brak WebCodecs).'), true);
+      return;
+    }
+    const [from, to] = range ?? [0, info.frames - 1];
+    const count = to - from + 1;
+    const durationMs = (count * 1000) / info.fps;
+    const quality = control<HTMLSelectElement>('select', { className: 'grow' });
+    quality.append(
+      el('option', { value: 'discord', textContent: t('Discord: do 10 MB') }),
+      el('option', { value: 'high', textContent: t('Wysoka jakość (większy plik)') }));
+    quality.value = savedQuality();
+    const facts = el('p', { className: 'muted webm-facts' });
+    const describe = () => {
+      const plan = webmPlan(info.width, info.height, durationMs, quality.value as WebmQuality);
+      facts.textContent = `${clipTime(durationMs / 1000)} · ${plan.width}×${plan.height} · ${
+        plan.maxBytes ? t('najwyżej {0}', fmtSize(plan.maxBytes)) : t('około {0}', fmtSize((plan.bitrate / 8) * (durationMs / 1000)))}`;
+    };
+    quality.addEventListener('change', () => {
+      describe();
+      try {
+        localStorage.setItem(QUALITY_KEY, quality.value);
+      } catch { /* only a convenience */ }
+    });
+    describe();
+    const bar = el('div');
+    const progress = el('div', { className: 'progress webm-progress hidden' }, bar);
+    const status = el('span', { className: 'muted webm-status' });
+    const start = el('button', { type: 'button', className: 'primary' }, icon('fa-file-video'), ' ', t('Zapisz WebM'));
+    const cancel = el('button', { type: 'button' }, t('Anuluj'));
+    let job: AbortController | undefined;
+    const view = modal('join-box webm-box', t('Zapisz jako WebM'), [
+      el('p', { className: 'muted', textContent: t('Discord odtwarza pliki WebM od razu w czacie (klipów AVI nie). Plik zapisze się obok klipu, a oryginał zostaje. Potem przeciągnij go do Discorda albo otwórz folder.') }),
+      el('label', { className: 'row webm-quality' }, el('span', { textContent: t('Rozmiar') }), quality),
+      facts,
+      progress,
+      el('div', { className: 'row join-actions' }, status, el('span', { className: 'push' }), cancel, start),
+    ], () => job?.abort());
+    cancel.addEventListener('click', () => (job ? job.abort() : view.close()));
+    start.addEventListener('click', async () => {
+      job = new AbortController();
+      const began = performance.now();
+      start.disabled = true;
+      quality.disabled = true;
+      progress.classList.remove('hidden');
+      bar.style.width = '0%';
+      status.textContent = t('Koduję…');
+      try {
+        const data = await clipToWebm({
+          frames: (at, n) => api.clipFrames(profileId, clip.name, from + at, n),
+          count, fps: info.fps,
+          plan: webmPlan(info.width, info.height, durationMs, quality.value as WebmQuality),
+          signal: job.signal,
+          onProgress: (p) => {
+            bar.style.width = `${Math.round(p * 100)}%`;
+            status.textContent = t('Koduję… {0}%', Math.round(p * 100));
+          },
+        });
+        const name: string = await api.saveClipWebm(profileId, clip.name, data, !!range);
+        const took = (performance.now() - began) / 1000;
+        job = undefined;
+        view.close();
+        onSaved?.();
+        d.refresh();
+        toast(t('Zapisano {0} ({1}, w {2} s). Przeciągnij go z listy klipów do Discorda.', name, fmtSize(data.length), took.toFixed(1)));
+      } catch (err) {
+        const wasCancelled = (err as Error)?.name === 'AbortError';
+        job = undefined;
+        if (!view.box.isConnected) return;
+        start.disabled = false;
+        quality.disabled = false;
+        progress.classList.add('hidden');
+        status.textContent = wasCancelled ? t('Przerwano.') : '';
+        if (!wasCancelled) toast((err as Error)?.message === 'no-encoder' ? t('Ten komputer nie ma kodera VP9 ani VP8.') : t('Nie udało się zapisać pliku WebM: {0}', errorOf(err)), true);
+      }
+    });
   }
 
   // ---------- sharing ----------
@@ -349,5 +457,5 @@ export function createMediaTools(d: MediaToolDeps) {
     void render();
   }
 
-  return { openTrim, shareFile, openMine };
+  return { openTrim, exportWebm, shareFile, openMine };
 }

@@ -131,7 +131,7 @@ export async function listClips(gameDir: string): Promise<Screenshot[]> {
   const dir = path.join(gameDir, 'clips');
   const out: Screenshot[] = [];
   for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
-    if (!/\.(avi|mp4)$/i.test(name)) continue;
+    if (!/\.(avi|mp4|webm)$/i.test(name)) continue;
     const file = path.join(dir, name);
     const st = await fs.stat(file);
     out.push({ file, name, createdAt: st.mtimeMs, sizeBytes: st.size });
