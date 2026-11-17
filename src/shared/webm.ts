@@ -171,3 +171,158 @@ export function readEbml(buf: Uint8Array, start = 0, end = buf.length): EbmlNode
 }
 
 export const EBML_IDS = ID;
+
+/** A WebM's video frames as they lie in the file (for trimming one: they are decoded again). */
+export interface WebmIndex {
+  codec: string;
+  width: number;
+  height: number;
+  /** Microseconds per frame (DefaultDuration, else worked out from the frames). */
+  frameDuration: number;
+  durationMs: number;
+  frames: { offset: number; length: number; timestamp: number; key: boolean }[];
+}
+
+const MAX_WEBM_FRAMES = 200_000;
+
+/**
+ * Reads a WebM with one video track written as SimpleBlocks without lacing (what muxWebm and
+ * the browsers write); undefined for anything else. Cut-short files keep the frames before the cut.
+ */
+export function demuxWebm(buf: Uint8Array): WebmIndex | undefined {
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const readId = (at: number): [number, number] | undefined => {
+    const first = buf[at];
+    let len = 1;
+    while (len <= 4 && !(first & (0x80 >> (len - 1)))) len++;
+    if (len > 4 || at + len > buf.length) return undefined;
+    let id = 0;
+    for (let i = 0; i < len; i++) id = id * 256 + buf[at + i];
+    return [id, len];
+  };
+  const readSize = (at: number): [number, number] | undefined => {
+    if (at >= buf.length) return undefined;
+    let len = 1;
+    while (len <= 8 && !(buf[at] & (0x80 >> (len - 1)))) len++;
+    if (len > 8 || at + len > buf.length) return undefined;
+    let v = buf[at] & (0xff >> len);
+    let allOnes = v === 0xff >> len;
+    for (let i = 1; i < len; i++) {
+      v = v * 256 + buf[at + i];
+      allOnes &&= buf[at + i] === 0xff;
+    }
+    return [allOnes ? -1 : v, len];
+  };
+  const uintOf = (at: number, size: number) => {
+    let v = 0;
+    for (let i = 0; i < size; i++) v = v * 256 + buf[at + i];
+    return v;
+  };
+  const str = (at: number, size: number) => new TextDecoder().decode(buf.subarray(at, at + size)).replace(/\0+$/, '');
+
+  const out: WebmIndex = { codec: '', width: 0, height: 0, frameDuration: 0, durationMs: 0, frames: [] };
+  let scale = 1_000_000;
+  let duration = 0;
+  let videoTrack = 0;
+  let isWebm = false;
+  let clusterTime = 0;
+  // elements whose children are read; an unknown size (live recordings) runs to the parent's end
+  const containers = new Set<number>([ID.EBML, ID.Segment, ID.Info, ID.Tracks, ID.TrackEntry, ID.Video, ID.Cluster]);
+  const walk = (start: number, end: number, parent: number, track: { num: number; type: number; codec: string; w: number; h: number; dd: number }): number => {
+    let at = start;
+    while (at < end && out.frames.length < MAX_WEBM_FRAMES) {
+      const idr = readId(at);
+      if (!idr) return end;
+      const sz = readSize(at + idr[1]);
+      if (!sz) return end;
+      const [id] = idr;
+      const data = at + idr[1] + sz[1];
+      // a cluster of unknown size ends where the next cluster starts
+      if (id === ID.Cluster && parent === ID.Cluster) return at;
+      const size = sz[0] < 0 ? end - data : Math.min(sz[0], end - data);
+      if (containers.has(id)) {
+        let stop = data + size;
+        if (id === ID.TrackEntry) {
+          const t = { num: 0, type: 0, codec: '', w: 0, h: 0, dd: 0 };
+          walk(data, data + size, id, t);
+          if (t.type === 1 && !videoTrack) {
+            videoTrack = t.num;
+            out.codec = t.codec;
+            out.width = t.w;
+            out.height = t.h;
+            out.frameDuration = t.dd / 1000;
+          }
+        } else stop = walk(data, data + size, id, track);
+        at = sz[0] < 0 ? stop : data + size;
+        continue;
+      } else if (id === ID.DocType) isWebm = str(data, size) === 'webm';
+      else if (id === ID.TimestampScale) scale = uintOf(data, size);
+      else if (id === ID.Duration && (size === 4 || size === 8)) duration = size === 8 ? dv.getFloat64(data) : dv.getFloat32(data);
+      else if (id === ID.TrackNumber) track.num = uintOf(data, size);
+      else if (id === ID.TrackType) track.type = uintOf(data, size);
+      else if (id === ID.CodecID) track.codec = str(data, size);
+      else if (id === ID.PixelWidth) track.w = uintOf(data, size);
+      else if (id === ID.PixelHeight) track.h = uintOf(data, size);
+      else if (id === ID.DefaultDuration) track.dd = uintOf(data, size);
+      else if (id === ID.Timestamp && parent === ID.Cluster) clusterTime = uintOf(data, size);
+      else if (id === ID.SimpleBlock && parent === ID.Cluster && data + size <= buf.length && size > 4) {
+        const num = readSize(data);
+        if (num) {
+          const head = data + num[1];
+          const flags = buf[head + 2];
+          // laced blocks are not what video writers make: left out
+          if (num[0] === videoTrack && !(flags & 0x06)) {
+            const rel = dv.getInt16(head);
+            out.frames.push({ offset: head + 3, length: data + size - head - 3, timestamp: Math.round(((clusterTime + rel) * scale) / 1000), key: !!(flags & 0x80) });
+          }
+        }
+      }
+      if (sz[0] < 0) return end;
+      at = data + size;
+    }
+    return at;
+  };
+  walk(0, buf.length, 0, { num: 0, type: 0, codec: '', w: 0, h: 0, dd: 0 });
+  if (!isWebm || !videoTrack || !out.frames.length || !out.width || !out.height) return undefined;
+  if (!out.frameDuration) {
+    const f = out.frames;
+    out.frameDuration = f.length > 1 ? Math.max(1, (f[f.length - 1].timestamp - f[0].timestamp) / (f.length - 1)) : 33_333;
+  }
+  const last = out.frames.reduce((m, f) => Math.max(m, f.timestamp), 0);
+  out.durationMs = duration > 0 ? Math.round((duration * scale) / 1_000_000) : Math.round((last - out.frames[0].timestamp + out.frameDuration) / 1000);
+  return out;
+}
+
+// ---------- the size of a clip's WebM ----------
+
+export type WebmQuality = 'discord' | 'high';
+
+/** Discord's upload limit without Nitro. */
+export const DISCORD_BYTES = 10 * 1024 * 1024;
+
+export interface WebmPlan { width: number; height: number; bitrate: number; maxBytes?: number }
+
+const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
+
+/** The picture fitted into a box, never made bigger. */
+export function fitSize(width: number, height: number, maxW: number, maxH: number): [number, number] {
+  const k = Math.min(1, maxW / width, maxH / height);
+  return [even(width * k), even(height * k)];
+}
+
+/**
+ * Size and bitrate of the WebM. For Discord the whole file has to stay under 10 MB, so the
+ * bitrate is the budget spread over the clip's length (a bit kept back for the container and
+ * the encoder overshooting); a long clip gets a smaller picture rather than a mushy one.
+ */
+export function webmPlan(width: number, height: number, durationMs: number, quality: WebmQuality): WebmPlan {
+  if (quality === 'high') {
+    const [w, h] = fitSize(width, height, 1920, 1080);
+    return { width: w, height: h, bitrate: 8_000_000 };
+  }
+  const seconds = Math.max(1, durationMs / 1000);
+  const bitrate = Math.round(Math.max(150_000, Math.min(4_000_000, (DISCORD_BYTES * 8 * 0.85) / seconds)));
+  const [w, h] = bitrate < 1_200_000 ? fitSize(width, height, 854, 480) : fitSize(width, height, 1280, 720);
+  return { width: w, height: h, bitrate, maxBytes: DISCORD_BYTES };
+}
+

@@ -138,6 +138,12 @@ export interface Settings {
   downloadLimitMBps?: number;
   /** Start games on the dedicated GPU (Windows: registry preference for our Java, Linux: PRIME offload). */
   dedicatedGpu?: boolean;
+  /** New clips made into WebM (which Discord plays) by themselves, the AVI then moved to the trash; missing = on. */
+  clipsAutoWebm?: boolean;
+  /** The size of clips' WebMs: up to Discord's 10 MB, or high quality; missing = 'discord'. */
+  clipsWebmQuality?: 'discord' | 'high';
+  /** When this launcher started making WebMs of new clips: older AVIs are converted only on request. */
+  clipsWebmSince?: number;
   /** A toast when a friend comes online or starts playing (off: only messages, invites and requests). */
   notifyFriendsPlaying?: boolean;
   /** Folders checked for CurseForge files downloaded by hand (top level only); missing = the system's Downloads folder. */

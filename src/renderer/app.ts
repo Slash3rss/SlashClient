@@ -6,7 +6,7 @@ import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
 import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
-import { createMediaTools } from './mediaTools';
+import { createMediaTools, type ConvertState } from './mediaTools';
 import { openPackPreview } from './packPreview';
 import { openProjectDetails } from './projectDetails';
 import { createPopularSource, friendsBadge, serverKey, type PopularContent, type PopularServer } from './friendsPopular';
@@ -4222,6 +4222,19 @@ $('#world-import').addEventListener('click', async () => {
 
 // trimming clips and sharing screenshots and clips by link (mediaTools.ts)
 const mediaTools = createMediaTools({ api, guard, toast, refresh: () => renderWorlds() });
+/** A clip being made into a WebM in the background: a percentage on its card, the list again once done. */
+function showConversion(st: ConvertState) {
+  if (st.part) return;
+  const label = document.querySelector<HTMLElement>(`.clip-converting[data-file="${CSS.escape(st.file)}"]`);
+  if (st.state === 'done') {
+    if (label || worldsTab === 'clips') renderWorlds();
+    return;
+  }
+  if (!label) return;
+  label.classList.toggle('hidden', st.state === 'failed');
+  label.textContent = st.state === 'queued' ? t('Czeka na zamianę na WebM…') : t('Zamieniam na WebM… {0}%', Math.round(st.progress * 100));
+}
+api.on('clips:convert', showConversion);
 const myLinksButton = () => {
   const b = el('button', { type: 'button', className: 'media-links-open' }, el('i', { className: 'fa-solid fa-link' }), t(' Moje linki'));
   b.addEventListener('click', () => mediaTools.openMine());
@@ -4320,20 +4333,24 @@ function drawWorlds(profileId: string, tab: string, list: unknown[], animate: bo
   } else if (tab === 'clips') {
     const clips = list as Screenshot[];
     box.replaceChildren(el('div', { className: 'project-list' }, ...clips.map((c) => {
+      const webm = /\.webm$/i.test(c.name);
+      const avi = /\.avi$/i.test(c.name);
       const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t(' Odtwórz'));
-      play.addEventListener('click', () => api.openFile(c.file));
+      // a WebM plays in the launcher (not every system has a player for it); an older AVI in the system's player
+      play.addEventListener('click', () => (webm ? mediaTools.openPlayer(c) : api.openFile(c.file)));
+      // an AVI being made into a WebM: how far it got, under its name
+      const converting = el('span', { className: 'clip-converting hidden' });
+      converting.dataset.file = c.file;
       const card = el('div', { className: 'project' },
         el('div', { className: 'clip-icon' }, el('i', { className: 'fa-solid fa-film' })),
         el('div', { className: 'project-main' },
-          el('b', {}, c.name.replace(/\.(avi|mp4|webm)$/i, ''), /\.webm$/i.test(c.name) ? el('small', { className: 'clip-kind', textContent: 'WebM' }) : ''),
-          el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(c.createdAt) }), el('span', { textContent: fmtSize(c.sizeBytes) }))),
+          el('b', {}, c.name.replace(/\.(avi|mp4|webm)$/i, ''), avi ? el('small', { className: 'clip-kind', textContent: 'AVI', title: t('Starszy klip: Discord go nie odtworzy. Zamień go na WebM.') }) : ''),
+          el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(c.createdAt) }), el('span', { textContent: fmtSize(c.sizeBytes) }), converting)),
         el('div', { className: 'project-actions' }, play,
-          // only the game's own clips (MJPEG .avi) can be cut and shared
-          ...(/\.avi$/i.test(c.name) ? [
-            iconButton('fa-solid fa-scissors', t('Przytnij'), () => mediaTools.openTrim(profileId, c)),
-            iconButton('fa-brands fa-discord', t('Zapisz jako WebM (Discord)'), () => mediaTools.exportWebm(profileId, c)),
-            iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name), 'feature-media'),
-          ] : []),
+          // WebM: cut (encoded again) and shared; the game's own AVI also made into a WebM
+          ...(webm || avi ? [iconButton('fa-solid fa-scissors', t('Przytnij'), () => mediaTools.openTrim(profileId, c))] : []),
+          ...(avi ? [iconButton('fa-brands fa-discord', t('Zamień na WebM (Discord)'), () => mediaTools.convertClip(profileId, c))] : []),
+          ...(webm || avi ? [iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name), 'feature-media')] : []),
           iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
           iconButton('fa-regular fa-trash-can', t('Usuń'), async () => {
             if (await ask(t('Usunąć ten klip?'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
@@ -4347,6 +4364,7 @@ function drawWorlds(profileId: string, tab: string, list: unknown[], animate: bo
       });
       return card;
     })));
+    void api.clipConversions().then((list: ConvertState[]) => list.forEach(showConversion)).catch(() => {});
     if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
     box.prepend(myLinksButton());
   } else {

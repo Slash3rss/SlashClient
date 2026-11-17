@@ -19,6 +19,7 @@ import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
 import { httpMessage, netFetch } from './download';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
+import { createClipConverter } from './clipConvert';
 import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate, updateChannelChanged } from './updates';
@@ -1695,7 +1696,19 @@ handle('clips:list', (profileId: string) => listClips(gameDirOf(profileId)));
 handle('clips:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'clips', name));
 handle('screenshots:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'screenshots', name));
 // trimming clips and sharing screenshots and clips by link (mediaShare.ts)
-registerMediaSharing({ handle, gameDirOf, session: () => shareSession(), copy: (text) => clipboard.writeText(text) });
+// the game's clips (Motion-JPEG AVI, cheap to record) made into WebM, which Discord plays (clipConvert.ts)
+const clipConverter = createClipConverter({
+  dir: __dirname,
+  notify: (state) => send('clips:convert', state),
+  // never deleted for good: the AVI can be taken back out of the trash
+  trash: (file) => shell.trashItem(file),
+  quality: () => (store.settings.clipsWebmQuality === 'high' ? 'high' : 'discord'),
+  log: (message) => console.warn(`[clips] ${message}`),
+});
+/** Clips saved since this launcher started making WebMs are made into WebMs by themselves; older ones on request. */
+const clipsSince = () => store.settings.clipsWebmSince ?? Date.now();
+const autoWebm = () => store.settings.clipsAutoWebm !== false;
+registerMediaSharing({ handle, gameDirOf, session: () => shareSession(), copy: (text) => clipboard.writeText(text), converter: clipConverter });
 // ---------- config editor and disk cleanup (maintenance.ts) ----------
 
 registerMaintenance({
@@ -2371,6 +2384,9 @@ async function startGame(profileId: string, accountId: string, server: string | 
   };
   const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence, link: linkPlayer, discord: gameDiscord };
   games.set(profile.id, running);
+  // a clip saved in the game becomes a WebM a few seconds later, at a low priority
+  const clipsDir = path.join(profileGameDir(profile), 'clips');
+  if (autoWebm()) clipConverter.watch(clipsDir, clipsSince);
   linkPlayer();
   const linkTimer = setInterval(linkPlayer, 4 * 60_000);
   refreshPresence();
@@ -2378,6 +2394,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
     games.delete(profile.id);
+    clipConverter.unwatch(clipsDir, autoWebm() ? clipsSince() : Infinity);
     // the game is gone: its LAN world too, and the ports into friends' worlds
     if (!games.size) lan.stop();
     // an update waiting for the game: installed once what follows the game (settings, the session) is written
@@ -3385,7 +3402,7 @@ app.on('open-url', (event, url) => {
 
 // Lets the page show screenshots and world icons (only images inside profile folders).
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
   // GIFs and stickers in the chat (gifMedia.ts): only the providers' CDN files, through the server when it says so
   { scheme: 'slash-gif', privileges: { standard: true, secure: true } },
 ]);
@@ -3397,6 +3414,11 @@ app.whenReady().then(async () => {
     const file = url.searchParams.get('path') ?? '';
     // a clip's single frame, for the trim window
     if (url.host === 'clip') return isInsideInstances(file) ? clipFrameResponse(file, Number(url.searchParams.get('frame')) || 0) : new Response('Not found', { status: 404 });
+    // a WebM clip for the launcher's own player: the range asked for is passed on, so it can seek
+    if (/\.webm$/i.test(file) && isInsideInstances(file)) {
+      const range = request.headers.get('Range');
+      return net.fetch(pathToFileURL(file).toString(), range ? { headers: { Range: range } } : {});
+    }
     if (!/\.(png|jpe?g|webp|gif)$/i.test(file) || !isInsideInstances(file)) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(file).toString());
   });
@@ -3427,6 +3449,15 @@ app.whenReady().then(async () => {
   setLang(store.settings.language);
   languageSet = true;
   void applyToolSettings(store.settings);
+  // clips saved from now on become WebMs by themselves; the ones already there stay as they are
+  if (!store.settings.clipsWebmSince) {
+    store.settings.clipsWebmSince = Date.now();
+    await saveStore(store);
+  }
+  // clips saved while the launcher was closed (the game started some other way), a while after starting
+  setTimeout(() => {
+    if (autoWebm()) for (const p of store.profiles) void clipConverter.scan(path.join(profileGameDir(p), 'clips'), clipsSince());
+  }, 30_000).unref?.();
   // the launcher's changelog, "Co nowego" after an update, going back to an older version (changelog.ts)
   initChangelog({
     handle, settings: () => store.settings, persist,

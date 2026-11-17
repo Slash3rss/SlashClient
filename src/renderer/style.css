@@ -2271,3 +2271,5 @@ body.feature-off-seasonal .feature-seasonal { display: none !important; }
 .context-menu button.danger, .context-menu button.danger i { color: var(--danger); }
 .context-menu hr { border: 0; border-top: 1px solid var(--glass-border); margin: 4px 6px; }
 .list li .rename-input { width: 100%; padding: 4px 8px; font: inherit; }
+.clip-converting { color: var(--accent-light); font-variant-numeric: tabular-nums; }
+.clip-player { display: block; width: 100%; max-height: 70vh; background: #000; }

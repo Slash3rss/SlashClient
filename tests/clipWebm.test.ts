@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { clipFrames, saveWebm, webmName, writeAvi } from '../src/main/clipTrim';
-import { EBML_IDS as ID, muxWebm, readEbml, vint, type EbmlNode } from '../src/shared/webm';
+import { EBML_IDS as ID, demuxWebm, muxWebm, readEbml, vint, type EbmlNode } from '../src/shared/webm';
+import { aviComplete, lengthMatches, webmTwin } from '../src/main/clipConvert';
 import { DISCORD_BYTES, fitSize, webmPlan } from '../src/renderer/clipWebm';
 
 const find = (nodes: EbmlNode[] | undefined, id: number) => nodes?.find((n) => n.id === id);
@@ -69,6 +70,37 @@ describe('WebM writer', () => {
     assert.deepEqual(points.map((p) => seg.dataStart + uintAt(webm, find(find(p.children, ID.CueTrackPositions)?.children, ID.CueClusterPosition)!)), clusters.map((c) => c.start));
   });
 
+  it('reads its own files back for trimming: frames, key frames, times, size', () => {
+    const webm = muxWebm({ codec: 'V_VP8', width: 640, height: 360, frameDuration: 1_000_000 / 30 }, chunks);
+    const index = demuxWebm(webm)!;
+    assert.equal(index.codec, 'V_VP8');
+    assert.deepEqual([index.width, index.height, index.durationMs], [640, 360, 3000]);
+    assert.equal(Math.round(index.frameDuration), 33_333);
+    assert.equal(index.frames.length, 90);
+    index.frames.forEach((f, i) => {
+      assert.equal(f.key, i % 30 === 0);
+      assert.ok(Math.abs(f.timestamp - chunks[i].timestamp) <= 1000);
+      assert.deepEqual(webm.subarray(f.offset, f.offset + f.length), chunks[i].data);
+    });
+    // cut short: the frames before the cut stay
+    assert.ok(demuxWebm(webm.subarray(0, Math.floor(webm.length * 0.6)))!.frames.length > 30);
+    assert.equal(demuxWebm(new Uint8Array(64)), undefined);
+  });
+
+  it('reads clusters of unknown size (what live recorders write)', () => {
+    const webm = muxWebm({ codec: 'V_VP9', width: 64, height: 64, frameDuration: 1_000_000 / 30 }, chunks);
+    const seg = readEbml(webm)[1];
+    // every cluster's size made "unknown" (8 bytes of ones), as MediaRecorder does
+    const copy = new Uint8Array(webm);
+    for (const c of seg.children!.filter((n) => n.id === ID.Cluster)) {
+      const sizeAt = c.start + 4;
+      const len = c.dataStart - sizeAt;
+      copy[sizeAt] = 0xff >> (len - 1) | (0x80 >> (len - 1));
+      for (let i = 1; i < len; i++) copy[sizeAt + i] = 0xff;
+    }
+    assert.equal(demuxWebm(copy)!.frames.length, 90);
+  });
+
   it('refuses a stream that does not start with a key frame', () => {
     assert.throws(() => muxWebm({ codec: 'V_VP8', width: 2, height: 2, frameDuration: 33_333 }, [{ ...chunks[1] }]));
   });
@@ -88,6 +120,27 @@ describe('WebM size plan', () => {
   });
 });
 
+describe('WebM checks before an AVI goes to the trash', () => {
+  it('takes a length within a frame or two, never a wrong one', () => {
+    assert.ok(lengthMatches(5_000, 5_033, 33.3));
+    assert.ok(lengthMatches(5_000, 4_800, 33.3));
+    assert.ok(!lengthMatches(5_000, 4_500, 33.3));
+    assert.ok(!lengthMatches(5_000, NaN, 33.3));
+    assert.equal(webmTwin('/c/clip-1.avi'), '/c/clip-1.webm');
+  });
+
+  it('waits for an AVI the game is still writing', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-avi-'));
+    const avi = writeAvi([1, 2, 3].map((i) => Buffer.from([0xff, 0xd8, i, 0xff, 0xd9])), 4, 4, 30);
+    await fs.writeFile(path.join(dir, 'a.avi'), avi);
+    await fs.writeFile(path.join(dir, 'b.avi'), avi.subarray(0, avi.length - 20));
+    assert.equal(await aviComplete(path.join(dir, 'a.avi')), true);
+    assert.equal(await aviComplete(path.join(dir, 'b.avi')), false);
+    assert.equal(await aviComplete(path.join(dir, 'none.avi')), false);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+});
+
 describe('WebM next to a clip', () => {
   it('reads runs of frames and saves without touching the clip or other files', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-webm-'));
@@ -103,6 +156,8 @@ describe('WebM next to a clip', () => {
     assert.equal(await saveWebm(clip, webm, true), 'clip-1-trim.webm');
     // a trimmed clip keeps one -trim; the name is taken, so the next one
     assert.equal(await webmName(dir, 'clip-1-trim.avi', true), 'clip-1-trim-2.webm');
+    // a WebM trimmed: one -trim, a free name
+    assert.equal(await webmName(dir, 'clip-1.webm', true), 'clip-1-trim-2.webm');
     await assert.rejects(saveWebm(clip, new Uint8Array(100), false));
     const names = (await fs.readdir(dir)).sort();
     assert.deepEqual(names, ['clip-1-2.webm', 'clip-1-trim.webm', 'clip-1.avi', 'clip-1.webm']);

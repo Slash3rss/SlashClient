@@ -7,14 +7,17 @@ const common = { bundle: true, sourcemap: true, logLevel: 'info', target: 'es202
 mkdirSync('dist/renderer', { recursive: true });
 await Promise.all([
   build({ ...common, platform: 'node', format: 'cjs', external: ['electron', 'electron-updater', 'original-fs'],
-    entryPoints: { main: 'src/main/main.ts', preload: 'src/main/preload.ts', cli: 'src/main/cli.ts' }, outdir: 'dist' }),
+    entryPoints: { main: 'src/main/main.ts', preload: 'src/main/preload.ts', converterPreload: 'src/main/converterPreload.ts', cli: 'src/main/cli.ts' }, outdir: 'dist' }),
   build({ ...common, platform: 'browser', format: 'iife',
     entryPoints: ['src/renderer/app.ts'], outfile: 'dist/renderer/app.js' }),
   build({ ...common, platform: 'browser', format: 'iife',
     entryPoints: ['src/renderer/console.ts'], outfile: 'dist/renderer/console.js' }),
+  build({ ...common, platform: 'browser', format: 'iife',
+    entryPoints: ['src/renderer/converter.ts'], outfile: 'dist/renderer/converter.js' }),
 ]);
 cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/console.html', 'dist/renderer/console.html');
+cpSync('src/renderer/converter.html', 'dist/renderer/converter.html');
 cpSync('src/renderer/console.css', 'dist/renderer/console.css');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('src/renderer/communityLinks.css', 'dist/renderer/communityLinks.css');

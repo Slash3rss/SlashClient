@@ -1,22 +1,36 @@
-/** English texts of saving clips as WebM for Discord (mediaTools.ts, clipWebm.ts, mediaShare.ts). */
+/** English texts of clips made into WebM for Discord (mediaTools.ts, clipConvert.ts, mediaShare.ts, toolSettings.ts). */
 export const CLIP_WEBM_EN: Record<string, string> = {
   'Zapisz wybrany fragment jako WebM: plik, który Discord odtwarza od razu w czacie': 'Save the chosen part as WebM: a file Discord plays right in the chat',
   'Zapisz jako WebM': 'Save as WebM',
-  'Zapisz jako WebM (Discord)': 'Save as WebM (Discord)',
+  'Zamień na WebM (Discord)': 'Turn into WebM (Discord)',
   'Tego klipu nie da się zapisać jako WebM (to nie jest klip zapisany w grze).': 'This clip cannot be saved as WebM (it is not a clip saved in the game).',
-  'Ten launcher nie potrafi kodować wideo (brak WebCodecs).': 'This launcher cannot encode video (no WebCodecs).',
   'Discord: do 10 MB': 'Discord: up to 10 MB',
   'Wysoka jakość (większy plik)': 'High quality (bigger file)',
   'około {0}': 'about {0}',
   'Zapisz WebM': 'Save WebM',
   'Rozmiar': 'Size',
-  'Discord odtwarza pliki WebM od razu w czacie (klipów AVI nie). Plik zapisze się obok klipu, a oryginał zostaje. Potem przeciągnij go do Discorda albo otwórz folder.':
-    'Discord plays WebM files right in the chat (AVI clips it does not). The file is saved next to the clip and the original stays. Then drag it into Discord or open the folder.',
+  'Discord odtwarza pliki WebM od razu w czacie (klipów AVI nie). Plik WebM zapisze się obok, a klip AVI, gdy WebM jest gotowy i sprawdzony, trafi do kosza systemu (da się go stamtąd przywrócić).':
+    'Discord plays WebM files right in the chat (AVI clips it does not). The WebM is saved next to the clip, and once it is ready and checked the AVI goes to the system\'s trash (it can be restored from there).',
+  'Discord odtwarza pliki WebM od razu w czacie (klipów AVI nie). Wybrany fragment zapisze się obok klipu jako WebM, a oryginał zostaje.':
+    'Discord plays WebM files right in the chat (AVI clips it does not). The chosen part is saved next to the clip as WebM and the original stays.',
+  'Przeciągnij uchwyty, żeby wybrać fragment. Przycięta kopia WebM zapisze się obok oryginału (oryginał zostaje).':
+    'Drag the handles to choose a part. The trimmed WebM copy is saved next to the original (the original stays).',
   'Koduję…': 'Encoding…',
   'Koduję… {0}%': 'Encoding… {0}%',
-  'Zapisano {0} ({1}, w {2} s). Przeciągnij go z listy klipów do Discorda.': 'Saved {0} ({1}, in {2} s). Drag it from the clip list into Discord.',
+  'Zapisano {0} (w {1} s). Przeciągnij go z listy klipów do Discorda.': 'Saved {0} (in {1} s). Drag it from the clip list into Discord.',
   'Przerwano.': 'Cancelled.',
   'Ten komputer nie ma kodera VP9 ani VP8.': 'This computer has no VP9 or VP8 encoder.',
   'Nie udało się zapisać pliku WebM: {0}': 'Could not save the WebM file: {0}',
   'Przeciągnij, żeby wrzucić plik np. do Discorda': 'Drag to drop the file into e.g. Discord',
+  'Starszy klip: Discord go nie odtworzy. Zamień go na WebM.': 'An older clip: Discord does not play it. Turn it into WebM.',
+  'Czeka na zamianę na WebM…': 'Waiting to be turned into WebM…',
+  'Zamieniam na WebM… {0}%': 'Turning into WebM… {0}%',
+  'Serwer SlashClient nie przyjmuje jeszcze klipów WebM.': 'The SlashClient server does not take WebM clips yet.',
+  'Zamieniaj nowe klipy na WebM': 'Turn new clips into WebM',
+  'Discord odtwarza je w czacie; klip AVI z gry trafia potem do kosza': 'Discord plays them in the chat; the game\'s AVI clip then goes to the trash',
+  'Rozmiar klipów WebM': 'Size of WebM clips',
+  'Pobieranie, grafika i klipy': 'Downloads, graphics and clips',
+  'Nowe klipy będą zamieniane na WebM': 'New clips will be turned into WebM',
+  'Nowe klipy zostaną w AVI': 'New clips will stay AVI',
+  'Rozmiar klipów WebM: {0}': 'Size of WebM clips: {0}',
 };

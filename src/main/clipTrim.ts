@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { demuxWebm } from '../shared/webm';
 
 /**
  * Trimming the game's clips. A clip is an AVI with one Motion-JPEG stream (hud AviWriter.java):
@@ -122,7 +123,7 @@ export function writeAvi(frames: Buffer[], width: number, height: number, fps: n
 }
 
 /** What the trim window needs to know about a clip. */
-export interface ClipInfo { frames: number; fps: number; width: number; height: number; durationMs: number; trimmable: boolean }
+export interface ClipInfo { frames: number; fps: number; width: number; height: number; durationMs: number; trimmable: boolean; kind?: 'avi' | 'webm' }
 
 /** Indexes of recently opened clips: the preview asks for many frames of the same one. */
 const cache = new Map<string, { key: string; index: ClipIndex }>();
@@ -141,12 +142,18 @@ export async function clipIndex(file: string): Promise<ClipIndex | undefined> {
 }
 
 export async function clipInfo(file: string): Promise<ClipInfo> {
+  if (/\.webm$/i.test(file)) {
+    // a WebM is trimmed by encoding the part again (clipConvert.ts); its preview is a <video>
+    const webm = demuxWebm(await fs.readFile(file));
+    if (!webm) return { frames: 0, fps: 0, width: 0, height: 0, durationMs: 0, trimmable: false, kind: 'webm' };
+    return { frames: webm.frames.length, fps: 1_000_000 / webm.frameDuration, width: webm.width, height: webm.height, durationMs: webm.durationMs, trimmable: webm.frames.length > 1, kind: 'webm' };
+  }
   const index = /\.avi$/i.test(file) ? await clipIndex(file) : undefined;
   if (!index) return { frames: 0, fps: 0, width: 0, height: 0, durationMs: 0, trimmable: false };
   const fps = fpsOf(index);
   return {
     frames: index.frames.length, fps, width: index.width, height: index.height,
-    durationMs: Math.round((index.frames.length * 1000) / fps), trimmable: index.handler.toUpperCase() === 'MJPG',
+    durationMs: Math.round((index.frames.length * 1000) / fps), trimmable: index.handler.toUpperCase() === 'MJPG', kind: 'avi',
   };
 }
 
@@ -216,7 +223,8 @@ export async function clipFrames(file: string, from: number, count: number): Pro
 
 /** A free name next to the clip for its WebM: clip-….webm (clip-…-trim.webm for a part), then -2, -3… */
 export async function webmName(dir: string, name: string, part: boolean): Promise<string> {
-  const base = name.replace(/\.avi$/i, '') + (part && !/-trim\d*$/i.test(name.replace(/\.avi$/i, '')) ? '-trim' : '');
+  const stem = name.replace(/\.(avi|webm)$/i, '');
+  const base = stem + (part && !/-trim\d*$/i.test(stem) ? '-trim' : '');
   for (let i = 1; ; i++) {
     const candidate = `${base}${i > 1 ? `-${i}` : ''}.webm`;
     if (!(await fs.access(path.join(dir, candidate)).then(() => true, () => false))) return candidate;

@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { netFetch } from './download';
-import { clipFrame, clipFrames, clipInfo, saveWebm, trimClip } from './clipTrim';
+import { clipFrame, clipInfo, trimClip } from './clipTrim';
+import type { ClipConverter } from './clipConvert';
 import { APP_VERSION } from '../shared/version';
 import { t } from '../shared/i18n';
 
@@ -59,10 +60,10 @@ async function failed(res: Response): Promise<never> {
   throw new Error(mediaErrorText(body.error ?? (res.status === 413 ? 'too_large' : undefined), res.status));
 }
 
-const TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.avi': 'video/x-msvideo' };
+const TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.avi': 'video/x-msvideo', '.webm': 'video/webm' };
 
 /** Sends a screenshot or clip; the answer has the page's full address in `url`. */
-export async function uploadMedia(opts: { server: string; token: string; file: string; title?: string }): Promise<SharedMedia> {
+export async function uploadMedia(opts: { server: string; token: string; file: string; title?: string; poster?: Uint8Array }): Promise<SharedMedia> {
   const type = TYPES[path.extname(opts.file).toLowerCase()];
   if (!type) throw new Error(mediaErrorText('bad_media', 400));
   const size = (await fs.stat(opts.file)).size;
@@ -76,8 +77,20 @@ export async function uploadMedia(opts: { server: string; token: string; file: s
   });
   // an older server answers not_found for an address it does not have
   if (res.status === 404) throw new Error(mediaErrorText(undefined, 404));
+  // a server from before WebM clips takes only the game's AVI
+  if (!res.ok && type === 'video/webm') {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error === 'bad_media' ? t('Serwer SlashClient nie przyjmuje jeszcze klipów WebM.') : mediaErrorText(body.error ?? (res.status === 413 ? 'too_large' : undefined), res.status));
+  }
   if (!res.ok) await failed(res);
-  const { media } = (await res.json()) as { media: SharedMedia };
+  let { media } = (await res.json()) as { media: SharedMedia };
+  // the server does not decode WebM: the clip's first frame (made in the page) is its preview picture
+  if (type === 'video/webm' && opts.poster?.length) {
+    const sent = await netFetch(`${base(opts.server)}/v1/media/${media.id}/poster`, {
+      method: 'PUT', headers: { ...headers(opts.token), 'Content-Type': 'image/jpeg' }, body: new Uint8Array(opts.poster), signal: AbortSignal.timeout(60_000),
+    }).catch(() => undefined);
+    if (sent?.ok) media = ((await sent.json().catch(() => ({}))) as { media?: SharedMedia }).media ?? media;
+  }
   return { ...media, url: base(opts.server) + media.url };
 }
 
@@ -95,7 +108,7 @@ export async function deleteMedia(server: string, token: string, id: string): Pr
 
 /** Only plain file names of the gallery's kinds, never paths, so nothing outside the folder is read. */
 export function galleryFile(gameDir: string, folder: MediaFolder, name: unknown): string {
-  const ok = folder === 'clips' ? /\.avi$/i : /\.(png|jpe?g)$/i;
+  const ok = folder === 'clips' ? /\.(avi|webm)$/i : /\.(png|jpe?g)$/i;
   if (typeof name !== 'string' || !name || name !== path.basename(name) || name.startsWith('.') || !ok.test(name)) throw new Error(t('Nieprawidłowa nazwa'));
   return path.join(gameDir, folder, name);
 }
@@ -107,6 +120,7 @@ export interface MediaDeps {
   session: () => { server: string; token: string };
   /** Copies the link where the player can paste it. */
   copy: (text: string) => void;
+  converter: ClipConverter;
 }
 
 export function registerMediaSharing(d: MediaDeps) {
@@ -126,21 +140,25 @@ export function registerMediaSharing(d: MediaDeps) {
       throw new Error((err as Error).message === 'too short' ? t('Przycięty klip musi mieć co najmniej dwie klatki.') : t('Nie udało się przyciąć klipu: {0}', (err as Error).message));
     }
   });
-  // a clip turned into WebM in the page (clipWebm.ts): its frames go there, the file comes back
-  d.handle('clips:frames', (profileId: string, name: string, from: number, count: number) =>
-    clipFrames(galleryFile(d.gameDirOf(profileId), 'clips', name), Number(from) || 0, Number(count) || 0));
-  d.handle('clips:saveWebm', async (profileId: string, name: string, data: Uint8Array, part: boolean) => {
-    if (!(data instanceof Uint8Array)) throw new Error(t('Nieprawidłowa nazwa'));
+  // clips made into WebM, and WebMs trimmed, in the background (clipConvert.ts)
+  d.handle('clips:convert', async (profileId: string, name: string, opts?: { from?: number; to?: number; replace?: boolean }) => {
+    const file = galleryFile(d.gameDirOf(profileId), 'clips', name);
+    const range = opts && Number.isFinite(opts.from) && Number.isFinite(opts.to) ? { from: Number(opts.from), to: Number(opts.to) } : {};
     try {
-      return await saveWebm(galleryFile(d.gameDirOf(profileId), 'clips', name), data, !!part);
+      return await d.converter.convert(file, { ...range, replace: !!opts?.replace && /\.avi$/i.test(file) });
     } catch (err) {
-      throw new Error(t('Nie udało się zapisać pliku WebM: {0}', (err as Error).message));
+      const e = err as Error;
+      if (e.name === 'AbortError') throw new Error(t('Przerwano.'));
+      throw new Error(e.message === 'too short' ? t('Przycięty klip musi mieć co najmniej dwie klatki.') : e.message === 'no-encoder' ? t('Ten komputer nie ma kodera VP9 ani VP8.') : t('Nie udało się zapisać pliku WebM: {0}', e.message));
     }
   });
-  d.handle('media:share', async (profileId: string, folder: MediaFolder, name: string, title?: string) => {
+  d.handle('clips:convertCancel', (profileId: string, name: string) => d.converter.cancel(galleryFile(d.gameDirOf(profileId), 'clips', name)));
+  d.handle('clips:converting', () => d.converter.states());
+  d.handle('media:share', async (profileId: string, folder: MediaFolder, name: string, title?: string, poster?: Uint8Array) => {
     if (folder !== 'clips' && folder !== 'screenshots') throw new Error(t('Nieprawidłowa nazwa'));
     const file = galleryFile(d.gameDirOf(profileId), folder, name);
-    const media = await uploadMedia({ ...session(), file, title: typeof title === 'string' ? title : undefined });
+    const picture = poster instanceof Uint8Array && poster.length < 2 * 1024 * 1024 ? poster : undefined;
+    const media = await uploadMedia({ ...session(), file, title: typeof title === 'string' ? title : undefined, poster: picture });
     d.copy(media.url);
     return media;
   });

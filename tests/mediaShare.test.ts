@@ -43,7 +43,7 @@ describe('clip trimming', () => {
     const src = path.join(dir, 'clip-2026-10-19_20.00.00.avi');
     await fs.writeFile(src, writeAvi(frames, 640, 360, 25));
     const info = await clipInfo(src);
-    assert.deepEqual(info, { frames: 30, fps: 25, width: 640, height: 360, durationMs: 1200, trimmable: true });
+    assert.deepEqual(info, { frames: 30, fps: 25, width: 640, height: 360, durationMs: 1200, trimmable: true, kind: 'avi' });
     assert.deepEqual(await clipFrame(src, 7), frames[7]);
     assert.deepEqual(await clipFrame(src, 999), frames[29]);
 
