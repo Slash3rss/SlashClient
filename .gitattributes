@@ -1,2 +1,6 @@
 hud/gradlew text eol=lf
 *.bat text eol=crlf
+server/deploy/*.sh text eol=lf
+server/deploy/Caddyfile text eol=lf
+server/deploy/*.service text eol=lf
+server/deploy/*.timer text eol=lf
