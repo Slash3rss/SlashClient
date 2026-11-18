@@ -1791,6 +1791,7 @@
 	"slashclient-hud.serverList.down": "Przesuń niżej (Shift+↓)",
 	"slashclient-hud.serverList.refresh": "Odśwież (F5)",
 	"slashclient-hud.serverList.vanilla": "Przełącz na listę Minecrafta",
+	"slashclient-hud.serverList.custom": "Przełącz na listę SlashClient",
 	"slashclient-hud.serverList.back": "Wróć",
 	"slashclient-hud.serverList.yours": "Twoje serwery · %s",
 	"slashclient-hud.serverList.lan": "Sieć lokalna",

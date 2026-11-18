@@ -95,6 +95,24 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		super(parent);
 	}
 
+	/**
+	 * The game's own list, once switched to from ours, gets a button in its top corner back to ours,
+	 * so the way back is not only through the HUD settings.
+	 */
+	public static void registerSwitchBack() {
+		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((mc, screen, width, height) -> {
+			if (screen.getClass() != JoinMultiplayerScreen.class || SlashHud.config == null || SlashHud.config.customServerList) return;
+			Screen last = ((JoinMultiplayerScreenAccessor) screen).slashclient$lastScreen();
+			Button back = Button.builder(Component.literal("SlashClient"), b -> {
+				SlashHud.config.customServerList = true;
+				SlashHud.config.save();
+				mc.setScreenAndShow(new SlashServerScreen(last));
+			}).bounds(width - 76, 6, 70, 20).build();
+			back.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("slashclient-hud.serverList.custom")));
+			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(back);
+		});
+	}
+
 	private JoinMultiplayerScreenAccessor game() {
 		return (JoinMultiplayerScreenAccessor) this;
 	}

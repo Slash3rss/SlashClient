@@ -302,6 +302,19 @@ public class GameServerList implements FabricClientGameTest {
 		if (!vanilla.equals(JoinMultiplayerScreen.class.getName())) throw new AssertionError("With the setting off the game's list should show, not " + vanilla);
 		context.waitTicks(10);
 		context.takeScreenshot("server-list-vanilla");
+		// its button in the top corner goes back to ours and keeps it on
+		context.runOnClient(mc -> {
+			var back = net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(Compat.screen(mc)).stream()
+				.filter(w -> w.getMessage().getString().equals("SlashClient")).findFirst().orElseThrow(() -> new AssertionError("No button back to SlashClient's list on the game's"));
+			//#if MC >= 1.21.9
+			((net.minecraft.client.gui.components.Button) back).onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+			//#else
+			//$ ((net.minecraft.client.gui.components.Button) back).onPress();
+			//#endif
+		});
+		context.waitTicks(3);
+		String switched = context.computeOnClient(mc -> Compat.screen(mc).getClass().getSimpleName() + " " + SlashHud.config.customServerList);
+		if (!switched.equals("SlashServerScreen true")) throw new AssertionError("The button should bring SlashClient's list back, got " + switched);
 		context.runOnClient(mc -> SlashHud.config.customServerList = true);
 		context.setScreen(() -> null);
 		context.waitTicks(2);

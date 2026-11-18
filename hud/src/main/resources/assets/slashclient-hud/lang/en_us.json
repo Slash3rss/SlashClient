@@ -1790,6 +1790,7 @@
 	"slashclient-hud.serverList.up": "Move up (Shift+↑)",
 	"slashclient-hud.serverList.down": "Move down (Shift+↓)",
 	"slashclient-hud.serverList.refresh": "Refresh (F5)",
+	"slashclient-hud.serverList.custom": "Switch to the SlashClient list",
 	"slashclient-hud.serverList.vanilla": "Switch to Minecraft's list",
 	"slashclient-hud.serverList.back": "Back",
 	"slashclient-hud.serverList.yours": "Your servers · %s",

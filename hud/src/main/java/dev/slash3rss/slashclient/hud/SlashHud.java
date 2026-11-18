@@ -202,6 +202,7 @@ public class SlashHud implements ClientModInitializer {
 		dev.slash3rss.slashclient.hud.skyup.SkyWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyWiki", InputConstants.UNKNOWN.getValue(), category));
 		//#endif
 		ChatTabs.register();
+		dev.slash3rss.slashclient.hud.ui.SlashServerScreen.registerSwitchBack();
 		Assist.register(category);
 		dev.slash3rss.slashclient.hud.inventory.QuickCraft.register(category);
 		// R over a chest or the inventory sorts it (InventorySort; the window's small button does too)
