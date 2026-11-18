@@ -91,6 +91,9 @@ public class GameScreenSpike implements FabricClientGameTest {
 					}
 					context.getInput().pressKey(InputConstants.KEY_ESCAPE);
 					context.waitTicks(5);
+					// SkyUp's shop: a buy every few ticks, the same chat line each time ("Kaktus z magazynu", stacked
+					// into "×N") and the item coming into the inventory; the game must not get slower buy after buy
+					if (phase == 1) shop(context, sampler, server, failures);
 				}
 			} finally {
 				sampler.stop = true;
@@ -137,6 +140,52 @@ public class GameScreenSpike implements FabricClientGameTest {
 			for (int i = 0; i < 27; i++) chest.setItem(i, new net.minecraft.world.item.ItemStack(WARES[(i + round) % WARES.length], 1 + (i * 7 + round) % 16));
 			chest.setChanged();
 		});
+	}
+
+	/** A buy in SkyUp's shop over and over: the frames of the first buys and of the last must take about as long. */
+	private static void shop(ClientGameTestContext context, Sampler sampler, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, List<String> failures) {
+		skyUp(true);
+		try {
+			server.runCommand("clear @a");
+			context.waitTicks(5);
+			double[] first = null, last = null;
+			for (int round = 0; round < 8; round++) {
+				sampler.counts.clear();
+				sampler.counted.set(0);
+				sampler.counting = true;
+				double[] t = new double[40];
+				for (int i = 0; i < t.length; i++) {
+					// two buys a tick, as a player clicking fast
+					if (i % 2 == 0) for (int b = 0; b < 2; b++) {
+						server.runCommand("tellraw @a [{\"text\":\"» \",\"color\":\"dark_gray\"},{\"text\":\"Kupiono: \",\"color\":\"gray\"},{\"text\":\"Kaktus z magazynu\",\"color\":\"green\"}]");
+						server.runCommand("give @a cactus 1");
+					}
+					long a = sampler.busy.get();
+					context.waitTick();
+					t[i] = (sampler.busy.get() - a) / 1e6;
+				}
+				sampler.counting = false;
+				System.out.printf("[spike] shop round %d: median %.1f ms, worst %.1f ms%n", round, median(t), Arrays.stream(t).max().orElse(0));
+				if (round == 0) first = t;
+				if (round == 7) {
+					last = t;
+					for (var line : sampler.top(60)) System.out.println("[spike]   " + line);
+				}
+			}
+			double a = median(first), b = median(last);
+			if (b > Math.max(15, a * 2)) failures.add(String.format("the shop got slower buy after buy: median %.1f ms at first, %.1f ms after %d buys", a, b, 8 * 40));
+		} finally {
+			skyUp(false);
+		}
+	}
+
+	/** As if on SkyUp (its helpers read the chat and the inventory only there); the field is there only where SkyUp's helpers are. */
+	private static void skyUp(boolean on) {
+		try {
+			Class.forName("dev.slash3rss.slashclient.hud.skyup.SkyTasks").getField("testWorld").setBoolean(null, on);
+		} catch (ReflectiveOperationException e) {
+			// no SkyUp helpers in this version
+		}
 	}
 
 	private static void measure(ClientGameTestContext context, Sampler sampler, String what, int round, List<String> failures, Runnable open, Runnable close) {
