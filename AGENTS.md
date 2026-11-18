@@ -132,9 +132,10 @@ Potem kod (tylko `src`, `web` i `package.json`):
 ```
 git archive HEAD:server src web package.json | ssh slashclient   'cd /opt/slashclient/app && tar xf - && chown -R root:root src web && systemctl restart slashclient'
 ```
-Sprawdź `https://slashclient.pl/v1/health`. Stary VPS 93.95.119.130 ma zatrzymany i wyłączony `slashclient`
-(zapas na wypadek cofnięcia przenosin); nie ruszaj tam `/opt/api-slash3rss` ani `/etc/caddy/sites` – należą do
-innego projektu.
+Sprawdź `https://slashclient.pl/v1/health`. W tym samym kontenerze działa API listy serwerów `api.slash3rss.dev`
+(osobny projekt: `/opt/api-slash3rss`, usługa `api-slash3rss`, wpis Caddy w `/etc/caddy/sites`, baza MariaDB
+w CT 807) – nie ruszaj go przy wdrożeniu. Stary VPS 93.95.119.130 ma obie usługi zatrzymane i wyłączone
+(zapas na wypadek cofnięcia przenosin).
 
 Zapasowy serwer (awaryjność): `server/deploy/failover/README.md` – dzierżawa lidera i kopie bazy/plików w R2
 (`server/src/failover.ts`), strażnik i przejęcie na zapasowym. Po włączeniu `FAILOVER_*` wdrażaj na oba serwery
