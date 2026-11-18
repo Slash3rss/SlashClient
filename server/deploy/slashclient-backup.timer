@@ -1,0 +1,9 @@
+[Unit]
+Description=SlashClient data backup, nightly before the vzdump at 1:00
+
+[Timer]
+OnCalendar=*-*-* 00:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

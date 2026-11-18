@@ -1,0 +1,6 @@
+[Unit]
+Description=SlashClient data backup (SQLite snapshot and files)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/slashclient-backup

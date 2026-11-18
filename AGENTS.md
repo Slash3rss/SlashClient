@@ -106,20 +106,35 @@ aktualizacji” w panelu admina); strona, `/pobierz` i stabilny kanał ich nie w
 
 ## Wdrożenie serwera (tylko na polecenie)
 
-Na VPS najpierw kopia bazy i aplikacji:
+Serwer stoi w kontenerze CT 821 (192.168.100.22) na hoście Proxmox 54.36.173.32. HTTPS robi Nginx Proxy Manager
+z CT 800 (certyfikaty, proxy hosty `slashclient.pl` i `client.slash3rss.dev`), a przed nim Cloudflare. Caddy
+w kontenerze działa tylko po HTTP (`server/deploy/Caddyfile`: przekierowania i prawdziwe IP gracza). SSH tylko przez
+konto przeskokowe, które przepuszcza wyłącznie do SSH kontenera. W `~/.ssh/config`:
 ```
-T=$(date +%Y%m%d-%H%M%S)
+Host slashclient-jump
+  HostName 54.36.173.32
+  User slashclient-jump
+  IdentityFile ~/.ssh/slashclient_vps
+Host slashclient
+  HostName 192.168.100.22
+  User root
+  ProxyJump slashclient-jump
+  IdentityFile ~/.ssh/slashclient_vps
+```
+Najpierw kopia bazy i aplikacji (nocną kopię robi też `slashclient-backup.timer` do `/var/backups/slashclient`):
+```
+ssh slashclient 'T=$(date +%Y%m%d-%H%M%S); mkdir -p /root/backups
 sqlite3 /var/lib/slashclient/social.db ".backup /root/backups/social-$T.db"
 tar czf /root/backups/app-$T.tgz -C /opt/slashclient app
-find /root/backups -type f -mtime +30 -delete   # polityka prywatności obiecuje najwyżej 30 dni
+find /root/backups -type f -mtime +30 -delete'   # polityka prywatności obiecuje najwyżej 30 dni
 ```
 Potem kod (tylko `src`, `web` i `package.json`):
 ```
-git archive HEAD:server src web package.json | ssh -i ~/.ssh/slashclient_vps root@93.95.119.130 \
-  'cd /opt/slashclient/app && tar xf - && chown -R root:root src web && systemctl restart slashclient'
+git archive HEAD:server src web package.json | ssh slashclient   'cd /opt/slashclient/app && tar xf - && chown -R root:root src web && systemctl restart slashclient'
 ```
-Sprawdź `https://slashclient.pl/v1/health`. Na VPS nie ruszaj `/opt/api-slash3rss` ani `/etc/caddy/sites` –
-należą do innego projektu (Caddyfile z repo tylko je importuje).
+Sprawdź `https://slashclient.pl/v1/health`. Stary VPS 93.95.119.130 ma zatrzymany i wyłączony `slashclient`
+(zapas na wypadek cofnięcia przenosin); nie ruszaj tam `/opt/api-slash3rss` ani `/etc/caddy/sites` – należą do
+innego projektu.
 
 Zapasowy serwer (awaryjność): `server/deploy/failover/README.md` – dzierżawa lidera i kopie bazy/plików w R2
 (`server/src/failover.ts`), strażnik i przejęcie na zapasowym. Po włączeniu `FAILOVER_*` wdrażaj na oba serwery
