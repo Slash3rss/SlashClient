@@ -2793,14 +2793,19 @@ public final class TestHooks {
 	//#if MC >= 26.3
 	/** A stacked cow ("Sztuk: 5") near the player, hit by them, as SkyUp's stacking shows it. */
 	public static void skyStackedCowHit() {
+		skyStackedHit("cow");
+	}
+
+	/** The player hits the named mob of this type (a stacked one), as a sword's swing would. */
+	public static void skyStackedHit(String type) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		for (var e : mc.level.entitiesForRendering()) {
-			if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("cow") && e.hasCustomName()) {
+			if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals(type) && e.hasCustomName()) {
 				dev.slash3rss.slashclient.hud.skyup.SkyCounters.attacked(mc.player, e);
 				return;
 			}
 		}
-		throw new IllegalStateException("No named cow");
+		throw new IllegalStateException("No named " + type);
 	}
 	//#endif
 

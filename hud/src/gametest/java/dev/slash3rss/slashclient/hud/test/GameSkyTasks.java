@@ -171,8 +171,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("execute at @p align xyz run fill ~4 ~ ~4 ~5 ~ ~4 air");
 			// a stacked mob: its number in the name (SkyUp's "Sztuk: 5"); each one off it is a kill, and so is the last one dying
 			String stacks = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.stacksForTest("Sztuk: 10", "§6Sztuk: §e3", "x11 Krowa", "Krowa x11",
-				"11x Krowa", "Krowa [x4]", "§ex7 §fŚwinia", "Krowa", "Zombie poz. 5"));
-			check(stacks.equals("10 3 11 11 11 4 7 1 1"), "stacked mobs' numbers", stacks);
+				"11x Krowa", "Krowa [x4]", "§ex7 §fŚwinia", "Krowa", "Zombie poz. 5", "§c60 ❤ §8| §eZombie §8| §7(x5)"));
+			check(stacks.equals("10 3 11 11 11 4 7 1 1 5"), "stacked mobs' numbers", stacks);
 			world.getServer().runCommand("execute at @p run summon cow ~2 ~ ~2 {NoAI:1b,CustomName:\"Sztuk: 5\"}");
 			context.waitTicks(10);
 			long killsBefore = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest);
@@ -185,6 +185,15 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(10);
 			long stackKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest) - killsBefore;
 			check(stackKills == 5, "kills of a stacked cow (5 in it)", String.valueOf(stackKills));
+			// a spawner's stack ("60 ❤ | Zombie | (x5)") dies whole: all five are kills
+			world.getServer().runCommand("execute at @p run summon zombie ~2 ~ ~2 {NoAI:1b,PersistenceRequired:1b,CustomName:\"60 ❤ | Zombie | (x5)\"}");
+			context.waitTicks(10);
+			killsBefore = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest);
+			context.runOnClient(mc -> TestHooks.skyStackedHit("zombie"));
+			world.getServer().runCommand("kill @e[type=zombie]");
+			context.waitTicks(10);
+			long spawnerKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest) - killsBefore;
+			check(spawnerKills == 5, "kills of a spawner's stacked zombie (x5)", String.valueOf(spawnerKills));
 			// in a dungeon a kill counts for no task
 			String dungeonKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.dungeonKillForTest());
 			check(dungeonKills.equals("0 1"), "kills in a dungeon (in, out)", dungeonKills);

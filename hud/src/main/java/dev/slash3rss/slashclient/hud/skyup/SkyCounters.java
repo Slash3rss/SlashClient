@@ -648,7 +648,7 @@ public final class SkyCounters {
 	/** A mob the player hit: when, and how many it stood for then (a stacked mob stands for several). */
 	private record Hit(long at, int stack) {}
 
-	/** Mobs the player hit: one of them dying, or its stack shrinking, within a few seconds is the player's kill. */
+	/** Mobs the player hit: one of them dying (all it stands for), or its stack shrinking, within a few seconds is the player's kill. */
 	private static final Map<Integer, Hit> hit = new HashMap<>();
 
 	/** For the test: the kills counted so far. */
@@ -656,7 +656,8 @@ public final class SkyCounters {
 
 	/**
 	 * How many mobs a stacked one stands for, from its name (SkyUp's "Sztuk: 10"; elsewhere "x11 Krowa", "Krowa x11",
-	 * "11x Krowa", "Krowa [x11]"): the server keeps one mob for many alike, and each kill takes one off its number.
+	 * "11x Krowa", "Krowa [x11]", the spawner's "60 ❤ | Zombie | (x5)"): the server keeps one mob for many alike; a kill
+	 * takes one off its number, or the whole stack dies at once.
 	 */
 	private static final java.util.regex.Pattern STACK = java.util.regex.Pattern.compile(
 		"(?iu)sztuk\\s*:?\\s*(\\d{1,5})|(?:^|[\\s\\[(])(?:[x×]\\s?(\\d{1,5})|(\\d{1,5})\\s?[x×])(?=$|[\\s\\])])");
@@ -742,7 +743,8 @@ public final class SkyCounters {
 		hit.entrySet().removeIf(e -> {
 			Entity entity = mc.level.getEntity(e.getKey());
 			if (entity instanceof LivingEntity living && living.isDeadOrDying()) {
-				killed(living, 1);
+				// a stacked mob dies whole (SkyUp's spawner mobs, "Zombie | (x5)"): each one in it is a kill
+				killed(living, Math.max(stackOf(living), e.getValue().stack()));
 				return true;
 			}
 			if (entity instanceof LivingEntity living) {
