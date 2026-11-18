@@ -531,6 +531,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(plan.endsWith("|-,Zawody wędkarskie,-|19:05 Fishing contest=on now;19:07 Boss arena=in 54 min (20:00);20:05 Boss arena=on now;20:07 Events=in 54 min (21:00);"
 				+ "21:01 Labirynt=on now 1/3;21:20 Parkour miłosny=on now 2/3;21:26 Events=tomorrow 18:00;"
 				+ "18:03 Events=on now;18:03 Fishing contest=in 1 h 57 min (20:00);"
+				// a boss fight over after 20 minutes when nothing said it ended, and the boss winning when the time is up ends it too
+				+ "21:19 Boss arena=on now;21:21 Events=tomorrow 12:00;19:10 Boss arena=on now;19:16 Fishing contest=in 1 h 45 min (21:00);"
 				// below: the kinds not among the coming three (on Monday the boss arena on Wednesday)
 				+ "|0,WEDNESDAY 20:00 Boss arena"), "the plan's end from the chat", plan);
 			context.waitTicks(15);

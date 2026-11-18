@@ -74,6 +74,15 @@ public final class SkyPlan {
 			return Duration.ofMinutes(this == EVENTS ? 15 : 10);
 		}
 
+		/**
+		 * The longest it is shown as going on when the chat said it started and never that it ended: the events and a
+		 * contest may run long, while a boss fight is over in some 15 minutes whatever happens (beaten, or its time up),
+		 * so a fight ending in a way the mod does not know yet is not "on now" for the rest of the hour.
+		 */
+		Duration longest() {
+			return this == BOSS ? Duration.ofMinutes(20) : LONGEST;
+		}
+
 		static Kind of(String name) {
 			String n = name.toLowerCase(Locale.ROOT);
 			if (n.contains("boss")) return BOSS;
@@ -253,7 +262,7 @@ public final class SkyPlan {
 	private static boolean over(Kind kind, ZonedDateTime at, ZonedDateTime now) {
 		if (now.isBefore(at)) return false;
 		Heard h = heard.get(kind);
-		if (h != null && h.of(at)) return h.ended != null && !h.ended.isAfter(now) || !now.isBefore(at.plus(LONGEST));
+		if (h != null && h.of(at)) return h.ended != null && !h.ended.isAfter(now) || !now.isBefore(at.plus(kind.longest()));
 		return !now.isBefore(at.plus(kind.usual()));
 	}
 
@@ -281,7 +290,8 @@ public final class SkyPlan {
 	private static final java.util.regex.Pattern PICKED = java.util.regex.Pattern.compile("^Event » Eventy rozpoczną się za .*Fortuna wybrała (.+)!$");
 	private static final java.util.regex.Pattern EVENT_STARTED = java.util.regex.Pattern.compile("^Event » (.+) rozpoczął się!$");
 	private static final java.util.regex.Pattern EVENT_ENDED = java.util.regex.Pattern.compile("^Event » (.+) został zakończony!$");
-	private static final java.util.regex.Pattern BOSS_BEATEN = java.util.regex.Pattern.compile("^Dungeon » Boss został .*pokonany!$");
+	/** The fight over either way: the boss beaten, or the time up with the boss left standing ("Czas minął! Boss wygrał!"). */
+	private static final java.util.regex.Pattern BOSS_OVER = java.util.regex.Pattern.compile("^Dungeon » (?:Boss został .*pokonany|.*Boss wygrał.*)!?$");
 
 	/** A line of the chat (ChatComponentMixin): SkyUp's fishing contests, events and boss fights starting and ending. */
 	public static void onChat(String line) {
@@ -301,11 +311,13 @@ public final class SkyPlan {
 		}
 		if (line.startsWith("Dungeon »")) {
 			Heard h = heard.get(Kind.BOSS);
-			boolean on = h != null && h.started != null && h.ended == null && now.isBefore(h.started.plus(LONGEST));
+			boolean on = h != null && h.started != null && h.ended == null && now.isBefore(h.started.plus(Kind.BOSS.longest()));
 			// the arena's gates open a minute before the fight (and say so every few seconds)
 			if (line.startsWith("Dungeon » Wrota Boss Areny otwarte!")) {
 				if (!on) started(Kind.BOSS, now);
-			} else if (BOSS_BEATEN.matcher(line).matches()) ended(Kind.BOSS, now);
+			} else if (BOSS_OVER.matcher(line).matches()) ended(Kind.BOSS, now);
+			// the time up said alone: only while the fight is on, as a dungeon's own time may run out at any hour
+			else if (on && line.startsWith("Dungeon » Czas minął")) ended(Kind.BOSS, now);
 			// the answer to /dng boss: only after the gates opened, as before them there is no fight yet either
 			else if (on && line.startsWith("Dungeon » Aktualnie nie ma walki z bossem")) ended(Kind.BOSS, now);
 			return;
@@ -562,7 +574,8 @@ public final class SkyPlan {
 	 * The chat on the same Wednesday, as SkyUp says it: the fishing contest at 19:00 over at 19:06 (not 19:10), the
 	 * boss at 20:00 beaten at 20:06 (the /dng boss answer before the gates opened changing nothing), the three events
 	 * at 21:00 going on past their usual 15 minutes with the one going on shown, over with the last;
-	 * Thursday's events not knowing which were picked, over a moment after one ends with no next announced.
+	 * Thursday's events not knowing which were picked, over a moment after one ends with no next announced; Sunday's
+	 * boss winning when the time is up, the fight over then, and Saturday's never said to end over after 20 minutes.
 	 * Each moment as "<hour> <first row's name>=<when>;".
 	 */
 	private static String liveForTest() {
@@ -601,6 +614,17 @@ public final class SkyPlan {
 		heard("Event » Kopacz w jaskini został zakończony!", thu.withHour(18).withMinute(3));
 		row.accept(thu.withHour(18).withMinute(3).withSecond(5));
 		row.accept(thu.withHour(18).withMinute(3).withSecond(20));
+		// Saturday's boss at 21:00 never said to end: over 20 minutes on all the same
+		ZonedDateTime sat = day.plusDays(3);
+		heard("Dungeon » Wrota Boss Areny otwarte! Pozostało 1 min do rozpoczęcia walki! Wpisz /dng boss, by dołączyć!", sat.withHour(20).withMinute(59));
+		row.accept(sat.withHour(21).withMinute(19));
+		row.accept(sat.withHour(21).withMinute(21));
+		// Sunday's boss at 19:00 not beaten in time: over with the time up, not "on now" for the rest of the hour
+		ZonedDateTime sun = day.plusDays(4);
+		heard("Dungeon » Wrota Boss Areny otwarte! Pozostało 1 min do rozpoczęcia walki! Wpisz /dng boss, by dołączyć!", sun.withHour(18).withMinute(59));
+		row.accept(sun.withHour(19).withMinute(10));
+		heard("§6Dungeon §8» §cCzas minął! Boss wygrał!", sun.withHour(19).withMinute(15));
+		row.accept(sun.withHour(19).withMinute(16));
 		SlashHud.config.skyPlanTime = time;
 		resetForTest();
 		return out.toString();
