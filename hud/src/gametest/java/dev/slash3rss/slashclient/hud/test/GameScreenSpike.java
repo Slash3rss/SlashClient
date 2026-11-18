@@ -64,6 +64,33 @@ public class GameScreenSpike implements FabricClientGameTest {
 						measure(context, sampler, "pause", round, failures, () -> context.getInput().pressKey(InputConstants.KEY_ESCAPE), () -> context.getInput().pressKey(InputConstants.KEY_ESCAPE));
 						measure(context, sampler, "tab", round, failures, () -> context.getInput().holdKey(o -> o.keyPlayerList), () -> context.getInput().releaseKey(o -> o.keyPlayerList));
 					}
+					// a chest like a server's shop: opened, its items swapped while it is open, and opened anew
+					// over itself (shops that refresh by sending the window again)
+					server.runCommand("tp @a 0.5 -60 0.5 0 30");
+					server.runCommand("setblock 0 -60 2 chest");
+					fill(server, 0);
+					context.waitTicks(10);
+					Runnable openChest = () -> context.runOnClient(mc -> mc.gameMode.useItemOn(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND,
+						new net.minecraft.world.phys.BlockHitResult(new net.minecraft.world.phys.Vec3(0.5, -59.5, 2), net.minecraft.core.Direction.NORTH,
+							new net.minecraft.core.BlockPos(0, -60, 2), false)));
+					for (int round = 1; round <= 3; round++)
+						measure(context, sampler, "chest", round, failures, openChest, () -> context.getInput().pressKey(InputConstants.KEY_ESCAPE));
+					openChest.run();
+					context.waitTicks(10);
+					for (int round = 1; round <= 3; round++) {
+						int r = round;
+						measure(context, sampler, "chest refresh", round, failures, () -> fill(server, r), () -> {});
+					}
+					for (int round = 1; round <= 3; round++) {
+						int r = round;
+						measure(context, sampler, "chest reopen", round, failures, () -> {
+							fill(server, r);
+							server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p ->
+								p.openMenu((net.minecraft.world.MenuProvider) s.overworld().getBlockEntity(new net.minecraft.core.BlockPos(0, -60, 2)))));
+						}, () -> {});
+					}
+					context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+					context.waitTicks(5);
 				}
 			} finally {
 				sampler.stop = true;
@@ -99,6 +126,19 @@ public class GameScreenSpike implements FabricClientGameTest {
 		context.runOnClient(mc -> mc.setScreenAndShow(null));
 	}
 
+	private static final net.minecraft.world.item.Item[] WARES = { net.minecraft.world.item.Items.DIAMOND_SWORD, net.minecraft.world.item.Items.GOLDEN_APPLE,
+		net.minecraft.world.item.Items.ENDER_PEARL, net.minecraft.world.item.Items.IRON_CHESTPLATE, net.minecraft.world.item.Items.EMERALD,
+		net.minecraft.world.item.Items.BOW, net.minecraft.world.item.Items.OAK_LOG, net.minecraft.world.item.Items.COBBLESTONE };
+
+	/** The chest's 27 slots filled anew, each round with other wares, as a shop's page that changes. */
+	private static void fill(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, int round) {
+		server.runOnServer(s -> {
+			var chest = (net.minecraft.world.Container) s.overworld().getBlockEntity(new net.minecraft.core.BlockPos(0, -60, 2));
+			for (int i = 0; i < 27; i++) chest.setItem(i, new net.minecraft.world.item.ItemStack(WARES[(i + round) % WARES.length], 1 + (i * 7 + round) % 16));
+			chest.setChanged();
+		});
+	}
+
 	private static void measure(ClientGameTestContext context, Sampler sampler, String what, int round, List<String> failures, Runnable open, Runnable close) {
 		double[] before = frames(context, sampler, 10);
 		sampler.counts.clear();
@@ -108,14 +148,21 @@ public class GameScreenSpike implements FabricClientGameTest {
 		double[] after = frames(context, sampler, 3);
 		sampler.counting = false;
 		double[] later = frames(context, sampler, 6);
-		close.run();
-		frames(context, sampler, 10);
 		double base = median(before), worst = Arrays.stream(after).max().orElse(0);
+		List<String> opening = worst > Math.max(5, base * 2) ? sampler.top(40) : List.of();
+		sampler.counts.clear();
+		sampler.counted.set(0);
+		sampler.counting = true;
+		close.run();
+		double[] closed = frames(context, sampler, 10);
+		sampler.counting = false;
 		// any frame around it: a stall that comes back by itself (a module's slow reading) shows here too
-		double worstAround = Math.max(worst, Math.max(Arrays.stream(before).max().orElse(0), Arrays.stream(later).max().orElse(0)));
-		System.out.printf("[spike] %s #%d: before %s ms, after opening %s ms, then %s ms%n", what, round, ms(before), ms(after), ms(later));
-		if (worst > Math.max(5, base * 2)) for (var line : sampler.top(40)) System.out.println("[spike]   " + line);
-		if (round > 1 && worstAround > Math.max(30, base * 4)) failures.add(what + " #" + round + ": " + ms(before) + " | " + ms(after) + " | " + ms(later) + " ms, median " + String.format("%.1f", base) + " ms");
+		double worstClosed = Arrays.stream(closed).max().orElse(0);
+		double worstAround = Math.max(Math.max(worst, worstClosed), Math.max(Arrays.stream(before).max().orElse(0), Arrays.stream(later).max().orElse(0)));
+		System.out.printf("[spike] %s #%d: before %s ms, after opening %s ms, then %s ms, after closing %s ms%n", what, round, ms(before), ms(after), ms(later), ms(closed));
+		for (var line : opening) System.out.println("[spike]   " + line);
+		if (worstClosed > Math.max(5, base * 2)) for (var line : sampler.top(40)) System.out.println("[spike]   close: " + line);
+		if (round > 1 && worstAround > Math.max(30, base * 4)) failures.add(what + " #" + round + ": " + ms(before) + " | " + ms(after) + " | " + ms(later) + " | " + ms(closed) + " ms, median " + String.format("%.1f", base) + " ms");
 	}
 
 	/** The game's busy time in each of the next n ticks (each a frame), in milliseconds. */
