@@ -64,6 +64,8 @@ public class GameChatCoords implements FabricClientGameTest {
 			finds("wersja 1.21.4 2 3", "");
 			finds("serwer mc2023 64 100", "");
 			finds("cena 100 64 200%", "");
+			finds("S-RBC » Janfhonen: 39 956,34", "");
+			finds("stan konta 1 250 000,50", "");
 		});
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);

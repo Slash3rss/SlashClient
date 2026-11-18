@@ -41,6 +41,8 @@ public final class ChatCoords {
 	private static final Pattern LABELLED = Pattern.compile("(?i)(?<![\\w])x\\s*[:=]?\\s*" + NUM + "\\s*[,;]?\\s*(?:y\\s*[:=]?\\s*" + NUM + "\\s*[,;]?\\s*)?z\\s*[:=]?\\s*" + NUM + "(?![\\w.])");
 	/** Three numbers in a row, apart by spaces or commas. */
 	private static final Pattern PLAIN = Pattern.compile("(?<![\\w.:/,-])" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?![\\w.:/%$€£-])");
+	/** "39 956,34", "1 250 000,5": one amount written with spaces between thousands and a decimal comma (a balance), not a place. */
+	private static final Pattern AMOUNT = Pattern.compile("\\d{1,3}(?:[ \\u00a0]\\d{3})+,\\d{1,2}");
 	/** After a number: money or a share, not a place. */
 	private static final Pattern MONEY = Pattern.compile("(?i)^\\s*(?:(?:zł|zl|pln|eur|usd|coins?|monet|kc|gr)(?!\\p{L})|[$€£%])");
 	/** "<nick> text", "[rank] nick » text", "nick: text": who wrote it, for the waypoint's name. */
@@ -58,7 +60,7 @@ public final class ChatCoords {
 		while (m.find()) add(out, m.start(), m.end(), m.group(1), m.group(2), m.group(3), true);
 		m = PLAIN.matcher(text);
 		while (m.find()) {
-			if (MONEY.matcher(text.substring(m.end())).find()) continue;
+			if (MONEY.matcher(text.substring(m.end())).find() || AMOUNT.matcher(m.group()).matches()) continue;
 			add(out, m.start(), m.end(), m.group(1), m.group(2), m.group(3), false);
 		}
 		out.sort((a, b) -> Integer.compare(a.start(), b.start()));
