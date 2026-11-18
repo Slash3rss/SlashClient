@@ -1227,6 +1227,8 @@
 	"slashclient-hud.serverPacks.hint.keep": "Paczka serwera zapisuje się w Twoich resourcepackach i zostaje włączona na stałe. Przy kolejnych wejściach nic się nie pobiera ani nie wczytuje od nowa; gdy serwer ma nowszą wersję, kopia się aktualizuje.",
 	"slashclient-hud.serverPacks.line.keep": "Trzyma paczkę u Ciebie, bez wczytywania przy wejściu",
 	"slashclient-hud.serverPacks.tag.keep": "Paczka: na stałe",
+	"slashclient-hud.narrator.title": "Narrator jest włączony",
+	"slashclient-hud.narrator.text": "Czyta czat na głos i obniża FPS, nawet przy wyciszonym dźwięku. Wyłączysz go skrótem Ctrl+B.",
 	"slashclient-hud.keptPack.title": "Paczka %s",
 	"slashclient-hud.keptPack.saved": "Zapisana w resourcepackach – włącz ją, a serwer przestanie pytać.",
 	"slashclient-hud.keptPack.kept": "Zapisana i włączona na stałe – przy następnym wejściu nic się nie wczyta od nowa.",

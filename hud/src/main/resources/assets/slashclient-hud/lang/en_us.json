@@ -1227,6 +1227,8 @@
 	"slashclient-hud.serverPacks.hint.keep": "The server's pack is saved in your resource packs and stays on for good. Later joins download and load nothing again; when the server has a newer version, the copy is updated.",
 	"slashclient-hud.serverPacks.line.keep": "Keeps the pack with you, no loading when joining",
 	"slashclient-hud.serverPacks.tag.keep": "Pack: for good",
+	"slashclient-hud.narrator.title": "The narrator is on",
+	"slashclient-hud.narrator.text": "It reads the chat aloud and lowers your FPS, even with the sound muted. Press Ctrl+B to turn it off.",
 	"slashclient-hud.keptPack.title": "Pack %s",
 	"slashclient-hud.keptPack.saved": "Saved in your resource packs – switch it on and the server stops asking.",
 	"slashclient-hud.keptPack.kept": "Saved and switched on for good – the next join loads nothing again.",

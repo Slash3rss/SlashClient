@@ -282,6 +282,8 @@ public class SlashHud implements ClientModInitializer {
 			Sprays.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
+			// the narrator left on reads the chat out and stalls the game: said once a run
+			NarratorNotice.joined(mc);
 			DungeonMap.stop();
 			//#if MC >= 26.3
 			SkyTasks.joined(mc);
