@@ -1087,6 +1087,7 @@
 	"slashclient-hud.armorDurability.bar": "Pasek",
 	"slashclient-hud.set.armorHorizontal": "Poziomo",
 	"slashclient-hud.set.armorHand": "Przedmiot w ręce",
+	"slashclient-hud.set.armorOffhand": "Przedmiot w drugiej ręce",
 	"slashclient-hud.set.durabilityFormat": "Format",
 	"slashclient-hud.durabilityFormat.number": "Zostało / maks.",
 	"slashclient-hud.durabilityFormat.percent": "Procent",

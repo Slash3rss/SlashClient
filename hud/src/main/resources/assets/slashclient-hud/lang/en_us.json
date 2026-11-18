@@ -1087,6 +1087,7 @@
 	"slashclient-hud.armorDurability.bar": "Bar",
 	"slashclient-hud.set.armorHorizontal": "Horizontal",
 	"slashclient-hud.set.armorHand": "Item in hand",
+	"slashclient-hud.set.armorOffhand": "Item in off hand",
 	"slashclient-hud.set.durabilityFormat": "Format",
 	"slashclient-hud.durabilityFormat.number": "Left / max",
 	"slashclient-hud.durabilityFormat.percent": "Percent",

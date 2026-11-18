@@ -454,6 +454,7 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.set.armorDurability", HudConfig.ARMOR_DURABILITY, "slashclient-hud.armorDurability.", () -> cfg.armorDurability, v -> cfg.armorDurability = v));
 					settings.add(new Toggle("slashclient-hud.set.armorHorizontal", () -> cfg.armorHorizontal, v -> cfg.armorHorizontal = v));
 					settings.add(new Toggle("slashclient-hud.set.armorHand", () -> cfg.armorHand, v -> cfg.armorHand = v));
+					settings.add(new Toggle("slashclient-hud.set.armorOffhand", () -> cfg.armorOffhand, v -> cfg.armorOffhand = v));
 				}
 				case "durability" -> {
 					settings.add(new Choice("slashclient-hud.set.durabilityFormat", HudConfig.DURABILITY_FORMATS, "slashclient-hud.durabilityFormat.", () -> cfg.durabilityFormat, v -> cfg.durabilityFormat = v));

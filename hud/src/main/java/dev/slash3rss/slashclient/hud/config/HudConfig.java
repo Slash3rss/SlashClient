@@ -638,8 +638,8 @@ public final class HudConfig {
 	public int speedDecimals = 1;
 	/** Coordinates: the facing after the numbers instead of under them, and the height among them. */
 	public boolean coordsOneLine = false, coordsY = true;
-	/** Armour: side by side instead of one under another, and the item in the hand too; wear left as a "number", a "percent" or the game's "bar". */
-	public boolean armorHorizontal = false, armorHand = true;
+	/** Armour: side by side instead of one under another, the item in the hand and the one in the other hand too; wear left as a "number", a "percent" or the game's "bar". */
+	public boolean armorHorizontal = false, armorHand = true, armorOffhand = true;
 	public String armorDurability = "number";
 	/** The item in hand's wear: "number" (left/max) or "percent", the bar under it, and under what share it blinks red. */
 	public String durabilityFormat = "number";
@@ -1294,6 +1294,7 @@ public final class HudConfig {
 		coordsY = other.coordsY;
 		armorHorizontal = other.armorHorizontal;
 		armorHand = other.armorHand;
+		armorOffhand = other.armorOffhand;
 		armorDurability = oneOf(other.armorDurability, ARMOR_DURABILITY);
 		durabilityFormat = oneOf(other.durabilityFormat, DURABILITY_FORMATS);
 		durabilityBar = other.durabilityBar;

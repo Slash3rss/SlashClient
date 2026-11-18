@@ -91,6 +91,7 @@ public class HudScreenshots implements FabricClientGameTest {
 				"item replace entity @p armor.legs with golden_leggings",
 				"item replace entity @p armor.feet with diamond_boots",
 				"item replace entity @p weapon.mainhand with diamond_sword",
+				"item replace entity @p weapon.offhand with shield",
 				"give @p ender_pearl 16",
 				"give @p arrow 48",
 				"give @p totem_of_undying 1",

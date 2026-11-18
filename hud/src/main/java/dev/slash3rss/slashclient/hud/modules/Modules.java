@@ -360,7 +360,7 @@ public final class Modules {
 	// ---------- armour with durability ----------
 
 	public static final class Armor implements HudModule {
-		private static final EquipmentSlot[] SLOTS = { EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND };
+		private static final EquipmentSlot[] SLOTS = { EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND };
 
 		public String id() {
 			return "armor";
@@ -370,21 +370,23 @@ public final class Modules {
 			List<ItemStack> out = new ArrayList<>();
 			if (mc.player != null) for (EquipmentSlot slot : SLOTS) {
 				ItemStack s = mc.player.getItemBySlot(slot);
-				// the hand only counts when it holds something that wears out
-				if (!s.isEmpty() && (slot != EquipmentSlot.MAINHAND || cfg.armorHand && s.isDamageableItem())) out.add(s);
+				// the hand only counts when it holds something that wears out; the other hand with anything
+				// (a shield, totems, arrows, food), the stackable ones showing how many are left
+				if (s.isEmpty()) continue;
+				if (slot == EquipmentSlot.MAINHAND ? cfg.armorHand && s.isDamageableItem() : slot != EquipmentSlot.OFFHAND || cfg.armorOffhand) out.add(s);
 			}
 			return out;
 		}
 
 		/**
-		 * The biggest the module gets, for the editor: a whole netherite set and a sword, all new
+		 * The biggest the module gets, for the editor: a whole netherite set, a sword and a shield, all new
 		 * (the longest numbers); empty in the main menu, where items can't be made yet.
 		 */
 		private static List<ItemStack> sample() {
 			List<ItemStack> out = new ArrayList<>();
-			for (var item : List.of(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS, Items.NETHERITE_SWORD)) {
+			for (var item : List.of(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS, Items.NETHERITE_SWORD, Items.SHIELD)) {
 				ItemStack s = Ui.stack(item);
-				if (s != null && (item != Items.NETHERITE_SWORD || cfg.armorHand)) out.add(s);
+				if (s != null && (item != Items.NETHERITE_SWORD || cfg.armorHand) && (item != Items.SHIELD || cfg.armorOffhand)) out.add(s);
 			}
 			return out;
 		}
