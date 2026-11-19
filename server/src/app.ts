@@ -19,6 +19,7 @@ import { sharingRoutes } from './sharing.ts';
 import { positionRoutes } from './positions.ts';
 import { RequestLog, clientOf, limitAddress, maskIp, routeOf } from './requests.ts';
 import { serveWeb, versioned } from './web.ts';
+import { handleBugsMode } from './bugsMode.ts';
 import { mediaRoutes, type MediaLimits } from './media.ts';
 import { changelogRoutes, createDownloads, holdForPaused, isDownloadOs } from './downloads.ts';
 import { serveChangelog } from './changelogPage.ts';
@@ -2233,6 +2234,9 @@ export function createApp(cfg: Config) {
       req.resume();
       return;
     }
+
+    // "Zgłoś błąd" sent to Discord or switched off in the panel (bugsMode.ts)
+    if (handleBugsMode({ settings, publicUrl: cfg.publicUrl, pageHeaders: ERROR_PAGE_HEADERS }, req, res, url)) return;
 
     // a page the admin hid with its link in the home page's editor: as if it did not exist
     if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/v1/') && home.isHidden(url.pathname)) {

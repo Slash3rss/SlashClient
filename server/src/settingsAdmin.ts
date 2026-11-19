@@ -1,4 +1,5 @@
 import type http from 'node:http';
+import { bugsMode } from './bugsMode.ts';
 import { bannerOf, featuresOf } from './features.ts';
 import { SettingError, formatSetting, type Settings } from './settings.ts';
 import { CATEGORIES } from './settingsDefs.ts';
@@ -37,7 +38,8 @@ export function settingsAdminRoutes(ctx: SettingsAdminContext): [string, RegExp,
 
   return [
     // the switches and the banner, for everyone (no sign-in): launchers and the website ask on start
-    ['GET', /^\/v1\/features$/, () => ({ features: featuresOf(settings), banner: bannerOf(settings) })],
+    // bugs: where "Zgłoś błąd" leads (bugsMode.ts); the site takes its links out when it is off
+    ['GET', /^\/v1\/features$/, () => ({ features: featuresOf(settings), banner: bannerOf(settings), bugs: bugsMode(settings) })],
 
     ['GET', /^\/v1\/admin\/settings$/, (req) => {
       ctx.admin(req);

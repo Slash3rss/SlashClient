@@ -81,9 +81,12 @@ function cachedJson(path) {
   return data;
 }
 
-/** { features: { shop: true, … }, banner: … | null }; everything on when the server cannot be asked. */
+/**
+ * { features: { shop: true, … }, banner: … | null, bugs: 'site' | 'discord' | 'off' }; everything on when the
+ * server cannot be asked (or is older and does not say where bug reports go).
+ */
 export const siteFeatures = cachedJson('/v1/features')
-  .then((res) => ({ features: res?.features ?? {}, banner: res?.banner ?? null }));
+  .then((res) => ({ features: res?.features ?? {}, banner: res?.banner ?? null, bugs: res?.bugs ?? 'site' }));
 
 /** Whether a feature is on (missing: an older server without switches, so on). */
 export const featureOn = (features, id) => features[id] !== false;
@@ -129,10 +132,11 @@ export function bannerElement(b, onClose) {
   return box;
 }
 
-// pages hidden in the admin panel (with their link in the home page's menu or footer): no links to them anywhere
-cachedJson('/v1/home/hidden')
-  .then((res) => {
-    const paths = res?.paths ?? [];
+// pages hidden in the admin panel (with their link in the home page's menu or footer): no links to them anywhere,
+// and none to the bug reports while the admin has them switched off (Ustawienia → Zgłoszenia)
+Promise.all([cachedJson('/v1/home/hidden'), siteFeatures])
+  .then(([res, { bugs }]) => {
+    const paths = [...(res?.paths ?? []), ...(bugs === 'off' ? ['/zgloszenia', '/bugs'] : [])];
     if (!paths.length) return;
     const hidden = (href) => {
       let p;
