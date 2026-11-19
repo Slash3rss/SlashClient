@@ -2,6 +2,7 @@
 // in it), name, order, description and own icon; new ranks for admins to give. And in a player's
 // drawer: the ranks they hold, given (optionally until a day) and taken back (ranks.ts).
 // Also the Discord role of each rank, given to players with a linked Discord (discordRoles.ts).
+import { colorField } from './colorPicker.js';
 import { $, ApiError, api, confirmModal, el, fmtDate, guard, icon, toast, token } from './common.js';
 import { rankBadge, rankChip } from './ranks.js';
 
@@ -91,7 +92,7 @@ function rankCard(r, discord) {
   const f = {
     id: el('input', { type: 'text', value: r.id, placeholder: 'np. vip', maxLength: 24, disabled: !isNew }),
     name: el('input', { type: 'text', value: r.name, maxLength: 32 }), nameEn: el('input', { type: 'text', value: r.nameEn, maxLength: 32 }),
-    color: el('input', { type: 'color', value: r.color }),
+    color: colorField(r.color, { title: 'Kolor logo przy nicku' }),
     priority: el('input', { type: 'number', min: 0, max: 1000, value: r.priority }),
     description: el('input', { type: 'text', value: r.description, maxLength: 200 }), descriptionEn: el('input', { type: 'text', value: r.descriptionEn, maxLength: 200 }),
     enabled: el('input', { type: 'checkbox', checked: r.enabled }),

@@ -3,6 +3,7 @@
 // supporters with granting, extending and taking back by hand, and the money per month. Every
 // change goes to the log (Dziennik); refunds and chargebacks take back what they gave by themselves.
 import { refundsSection } from './adminRefunds.js';
+import { colorField } from './colorPicker.js';
 import { $, api, confirmModal, copyText, el, errorText, fmtDate, guard, icon, promptModal, toast } from './common.js';
 
 const ERRORS = {
@@ -177,7 +178,7 @@ function tierCard(t) {
     id: el('input', { type: 'text', value: t.id, placeholder: 'np. supporter', disabled: !isNew }),
     level: el('input', { type: 'number', min: 1, max: 9, value: t.level }),
     name: el('input', { type: 'text', value: t.name, maxLength: 40 }), nameEn: el('input', { type: 'text', value: t.nameEn, maxLength: 40 }),
-    color: el('input', { type: 'color', value: t.color }),
+    color: colorField(t.color, { title: 'Kolor poziomu' }),
     perks: el('textarea', { value: t.perks, rows: 4, maxLength: 1000 }), perksEn: el('textarea', { value: t.perksEn, rows: 4, maxLength: 1000 }),
     oneTimePln: el('input', { type: 'text', inputMode: 'decimal', value: fromMinor(t.oneTimePln), placeholder: '—' }),
     oneTimeEur: el('input', { type: 'text', inputMode: 'decimal', value: fromMinor(t.oneTimeEur), placeholder: '—' }),

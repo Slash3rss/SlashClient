@@ -10,7 +10,6 @@
 .sup-tier > .row:not(summary):not(:last-child) { margin-bottom: 12px; }
 .sup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
 .sup-grid.two { grid-template-columns: 1fr 1fr; }
-.sup-grid input[type=color] { height: 40px; width: 100%; padding: 2px; background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); }
 .sup-grid textarea { width: 100%; padding: 10px 12px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); font: 14px "Outfit", sans-serif; resize: vertical; }
 .sup-grant { margin-bottom: 12px; }
 .sup-grant .st-field input { width: 90px; }
