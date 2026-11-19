@@ -67,3 +67,35 @@
 @keyframes cp-up { from { transform: translateY(100%); } }
 @keyframes cp-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cp-panel, .cp-backdrop { animation: none; } }
+
+/* The icon picker (iconPicker.js): the same button and panel, with a search and a grid of icons. */
+.ip-shown { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px; background: rgba(59, 130, 246, .15); color: var(--accent-light); font-size: 15px; }
+.ip-code { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--text); }
+.ip-code.muted { color: var(--text-2); font-family: inherit; }
+.cp-panel.ip-panel { width: 400px; }
+.cp-panel.ip-panel.sheet { width: auto; }
+.ip-panel input.ip-search { width: 100%; }
+.ip-tabs { display: flex; padding: 3px; gap: 3px; border-radius: 12px; background: rgba(0, 0, 0, .3); border: 1px solid var(--border); }
+.ip-tabs button { flex: 1; height: 30px; padding: 0 8px; font-size: 13px; border: 0; background: transparent; color: var(--text-2); }
+.ip-tabs button:hover { background: var(--card-hover); color: var(--text); }
+.ip-tabs button.active { background: var(--accent); color: #fff; }
+.ip-scroll { max-height: 236px; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 2px 4px; }
+.ip-panel.sheet .ip-scroll { max-height: 38vh; }
+.ip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.ip-grid[hidden] { display: none; }
+.ip-cell { height: 44px; padding: 0; font-size: 18px; border-color: transparent; background: rgba(255, 255, 255, .03); }
+.ip-cell:hover { background: var(--card-hover); border-color: var(--border); }
+.ip-cell[aria-selected=true] { background: rgba(59, 130, 246, .18); border-color: var(--accent); color: var(--accent-light); }
+.ip-cell:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--accent-light); }
+.ip-more { grid-column: 1 / -1; height: 36px; font-size: 13px; }
+.ip-empty { grid-column: 1 / -1; margin: 8px 0; }
+.ip-count { margin-bottom: -8px; }
+.ip-foot { display: flex; align-items: center; gap: 8px; }
+.ip-picked { flex: 1; display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-2); }
+.ip-picked i { color: var(--accent-light); font-size: 16px; }
+.ip-picked span { overflow: hidden; text-overflow: ellipsis; }
+.ip-panel.sheet .ip-foot { flex-wrap: wrap; }
+.ip-panel.sheet .ip-foot .ip-picked { flex-basis: 100%; }
+.ip-panel.sheet .ip-foot button { flex: 1; height: 44px; }
+.ip-foot .ip-none { width: 40px; height: 40px; flex-shrink: 0; }
+.ip-panel.sheet .ip-foot .ip-none { flex: 0 0 44px; width: 44px; }

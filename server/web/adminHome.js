@@ -4,6 +4,7 @@
 // A live preview shows the page as it would be; changes are saved as a draft or published, every
 // version stays in the history to restore, and each section can go back to its defaults.
 import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token, watchUnsaved } from './common.js';
+import { iconField } from './iconPicker.js';
 
 /** The question before leaving the editor's changes behind. */
 const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
@@ -169,12 +170,9 @@ async function editor() {
         return box;
       }
       case 'icon': {
-        const input = el('input', { type: 'text', maxLength: 80, placeholder: 'fa-solid fa-star' });
-        input.setAttribute('list', 'hm-icons');
-        input.value = obj[key] ?? '';
-        const shown = el('i', { class: obj[key] || 'fa-regular fa-square' });
-        input.addEventListener('input', () => { obj[key] = input.value.trim(); shown.className = obj[key] || 'fa-regular fa-square'; touched(); });
-        box.append(label, el('div', { class: 'row hm-icon-row' }, el('span', { class: 'hm-icon-preview' }, shown), input), hint);
+        const input = iconField(obj[key] ?? '', { title: f.label, empty: f.req ? undefined : 'Bez ikony' });
+        input.addEventListener('input', () => { obj[key] = input.value.trim(); touched(); });
+        box.append(label, input, hint);
         return box;
       }
       case 'image': {
@@ -414,7 +412,6 @@ async function editor() {
       el('div', { class: 'row' }, saveDraft, resetAll, el('span', { class: 'grow' })),
       el('div', { class: 'row' }, el('div', { class: 'grow' }, note), publish)),
     jump,
-    el('datalist', { id: 'hm-icons' }, ...meta.icons.map((n) => el('option', { value: `fa-solid fa-${n}` }))),
     el('div', { class: 'hm-editor' },
       el('div', { class: 'hm-sections' }, ...meta.sections.map((s) => cards[s.id])),
       el('div', { class: 'glass card hm-preview' },

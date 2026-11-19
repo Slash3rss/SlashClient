@@ -2,6 +2,7 @@
 // with a saturation/brightness square, a hue bar, a hex field, ready colours and the last used ones.
 // Works with the mouse, a finger and the keyboard; on a phone it opens as a sheet at the bottom.
 // The value stays what the browser's picker gave: "#rrggbb" in small letters.
+import { popover } from './adminPopover.js';
 import { L, el, icon } from './common.js';
 
 const PRESETS = ['#ef4444', '#f97316', '#facc15', '#4ade80', '#10b981', '#06b6d4', '#60a5fa', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f3f4f6', '#9ca3af', '#4b5563'];
@@ -55,9 +56,6 @@ function dragOn(area, move, done) {
   });
 }
 
-/** The one picker open at a time (opening another closes it). */
-let openPicker;
-
 /**
  * A colour field: acts like `<input type="color">` for the code around it – `.value` reads and sets
  * "#rrggbb", "input" fires while picking and "change" once a colour is picked.
@@ -68,7 +66,7 @@ export function colorField(value = '#60a5fa', { title = L('Kolor', 'Colour') } =
   let atOpen = hex;
   const swatch = el('span', { class: 'cp-swatch' });
   const code = el('span', { class: 'cp-code' });
-  const root = el('button', { type: 'button', class: 'cp-trigger', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' }, swatch, code, icon('fa-solid fa-chevron-down cp-caret'));
+  const root = el('button', { type: 'button', class: 'cp-trigger' }, swatch, code, icon('fa-solid fa-chevron-down cp-caret'));
 
   // the panel itself, built once and put on the page only while open
   const sv = el('div', { class: 'cp-sv', tabIndex: 0, role: 'slider', 'aria-label': L('Nasycenie i jasność', 'Saturation and brightness') }, el('span', { class: 'cp-thumb' }));
@@ -89,7 +87,6 @@ export function colorField(value = '#60a5fa', { title = L('Kolor', 'Colour') } =
     el('div', { class: 'cp-actions' },
       el('button', { type: 'button', onclick: () => { setHex(atOpen, true); close(true); } }, L('Anuluj', 'Cancel')),
       el('button', { type: 'button', class: 'primary', onclick: () => close(true) }, icon('fa-solid fa-check'), L('Gotowe', 'Done'))));
-  const backdrop = el('div', { class: 'cp-backdrop', onclick: () => close(false) });
 
   /** Draws the button, the square, the bar and the field from the current colour. */
   function draw(keepField = false) {
@@ -158,49 +155,13 @@ export function colorField(value = '#60a5fa', { title = L('Kolor', 'Colour') } =
   hexIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); takeField(); close(true); } });
   hexIn.addEventListener('paste', () => setTimeout(takeField));
 
-  /** Puts the panel under the button (or over it, when there is no room below); a sheet on a phone. */
-  function place() {
-    const sheet = innerWidth < 560;
-    panel.classList.toggle('sheet', sheet);
-    backdrop.classList.toggle('sheet', sheet);
-    if (sheet) { panel.style.left = panel.style.top = ''; return; }
-    const r = root.getBoundingClientRect();
-    const w = panel.offsetWidth, h = panel.offsetHeight;
-    const below = r.bottom + 8 + h <= innerHeight - 8 || r.top - 8 - h < 8;
-    panel.style.left = `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`;
-    panel.style.top = `${below ? Math.min(r.bottom + 8, innerHeight - h - 8) : r.top - 8 - h}px`;
-  }
-  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); setHex(atOpen, true); close(true); } };
-  const onScroll = (e) => { if (!panel.contains(e.target)) place(); };
-  function open() {
-    if (openPicker) openPicker(false);
-    openPicker = close;
-    atOpen = hex;
-    hsv = hexToHsv(hex);
-    draw();
-    drawRecent();
-    document.body.append(backdrop, panel);
-    place();
-    root.setAttribute('aria-expanded', 'true');
-    addEventListener('keydown', onKey, true);
-    addEventListener('resize', place);
-    addEventListener('scroll', onScroll, true);
-    sv.focus({ preventScroll: true });
-  }
-  function close(refocus) {
-    if (!panel.isConnected) return;
-    takeField();
-    commit();
-    panel.remove();
-    backdrop.remove();
-    openPicker = undefined;
-    root.setAttribute('aria-expanded', 'false');
-    removeEventListener('keydown', onKey, true);
-    removeEventListener('resize', place);
-    removeEventListener('scroll', onScroll, true);
-    if (refocus) root.focus({ preventScroll: true });
-  }
-  root.addEventListener('click', (e) => { e.preventDefault(); if (panel.isConnected) close(true); else open(); });
+  const pop = popover(root, panel, {
+    onOpen: () => { atOpen = hex; hsv = hexToHsv(hex); draw(); drawRecent(); },
+    onClose: () => { takeField(); commit(); },
+    onCancel: () => setHex(atOpen, true),
+    focus: () => sv,
+  });
+  const close = (refocus) => pop.close(refocus);
   Object.defineProperty(root, 'value', { get: () => hex, set: (v) => { const c = normalizeHex(v); if (c) setHex(c, false); } });
   draw();
   return root;

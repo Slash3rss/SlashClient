@@ -4,8 +4,9 @@
 // and a live preview (rendered by the server, exactly as the site shows it); it is saved as a draft
 // or published, and every version stays in the history to view, compare and restore. Pictures are
 // uploaded here and put into the text with the picker.
-import { $, ApiError, api, confirmModal, el, fmtDate, guard, icon, promptModal, toast, token, watchUnsaved } from './common.js';
+import { $, ApiError, L, api, confirmModal, el, fmtDate, guard, icon, promptModal, toast, token, watchUnsaved } from './common.js';
 import { diffView, lineDiff } from './adminLegal.js';
+import { iconField } from './iconPicker.js';
 
 const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
 const LANG_NAMES = { pl: 'polski', en: 'angielski' };
@@ -192,8 +193,7 @@ async function editor(slug) {
   // ---- the details shared by both languages, and each language's own ----
   const sectionSel = el('select', {}, ...sections.map((s) => el('option', { value: s.id, textContent: s.pl })));
   const order = el('input', { type: 'number', min: -100000, max: 100000, step: 1 });
-  const iconIn = el('input', { type: 'text', maxLength: 60, placeholder: 'fa-map' });
-  const iconPreview = el('span', { class: 'hm-icon-preview' });
+  const iconIn = iconField('', { format: 'name', title: L('Ikona strony', 'Page icon'), fallback: 'fa-solid fa-file-lines' });
   const title = el('input', { type: 'text', maxLength: 200 });
   const desc = el('input', { type: 'text', maxLength: 300 });
   const area = el('textarea', { class: 'lg-source', spellcheck: true });
@@ -268,10 +268,7 @@ async function editor(slug) {
   };
   for (const input of [title, desc, area]) input.addEventListener('input', changed);
   // the shared details: both languages' texts take them (the other language then has unsaved changes too)
-  for (const input of [sectionSel, order, iconIn]) input.addEventListener('input', () => {
-    iconPreview.replaceChildren(icon(`fa-solid ${iconIn.value.trim()}`));
-    changed();
-  });
+  for (const input of [sectionSel, order, iconIn]) input.addEventListener('input', changed);
 
   function load(next, keepOther = true) {
     // what the other language had in the editor stays, unless it was saved meanwhile
@@ -289,7 +286,6 @@ async function editor(slug) {
     sectionSel.value = sections.some((s) => s.id === m.section) ? m.section : 'inne';
     order.value = String(m.order);
     iconIn.value = m.icon;
-    iconPreview.replaceChildren(icon(`fa-solid ${m.icon}`));
   }
 
   const save = (publish) => async () => {
@@ -428,7 +424,7 @@ async function editor(slug) {
     el('div', { class: 'glass card wk-meta' },
       el('div', { class: 'wk-meta-grid' },
         field('Dział', sectionSel), field('Kolejność w dziale', order),
-        field('Ikona (Font Awesome)', el('div', { class: 'row hm-icon-row' }, iconPreview, iconIn))),
+        field('Ikona (Font Awesome)', iconIn)),
       el('p', { class: 'muted small', textContent: 'Dział, kolejność i ikona są wspólne dla obu języków (zapisz oba). Tytuł, opis i treść każdy język ma swoje.' })),
     el('div', { class: 'row wk-langbar' }, tabs, status, seedBox),
     el('div', { class: 'glass card lg-publish' },
