@@ -240,6 +240,25 @@ function faq(c: Content): string {
     `;
 }
 
+function discord(c: Content): string {
+  const d = c.discord;
+  if (d.hidden) return '\n    ';
+  return `
+    <section id="discord">
+      <div class="wrap">
+        <div class="discord-card reveal">
+          <i class="fa-brands fa-discord discord-logo" aria-hidden="true"></i>
+          <div class="discord-text">
+            <h2>${esc(str(d.title))}</h2>${str(d.text) ? `
+            <p>${inline(str(d.text))}</p>` : ''}
+          </div>
+          <a class="btn huge light" ${linkAttrs(str(d.href))}><i class="fa-brands fa-discord"></i> ${esc(str(d.button))}</a>
+        </div>
+      </div>
+    </section>
+    `;
+}
+
 function final(c: Content, lang: Lang): string {
   const f = c.final;
   return `
@@ -277,7 +296,7 @@ function footer(c: Content, lang: Lang): string {
 export function regions(c: Content, lang: Lang, base: string): Record<string, string> {
   return {
     head: head(c, lang, base), nav: nav(c, lang), hero: hero(c, lang), showcase: showcase(c, lang), modules: modules(c),
-    features: features(c), faq: faq(c), final: final(c, lang), footer: footer(c, lang),
+    features: features(c), faq: faq(c), discord: discord(c), final: final(c, lang), footer: footer(c, lang),
   };
 }
 

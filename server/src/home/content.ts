@@ -145,6 +145,17 @@ export const SECTIONS: Section[] = [
     },
   },
   {
+    id: 'discord', name: 'Serwer Discord', icon: 'fa-brands fa-discord',
+    hint: 'Zaproszenie na serwer Discord SlashClient, nad sekcją pobierania.',
+    fields: {
+      hidden: { t: 'bool', label: 'Ukryj sekcję' },
+      title: text('Tytuł', 80, { req: true }),
+      text: text('Tekst', 300, { lines: 2, md: true, hint: MD }),
+      button: text('Przycisk', 60, { req: true }),
+      href: { t: 'link', label: 'Link zaproszenia', req: true },
+    },
+  },
+  {
     id: 'final', name: 'Pobieranie (na dole strony)', icon: 'fa-solid fa-download',
     fields: {
       title: text('Tytuł', 80, { req: true }),
@@ -279,10 +290,15 @@ export const DEFAULTS: Record<Lang, Content> = {
         ['Kto widzi moją pelerynę?', 'Gracze z SlashClient, na każdym serwerze. Pozostali widzą Twój zwykły wygląd.'],
       ]),
     },
+    discord: {
+      hidden: false, title: 'Dołącz do naszego Discorda',
+      text: 'Pomoc, nowości, testy bety i rozmowy z innymi graczami SlashClient – wszystko w jednym miejscu.',
+      button: 'Dołącz do serwera', href: 'https://dc.slashclient.pl',
+    },
     final: { title: 'Pobierz SlashClient', text: 'Za darmo, na Windows, macOS i Linux.', button: 'Pobierz SlashClient' },
     footer: {
       note: 'Nie jest powiązany z Mojang ani Microsoft.',
-      links: [link('Wiki', '/wiki', 'fa-solid fa-book-open'), link('Zgłoś błąd', '/zgloszenia'), link('Twoje konto', '/konto'), link('Wesprzyj projekt', '/wsparcie', 'fa-solid fa-heart')],
+      links: [link('Wiki', '/wiki', 'fa-solid fa-book-open'), link('Zgłoś błąd', '/zgloszenia'), link('Twoje konto', '/konto'), link('Wesprzyj projekt', '/wsparcie', 'fa-solid fa-heart'), link('Discord', 'https://dc.slashclient.pl', 'fa-brands fa-discord')],
       terms: 'Regulamin', privacy: 'Polityka prywatności', langShow: true, langLabel: 'English',
     },
   },
@@ -369,10 +385,15 @@ export const DEFAULTS: Record<Lang, Content> = {
         ['Who can see my cape?', 'SlashClient players, on every server. Everyone else sees your usual look.'],
       ]),
     },
+    discord: {
+      hidden: false, title: 'Join our Discord',
+      text: 'Help, news, beta testing and chats with other SlashClient players – all in one place.',
+      button: 'Join the server', href: 'https://dc.slashclient.pl',
+    },
     final: { title: 'Download SlashClient', text: 'Free, for Windows, macOS and Linux.', button: 'Download SlashClient' },
     footer: {
       note: 'Not affiliated with Mojang or Microsoft.',
-      links: [link('Wiki', '/en/wiki', 'fa-solid fa-book-open'), link('Report a bug', '/bugs'), link('Your account', '/account'), link('Support the project', '/support', 'fa-solid fa-heart')],
+      links: [link('Wiki', '/en/wiki', 'fa-solid fa-book-open'), link('Report a bug', '/bugs'), link('Your account', '/account'), link('Support the project', '/support', 'fa-solid fa-heart'), link('Discord', 'https://dc.slashclient.pl', 'fa-brands fa-discord')],
       terms: 'Terms of Service', privacy: 'Privacy Policy', langShow: true, langLabel: 'Polski',
     },
   },
