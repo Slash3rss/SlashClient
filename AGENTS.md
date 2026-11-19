@@ -102,7 +102,10 @@ Jak zwykłe wydanie, ale wersja i tag z `-beta.N`: `npm version X.Y.Z-beta.N --n
 Workflow robi z tego „pre-release” na GitHubie z samymi plikami aktualizacji (bez `Setup.exe` i `.dmg`).
 Bety dostają tylko launchery z kanałem „Beta” w ustawieniach (`/aktualizacje/beta`, przełącznik „Kanał beta
 aktualizacji” w panelu admina); strona, `/pobierz` i stabilny kanał ich nie widzą. Sprawdź
-`https://slashclient.pl/aktualizacje/beta/latest.yml`.
+`https://slashclient.pl/aktualizacje/beta/latest.yml`. Potem ogłoszenie bety na Discordzie: bot (token w `.env`
+projektu `SlashClient-discord`) wrzuca na `📣・beta-ogłoszenia` ładną wiadomość w Components v2 (kontener, tekst,
+separatory, przyciski jak w panelach bota, `src/panels.js`) zbudowaną z notek bety; jak włączyć bety, opisuje
+kanał `ℹ️・beta-informacje`.
 
 ## Wdrożenie serwera (tylko na polecenie)
 
