@@ -10,6 +10,7 @@ import { MAX_LOGO_BYTES } from './clanLogos.ts';
 import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
 import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
+import { DISCORD_ROLE_SETTING_DEFS } from './discordRoles.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
 import { POPULAR_SETTING_DEFS } from './friendsPopular.ts';
 import { FISH_ATLAS_SETTING_DEFS } from './fishAtlas.ts';
@@ -64,6 +65,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'push', label: 'Powiadomienia na telefon', labelEn: 'Phone notifications' },
   { id: 'wiki', label: 'Wiki', labelEn: 'Wiki' },
   { id: 'skins', label: 'Skiny kont offline', labelEn: 'Offline account skins' },
+  { id: 'discord', label: 'Discord', labelEn: 'Discord' },
 ];
 
 const MB = 1024 * 1024;
@@ -79,6 +81,7 @@ export const SETTING_DEFS: SettingDef[] = [
   ...FEATURE_DEFS,
   ...RANK_SETTING_DEFS,
   ...BANNER_DEFS,
+  ...DISCORD_ROLE_SETTING_DEFS,
   ...OFFLINE_SKIN_SETTING_DEFS,
 
   ...group('chat', [

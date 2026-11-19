@@ -58,6 +58,7 @@ import { disabledPage, downloadDownPage, errorPage, homeRedirect, noInstallerPag
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
+import { createDiscordRoles, type DiscordRoleDeps, type DiscordRoles } from './discordRoles.ts';
 import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
@@ -135,6 +136,8 @@ export interface Config {
   communityLimits?: Partial<CommunityLimits>;
   /** "Streamy" (streams/streams.ts): tests point Twitch and Kick at fakes, set the clock and stop the timer. */
   streams?: { twitch?: Partial<typeof TWITCH>; kick?: Partial<typeof KICK>; now?: () => number; timers?: boolean };
+  /** Ranks as Discord roles (discordRoles.ts): tests give a fake Discord, no timers and a quick wait. */
+  discordRoles?: Pick<DiscordRoleDeps, 'apiBase' | 'timers' | 'sleep'>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -247,6 +250,8 @@ export function createApp(cfg: Config) {
   // GIFs and stickers: searches with the server's key, media passed through (gifs.ts)
   const gifs = createGifs({ settings, fetchImpl: cfg.fetchImpl });
   const limitGifMedia = limiter('gifs.mediaPerMinute');
+  /** Ranks as Discord roles; set up after the ranks, told of every player whose ranks or logins may have changed. */
+  let discordRoles: DiscordRoles | undefined;
   const sessionIdleMs = () => settings.num('security.sessionIdleDays') * 86_400_000;
   // the word lists and the logo's size are module-wide (clans and communities share them)
   useBlocklist(() => ({ words: settings.list('moderation.blockedWords'), tags: settings.list('moderation.blockedTags') }));
@@ -314,6 +319,7 @@ export function createApp(cfg: Config) {
     if (login.linkTo) {
       if (db.link(provider, id.subject, login.linkTo)) {
         login.result = { linked: true, user: meWithProviders(login.linkTo) };
+        if (provider === 'discord') discordRoles?.player(login.linkTo);
         return true;
       }
       // another account has it: newer launchers ask whether to move it here
@@ -643,6 +649,8 @@ export function createApp(cfg: Config) {
   function cosmeticsChanged(userId: string) {
     // the game's next lookup counts this player again (a rank, a supporter's tier, a ban: all come through here)
     lookupKept.delete(userId);
+    // and their Discord roles follow the ranks (checked only when they should differ)
+    discordRoles?.player(userId);
     if (cosmeticsTimers.has(userId)) return;
     const timer = setTimeout(() => {
       cosmeticsTimers.delete(userId);
@@ -756,6 +764,15 @@ export function createApp(cfg: Config) {
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
+  });
+  // the ranks' roles on the Discord server, for players with a linked Discord account (discordRoles.ts)
+  discordRoles = createDiscordRoles({
+    sql: db.sql, settings, admin, body, user: (uuid) => db.user(uuid), held: (u) => ranks.held(u), rankExists: (id) => !!ranks.store.def(id),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+    fetchImpl: cfg.fetchImpl, ...cfg.discordRoles,
   });
   /** The rank whose badge goes next to the nick ('' for none): the one the player picked, else the most important. */
   const badgeOf = (u: RankUser) => ranks.shown(u)?.id ?? '';
@@ -1540,6 +1557,8 @@ export function createApp(cfg: Config) {
       if (!linked.includes(provider)) throw new HttpError(404, 'not_found');
       if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlink(me, provider);
+      // an unlinked Discord account loses the ranks' roles
+      if (provider === 'discord') discordRoles?.player(me);
       return meWithProviders(me, leanFor(req));
     }],
     ['DELETE', /^\/v1\/me\/minecraft\/([0-9a-f]{32})$/, (req, [mcUuid]) => {
@@ -1564,6 +1583,7 @@ export function createApp(cfg: Config) {
       const from = db.user(move.from)!;
       db.unlinkIdentity(move.from, move.provider, move.subject);
       db.link(move.provider, move.subject, me);
+      if (move.provider === 'discord') discordRoles?.player(me);
       db.log(me, 'move_login', from.handle, `${move.provider} → @${db.user(me)!.handle}${offer.removes ? ', konto usunięte' : ''}`, move.from);
       if (offer.removes) await accounts.remove(move.from, me);
       return { ...meWithProviders(me, leanFor(req)), moved: { from: from.handle, removed: offer.removes } };
@@ -2091,6 +2111,7 @@ export function createApp(cfg: Config) {
     }),
     ...profiles.routes,
     ...ranks.routes,
+    ...discordRoles.routes,
     ...support.routes,
     ...legal.routes,
     ...home.routes,
@@ -3042,6 +3063,8 @@ export function createApp(cfg: Config) {
     communities,
     /** For tests: the admin panel's settings. */
     settings,
+    /** For tests: the ranks' Discord roles (waiting for the queue). */
+    discordRoles: discordRoles!,
     /** For tests: encounters counted with a chosen clock, pruning, the store. */
     suggestions,
     /** For tests: what friends use, its store and the cached results. */
@@ -3066,6 +3089,7 @@ export function createApp(cfg: Config) {
       // the last moment of the request log is kept too
       requests.flush();
       streams.close();
+      discordRoles?.close();
       for (const timer of cosmeticsTimers.values()) clearTimeout(timer);
       cosmeticsTimers.clear();
       for (const ws of wss.clients) ws.terminate();

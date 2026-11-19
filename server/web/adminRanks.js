@@ -1,6 +1,7 @@
 // The admin panel's "Rangi": the ranks with their colour (the Slash logo next to the nick is drawn
 // in it), name, order, description and own icon; new ranks for admins to give. And in a player's
 // drawer: the ranks they hold, given (optionally until a day) and taken back (ranks.ts).
+// Also the Discord role of each rank, given to players with a linked Discord (discordRoles.ts).
 import { $, ApiError, api, confirmModal, el, fmtDate, guard, icon, toast, token } from './common.js';
 import { rankBadge, rankChip } from './ranks.js';
 
@@ -23,17 +24,68 @@ async function uploadIcon(id, file) {
   return data;
 }
 
+const BLOCKED = {
+  disabled: 'Wyłączone. Żeby rangi nadawały role na Discordzie, włącz „Role na Discordzie za rangi” i wpisz token bota oraz ID serwera w Ustawienia → Discord.',
+  no_token: 'Brak tokenu bota: wpisz go w Ustawienia → Discord. Do tego czasu bot niczego nie zmienia.',
+  no_guild: 'Brak ID serwera Discord (albo to nie jest ID): wpisz je w Ustawienia → Discord.',
+};
+
+/** The summary of a pass: when, how many checked, roles added and taken. */
+const runText = (r) => `${fmtDate(r.at)} · sprawdzono ${r.checked}, na serwerze ${r.onServer} · dodano ${r.added}, zdjęto ${r.removed} ról${r.errors ? ` · błędów: ${r.errors}` : ''}`;
+
+/** The state of the Discord roles: who is linked and on the server, the last pass, the last error, and "sync now". */
+function discordCard(d) {
+  const lines = [];
+  if (d.blocked) lines.push(el('p', { class: 'warn small', textContent: BLOCKED[d.blocked] ?? d.blocked }));
+  lines.push(el('p', { class: 'small', textContent: `Połączone konto Discord ma ${d.stats.linkedPlayers} graczy (${d.stats.linkedAccounts} kont Discord), z tego na serwerze Discord: ${d.stats.onServer}.` }));
+  lines.push(el('p', { class: 'small muted', textContent: d.lastSync ? `Ostatnia pełna synchronizacja: ${runText(d.lastSync)}` : 'Pełnej synchronizacji jeszcze nie było (od startu serwera).' }));
+  if (d.lastPlayer) lines.push(el('p', { class: 'small muted', textContent: `Ostatnia zmiana jednego gracza: ${runText(d.lastPlayer)}` }));
+  if (d.rolesError) lines.push(el('p', { class: 'warn small', textContent: `Nie udało się pobrać ról z Discorda: ${d.rolesError}` }));
+  if (d.lastError) lines.push(el('p', { class: 'warn small', textContent: `Ostatni błąd (${fmtDate(d.lastError.at)}): ${d.lastError.text}` }));
+  const sync = el('button', { disabled: !!d.blocked, onclick: async () => {
+    sync.disabled = true;
+    const done = await guard(() => api('POST', '/v1/admin/discord-roles/sync'));
+    if (done) { toast(done.lastSync?.errors ? 'Synchronizacja z błędami: szczegóły w karcie.' : 'Zsynchronizowano role na Discordzie.', !!done.lastSync?.errors); ranksPage(); }
+    else sync.disabled = false;
+  } }, icon('fa-solid fa-rotate'), 'Synchronizuj teraz');
+  return el('div', { class: 'glass card' },
+    el('h3', { class: 'row' }, icon('fa-brands fa-discord'), 'Role na Discordzie'),
+    el('p', { class: 'muted small', textContent: 'Gracz z połączonym kontem Discord dostaje na serwerze Discord role przypisane do rang, które ma (pole „Rola na Discordzie” przy randze), i traci je, gdy rangę straci albo odłączy Discorda. Bot nie rusza ról, które nie są przypisane do żadnej rangi. Rola bota musi być na serwerze nad przypisanymi rolami.' }),
+    ...lines,
+    el('div', { class: 'row' }, sync, el('button', { onclick: () => { location.hash = 'settings'; } }, icon('fa-solid fa-gear'), 'Ustawienia Discorda')));
+}
+
+/** The rank's Discord role: picked from the server's roles, saved at once. */
+function discordField(r, d) {
+  const mapped = d.mappings[r.id];
+  const roles = d.roles ?? [];
+  const sel = el('select', { disabled: !d.roles },
+    el('option', { value: '', textContent: '— bez roli —' }),
+    ...roles.map((x) => el('option', { value: x.id, textContent: `${x.name}${x.assignable === false ? ' (nad rolą bota: bot jej nie nada)' : ''}`, selected: mapped?.roleId === x.id })),
+    // picked before, but not among the server's roles now (or they could not be read)
+    mapped && !roles.some((x) => x.id === mapped.roleId) ? el('option', { value: mapped.roleId, selected: true, textContent: `${mapped.roleName || mapped.roleId}${d.roles ? ' (nie ma jej już na serwerze)' : ''}` }) : '');
+  sel.addEventListener('change', async () => {
+    const role = roles.find((x) => x.id === sel.value);
+    const done = await guard(() => api('POST', `/v1/admin/discord-roles/ranks/${encodeURIComponent(r.id)}`, { roleId: sel.value, roleName: role?.name ?? '' }));
+    if (done) { toast(sel.value ? `Ranga ${r.name} nadaje teraz rolę ${role?.name ?? sel.value} na Discordzie.` : `Ranga ${r.name} nie nadaje już roli na Discordzie.`); ranksPage(); }
+  });
+  return el('label', { class: 'st-field' }, el('span', { textContent: 'Rola na Discordzie' }), sel);
+}
+
 export async function ranksPage() {
-  const res = await loadDefs();
+  const [res, discord] = await Promise.all([loadDefs(),
+    // a server without Discord roles: the card and the fields stay hidden
+    api('GET', '/v1/admin/discord-roles').catch(() => undefined)]);
   if (!res) return;
   $('#main').replaceChildren(
     el('div', { class: 'page-head' }, el('h1', { textContent: 'Rangi' })),
     el('p', { class: 'muted', textContent: 'Gracz może mieć kilka rang: profil publiczny pokazuje wszystkie, a przy nicku (gra, launcher, lista znajomych) jest odznaka jednej, którą gracz wybiera sam (domyślnie najważniejsza, czyli z najwyższą kolejnością). Rangi nadaje się w szufladzie konta (Konta). Kosmetyki rang są dla każdego, kto ma daną rangę.' }),
     el('p', { class: 'muted small', textContent: 'Gra rysuje logo Slash w kolorze rangi (gry sprzed 0.9.23 znają tylko pierwsze rangi i ich stałe kolory). Własna ikona (PNG 16×16 albo 32×32) zastępuje logo w launcherze i na stronie.' }),
-    el('div', { class: 'rank-list' }, ...res.ranks.map((r) => rankCard(r)), rankCard(undefined)));
+    discord ? discordCard(discord) : '',
+    el('div', { class: 'rank-list' }, ...res.ranks.map((r) => rankCard(r, discord)), rankCard(undefined)));
 }
 
-function rankCard(r) {
+function rankCard(r, discord) {
   const isNew = !r;
   r ??= { id: '', name: '', nameEn: '', color: '#60a5fa', priority: 50, description: '', descriptionEn: '', enabled: true, auto: '', builtin: false, holders: 0 };
   const f = {
@@ -70,11 +122,13 @@ function rankCard(r) {
   const card = el('details', { class: 'glass card sup-tier' },
     el('summary', { class: 'row' }, isNew ? el('b', { class: 'grow', textContent: '+ Nowa ranga' }) : el('span', { class: 'grow row' }, rankChip({ ...r, icon: r.iconUrl }), el('span', { class: 'muted small', textContent: `${r.id} · kolejność ${r.priority}` })),
       isNew ? '' : el('span', { class: 'muted small', textContent: r.auto ? AUTO[r.auto] : `${r.holders} graczy` }),
+      !isNew && discord?.mappings[r.id] ? el('span', { class: 'chip', title: 'Rola na Discordzie', textContent: `Discord: ${discord.mappings[r.id].roleName || discord.mappings[r.id].roleId}` }) : '',
       isNew || r.enabled ? '' : el('span', { class: 'chip', textContent: 'wyłączona' })),
     el('div', { class: 'sup-grid' },
       field('Id (małe litery, cyfry, _)', f.id), field('Kolor logo przy nicku', f.color), field('Kolejność (wyżej = ważniejsza)', f.priority),
       field('Nazwa', f.name), field('Nazwa po angielsku', f.nameEn), field('Podgląd', preview)),
     el('div', { class: 'sup-grid two' }, field('Opis', f.description), field('Opis po angielsku', f.descriptionEn)),
+    !isNew && discord && !discord.blocked ? el('div', { class: 'sup-grid two' }, discordField(r, discord)) : '',
     iconTools,
     el('div', { class: 'row' }, el('label', { class: 'row small' }, el('span', { class: 'switch' }, f.enabled, el('span')), 'Włączona (wyłączona nie pokazuje się nigdzie i nie daje kosmetyków)')),
     el('div', { class: 'row' }, el('button', { class: 'primary', onclick: save }, icon('fa-solid fa-check'), isNew ? 'Dodaj' : 'Zapisz'),

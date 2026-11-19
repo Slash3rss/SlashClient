@@ -110,6 +110,7 @@ const ACTIONS = {
   legal_banner: 'zmienił(a) baner wersji roboczej', legal_vars: 'zmienił(a) dane administratora w dokumentach',
   rank_create: 'dodał(a) rangę', rank_update: 'zmienił(a) rangę', rank_delete: 'usunął(ęła) rangę', rank_icon: 'zmienił(a) ikonę rangi',
   rank_grant: 'nadał(a) rangę', rank_revoke: 'odebrał(a) rangę',
+  discord_role: 'zmienił(a) rolę na Discordzie dla rangi', discord_sync: 'zsynchronizował(a) teraz role na',
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
   streams_provider: 'zmienił(a) aplikację streamów', streams_test: 'sprawdził(a) połączenie z', streams_reconcile: 'sprawdził(a) teraz kanały:',
   streams_unlink: 'odłączył(a) kanał streamu gracza',
