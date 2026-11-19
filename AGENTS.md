@@ -104,8 +104,9 @@ Bety dostają tylko launchery z kanałem „Beta” w ustawieniach (`/aktualizac
 aktualizacji” w panelu admina); strona, `/pobierz` i stabilny kanał ich nie widzą. Sprawdź
 `https://slashclient.pl/aktualizacje/beta/latest.yml`. Potem ogłoszenie bety na Discordzie: bot (token w `.env`
 projektu `SlashClient-discord`) wrzuca na `📣・beta-ogłoszenia` ładną wiadomość w Components v2 (kontener, tekst,
-separatory, przyciski jak w panelach bota, `src/panels.js`) zbudowaną z notek bety; jak włączyć bety, opisuje
-kanał `ℹ️・beta-informacje`.
+separatory, przyciski jak w panelach bota) zbudowaną z notek bety: w katalogu `SlashClient-discord`
+`node scripts/announceBeta.js X.Y.Z-beta.N` (z id kanału na końcu wysyła podgląd gdzie indziej). Jak włączyć bety,
+opisuje kanał `ℹ️・beta-informacje` (`scripts/betaInfo.js` wysyła tę wiadomość od nowa).
 
 ## Wdrożenie serwera (tylko na polecenie)
 
