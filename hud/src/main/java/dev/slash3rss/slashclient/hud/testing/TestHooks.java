@@ -1180,6 +1180,12 @@ public final class TestHooks {
 		Reconnect.lastForTest(data);
 	}
 
+	/** The address "Reconnect" would go back to (null: no button). */
+	public static String reconnectTarget() {
+		var data = Reconnect.lastForTest();
+		return data == null ? null : data.ip;
+	}
+
 	/** For the test: the titles' box closed with ✕ in the editor, then switched on in the module list – shown again? */
 	public static boolean titlesBackAfterClose() {
 		SlashHud.config.placement("titles").enabled = false;

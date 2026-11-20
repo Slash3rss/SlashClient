@@ -12,7 +12,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The server a join is for (its name, address and icon), noted for the loading screen. Only read:
+ * The server a join is for (its name, address and icon), noted for the loading screen and for
+ * "Reconnect" (a refused join goes back to that server, not the one played before). Only read:
  * the join itself goes on untouched (the session renewal in ConnectScreenMixin may hold it first).
  */
 @Mixin(ConnectScreen.class)
@@ -22,11 +23,13 @@ abstract class ConnectInfoMixin {
 	private static void slashclient$note(Screen parent, Minecraft mc, ServerAddress address, ServerData data, boolean quickPlay,
 			net.minecraft.client.multiplayer.TransferState transfer, CallbackInfo ci) {
 		SlashLoading.joining(data, address);
+		dev.slash3rss.slashclient.hud.servers.Reconnect.connecting(data);
 	}
 	//#else
 	//$ @Inject(method = "startConnecting", at = @At("HEAD"))
 	//$ private static void slashclient$note(Screen parent, Minecraft mc, ServerAddress address, ServerData data, boolean quickPlay, CallbackInfo ci) {
 	//$ 	SlashLoading.joining(data, address);
+	//$ 	dev.slash3rss.slashclient.hud.servers.Reconnect.connecting(data);
 	//$ }
 	//#endif
 }

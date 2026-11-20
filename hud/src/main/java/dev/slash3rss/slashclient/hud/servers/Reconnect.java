@@ -16,11 +16,20 @@ import dev.slash3rss.slashclient.hud.SlashHud;
 public final class Reconnect {
 	private Reconnect() {}
 
-	/** The server played on last (none after singleplayer). */
+	/** The server joined or tried last (none after singleplayer). */
 	private static ServerData last;
 
 	/** For the test: the server "Reconnect" goes back to. */
 	public static void lastForTest(ServerData data) {
+		last = data;
+	}
+
+	public static ServerData lastForTest() {
+		return last;
+	}
+
+	/** Every try to join, also one the server refuses: "Reconnect" then goes back there, not to the server played before. */
+	public static void connecting(ServerData data) {
 		last = data;
 	}
 

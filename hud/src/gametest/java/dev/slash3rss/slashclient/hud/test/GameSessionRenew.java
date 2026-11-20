@@ -98,10 +98,20 @@ public class GameSessionRenew implements FabricClientGameTest {
 			next = t3;
 			SessionRenew.asked.clear();
 			context.runOnClient(mc -> SessionRenew.expiresForTest(System.currentTimeMillis() + 30 * 60_000L));
+			// played on another server before: "Reconnect" after this refused join must go to the one just tried
+			context.runOnClient(mc -> TestHooks.reconnectTo(new net.minecraft.client.multiplayer.ServerData("Poprzedni", "10.0.0.1:25565",
+				//#if MC >= 1.20.2
+				net.minecraft.client.multiplayer.ServerData.Type.OTHER)));
+				//#else
+				//$ false)));
+				//#endif
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.Social.join("127.0.0.1:1"));
 			context.waitFor(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof DisconnectedScreen, 400);
 			expect(context, t3, "before connecting");
 			if (!SessionRenew.asked.equals(List.of("connect"))) throw new AssertionError("Asked before the join: " + SessionRenew.asked);
+			String target = context.computeOnClient(mc -> TestHooks.reconnectTarget());
+			if (!"127.0.0.1:1".equals(target)) throw new AssertionError("Reconnect after a refused join goes to " + target);
+			if (reconnects(context) != 1) throw new AssertionError("No Reconnect after a refused join: " + reconnects(context));
 
 			// a server refusing the session: renewed at once (forced), and the screen says to connect again
 			String t4 = token(24, "four");
