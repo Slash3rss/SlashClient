@@ -66,6 +66,15 @@ public class GameChatCoords implements FabricClientGameTest {
 			finds("cena 100 64 200%", "");
 			finds("S-RBC » Janfhonen: 39 956,34", "");
 			finds("stan konta 1 250 000,50", "");
+			finds("Gracz Jannhonen wpłacił na konto. Nowy stan konta: 5 339 754,44 SC.", "");
+			finds("saldo: 5 339 754 SC", "");
+			finds("masz 1 234 567,89 zł", "");
+			finds("wygrałeś 2 500 125 coins", "");
+			finds("kurs: 12.345.678,90", "");
+			finds("cena $1 250 640", "");
+			finds("baza 100 64 -200, kasa 5 339 754,44 SC", "100 64 -200");
+			finds("wbijaj na 100, 640, 200", "100 640 200");
+			finds("x: 100 y: 64 z: -200", "100 64 -200");
 		});
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);

@@ -20,7 +20,8 @@ import dev.slash3rss.slashclient.hud.SlashHud;
  * them as a waypoint of the place the player is in (ChatCoordsScreen).
  *
  * Only what looks like a place: three numbers (a height that can be one), or two when they are
- * labelled x and z. Not times (12:30), dates (12.05.2024, 12 05 2024), prices (10 20 30 zł),
+ * labelled x and z. Not times (12:30), dates (12.05.2024, 12 05 2024), prices (10 20 30 zł), balances
+ * (5 339 754,44 SC),
  * counts (64x) or numbers inside words. The marked part keeps its look and gets an underline, a
  * hover text and, as the thing the chat finds under a click, an insertion only SlashClient reads
  * (ClickEvent's actions differ between the game's versions and none runs our code).
@@ -40,11 +41,14 @@ public final class ChatCoords {
 	/** "x: 1 y: 2 z: 3", "X 1 Z 3", "x=1, y=2, z=3". */
 	private static final Pattern LABELLED = Pattern.compile("(?i)(?<![\\w])x\\s*[:=]?\\s*" + NUM + "\\s*[,;]?\\s*(?:y\\s*[:=]?\\s*" + NUM + "\\s*[,;]?\\s*)?z\\s*[:=]?\\s*" + NUM + "(?![\\w.])");
 	/** Three numbers in a row, apart by spaces or commas. */
-	private static final Pattern PLAIN = Pattern.compile("(?<![\\w.:/,-])" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?![\\w.:/%$€£-])");
-	/** "39 956,34", "1 250 000,5": one amount written with spaces between thousands and a decimal comma (a balance), not a place. */
-	private static final Pattern AMOUNT = Pattern.compile("\\d{1,3}(?:[ \\u00a0]\\d{3})+,\\d{1,2}");
+	private static final Pattern PLAIN = Pattern.compile("(?<![\\w.:/,$€£-])" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?:\\s*[,;]\\s*|\\s+)" + NUM + "(?![\\w.:/%$€£-])");
+	/**
+	 * "39 956,34", "5 339 754,44 SC", "1.250.000 zł": one amount with its thousands set apart by spaces or
+	 * dots; a balance rather than a place when it has a decimal comma (group 1) or money after it.
+	 */
+	private static final Pattern AMOUNT = Pattern.compile("(?<![\\w.,-])\\d{1,3}(?:[ \\u00a0.]\\d{3})+(?!\\d)(,\\d{1,2}(?!\\d))?");
 	/** After a number: money or a share, not a place. */
-	private static final Pattern MONEY = Pattern.compile("(?i)^\\s*(?:(?:zł|zl|pln|eur|usd|coins?|monet|kc|gr)(?!\\p{L})|[$€£%])");
+	private static final Pattern MONEY = Pattern.compile("(?i)^\\s*(?:(?:zł|zl|pln|eur|usd|coins?|monet[ay]?|kc|gr|sc|tys|mln)(?!\\p{L})|[$€£%])");
 	/** "<nick> text", "[rank] nick » text", "nick: text": who wrote it, for the waypoint's name. */
 	private static final Pattern SENDER = Pattern.compile("^(?:<([^<>]{1,40})> |(?:\\[[^\\]]{1,24}] ?)*(\\S{1,32}) (?:»|>>|→) |(?:\\[[^\\]]{1,24}] ?)*([A-Za-z0-9_]{2,16}): )");
 
@@ -58,9 +62,13 @@ public final class ChatCoords {
 		while (m.find()) add(out, m.start(), m.end(), m.group(1), m.group(2), m.group(3), true);
 		m = LABELLED.matcher(text);
 		while (m.find()) add(out, m.start(), m.end(), m.group(1), m.group(2), m.group(3), true);
+		// balances first: three plain numbers inside one ("5 339 754" of "5 339 754,44 SC") are not a place
+		List<int[]> amounts = new ArrayList<>();
+		m = AMOUNT.matcher(text);
+		while (m.find()) if (m.group(1) != null || MONEY.matcher(text.substring(m.end())).find()) amounts.add(new int[] {m.start(), m.end()});
 		m = PLAIN.matcher(text);
 		while (m.find()) {
-			if (MONEY.matcher(text.substring(m.end())).find() || AMOUNT.matcher(m.group()).matches()) continue;
+			if (MONEY.matcher(text.substring(m.end())).find() || overlaps(amounts, m.start(), m.end())) continue;
 			add(out, m.start(), m.end(), m.group(1), m.group(2), m.group(3), false);
 		}
 		out.sort((a, b) -> Integer.compare(a.start(), b.start()));
@@ -83,6 +91,11 @@ public final class ChatCoords {
 		} catch (NumberFormatException e) {
 			// not numbers after all
 		}
+	}
+
+	private static boolean overlaps(List<int[]> spans, int start, int end) {
+		for (int[] a : spans) if (start < a[1] && end > a[0]) return true;
+		return false;
 	}
 
 	private static boolean zeroLed(String n) {
