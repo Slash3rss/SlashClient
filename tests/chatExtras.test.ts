@@ -3,7 +3,7 @@ import http from 'node:http';
 import { describe, it } from 'node:test';
 import { GameBridge } from '../src/main/bridge';
 import { decrypt, encrypt, newDeviceKey } from '../src/main/chatCrypto';
-import { fitSize, ImageCache, keyText, openImage, parseKey, sealImage } from '../src/main/chatImages';
+import { fitSize, GAME_SIDE, ImageCache, keyText, openImage, parseKey, PICTURE_LOOK, pictureLook, qualitySteps, sealImage } from '../src/main/chatImages';
 import { COOLDOWN_MS, PlayingWatch, RECONNECT_MS } from '../src/renderer/friendActivity';
 
 const MIN = 60_000;
@@ -104,6 +104,23 @@ describe('chat pictures', () => {
     assert.deepEqual(fitSize(3840, 2160), { w: 1920, h: 1080 });
     assert.deepEqual(fitSize(1080, 2400), { w: 864, h: 1920 });
     assert.deepEqual(fitSize(854, 480), { w: 854, h: 480 });
+  });
+
+  it('hands the game pictures as sharp as they were sent (no longer halved to 960 px)', () => {
+    assert.deepEqual(fitSize(1920, 1080, GAME_SIDE), { w: 1920, h: 1080 });
+    assert.deepEqual(fitSize(7680, 4320, GAME_SIDE), { w: 2560, h: 1440 });
+  });
+
+  it('makes pictures at the admin\'s size and quality, the defaults without a word from the server', () => {
+    assert.deepEqual(pictureLook(null), PICTURE_LOOK);
+    assert.deepEqual(pictureLook({ features: {} }), { maxSide: 1920, quality: 90 });
+    assert.deepEqual(pictureLook({ pictures: { maxSide: 2560, quality: 95 } }), { maxSide: 2560, quality: 95 });
+    // out of bounds or not numbers: clamped or the default
+    assert.deepEqual(pictureLook({ pictures: { maxSide: 99999, quality: 'x' } }), { maxSide: 3840, quality: 90 });
+    assert.deepEqual(pictureLook({ pictures: { maxSide: 10, quality: 3 } }), { maxSide: 640, quality: 50 });
+    // too big for the server: lower qualities in turn
+    assert.deepEqual(qualitySteps(90), [90, 80, 70, 55]);
+    assert.deepEqual(qualitySteps(60), [60, 55]);
   });
 
   it('keeps the newest pictures within its size', () => {

@@ -291,6 +291,13 @@ describe('feature switches', () => {
     assert.equal((await call('GET', '/v1/communities/mine', p.token)).status, 200);
   });
 
+  it('tell launchers how sharp to make the chat\'s pictures', async () => {
+    assert.deepEqual((await call('GET', '/v1/features')).body.pictures, { maxSide: 1920, quality: 90 });
+    await set({ 'chatImages.maxSide': 2560, 'chatImages.quality': 95 });
+    assert.deepEqual((await call('GET', '/v1/features')).body.pictures, { maxSide: 2560, quality: 95 });
+    await set({ 'chatImages.maxSide': null, 'chatImages.quality': null });
+  });
+
   it('closes registration to new accounts only', async () => {
     await login('Stary');
     await set({ 'feature.registration': false });

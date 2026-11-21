@@ -39,7 +39,11 @@ export function settingsAdminRoutes(ctx: SettingsAdminContext): [string, RegExp,
   return [
     // the switches and the banner, for everyone (no sign-in): launchers and the website ask on start
     // bugs: where "Zgłoś błąd" leads (bugsMode.ts); the site takes its links out when it is off
-    ['GET', /^\/v1\/features$/, () => ({ features: featuresOf(settings), banner: bannerOf(settings), bugs: bugsMode(settings) })],
+    // pictures: how launchers make the chat's pictures before encrypting them (chatImages.ts)
+    ['GET', /^\/v1\/features$/, () => ({
+      features: featuresOf(settings), banner: bannerOf(settings), bugs: bugsMode(settings),
+      pictures: { maxSide: settings.num('chatImages.maxSide'), quality: settings.num('chatImages.quality') },
+    })],
 
     ['GET', /^\/v1\/admin\/settings$/, (req) => {
       ctx.admin(req);

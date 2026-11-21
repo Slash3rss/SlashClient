@@ -17,6 +17,29 @@ export interface ChatImageView { id: string; w?: number; h?: number; size?: numb
 export const MAX_SIDE = 1920;
 /** What the server accepts (IMAGE_LIMITS.maxBytes), less the tag. */
 export const MAX_BYTES = 4 * 1024 * 1024 - 64;
+/**
+ * The largest side of a picture handed to the game. The game shows it over the whole window, so a
+ * smaller one is stretched there and its text and HUD go blurry; this only keeps a huge one from
+ * filling the game's memory (it keeps a few pictures as textures).
+ */
+export const GAME_SIDE = 2560;
+
+/** How a picture is made before it is sent: its longer side and JPEG quality (the admin's, from /v1/features). */
+export interface PictureLook { maxSide: number; quality: number }
+/** Without a word from the server (older than 0.9.80, or not reached). */
+export const PICTURE_LOOK: PictureLook = { maxSide: MAX_SIDE, quality: 90 };
+
+/** The server's `pictures` from /v1/features, within sane bounds; the defaults for anything else. */
+export function pictureLook(features: unknown): PictureLook {
+  const p = (features as { pictures?: { maxSide?: unknown; quality?: unknown } } | null | undefined)?.pictures;
+  const num = (v: unknown, min: number, max: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : d);
+  return { maxSide: num(p?.maxSide, 640, 3840, PICTURE_LOOK.maxSide), quality: num(p?.quality, 50, 100, PICTURE_LOOK.quality) };
+}
+
+/** The JPEG qualities tried in turn until the picture fits the server's limit: the chosen one first, then lower. */
+export function qualitySteps(quality: number): number[] {
+  return [quality, ...[80, 70, 55].filter((q) => q < quality)];
+}
 
 const TYPES = ['image/jpeg', 'image/png'];
 

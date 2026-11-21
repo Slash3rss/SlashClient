@@ -33,7 +33,7 @@ import { ChatKeys, type WrapRef } from './chatKeys';
 import { createGifMedia } from './gifMedia';
 import { ClanLogoCache, isLogoPng } from './clanLogo';
 import { RankIconCache } from './rankIcons';
-import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
+import { fitSize, GAME_SIDE, ImageCache, keyText, MAX_BYTES, openImage, parseKey, PICTURE_LOOK, pictureLook, qualitySteps, sealImage, type ChatImageView, type ImageKey, type PictureLook } from './chatImages';
 import { removedText, thumbnail, ThumbCache, type MediaItem, type RemovedImage } from './chatMedia';
 import { launch, resolveVersionId } from './launch';
 import { registerJavaCompare } from './javaCompare';
@@ -2709,15 +2709,16 @@ const bridge = new GameBridge({
   communityImage: async (communityId, id) => {
     const img = nativeImage.createFromBuffer(await communityImageData(communityId, id));
     const { width, height } = img.getSize();
-    const size = fitSize(width, height, 960);
-    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
+    const size = fitSize(width, height, GAME_SIDE);
+    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'best' }) : img).toPNG();
   },
-  // a picture from the chat for the game: PNG (the game reads only that), small enough for its window
+  // a picture from the chat for the game: PNG (the game reads only that), as sharp as it was sent
+  // (the game stretches it over its window: a smaller one went blurry there)
   chatImage: async (id) => {
     const img = nativeImage.createFromBuffer(await chatImageData(id));
     const { width, height } = img.getSize();
-    const size = fitSize(width, height, 960);
-    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
+    const size = fitSize(width, height, GAME_SIDE);
+    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'best' }) : img).toPNG();
   },
   gifStill: (url) => gifMedia.bytes(url),
   clanLogo: (id, version) => clanLogos.get(id, version),
@@ -3087,7 +3088,7 @@ async function chatImageData(id: string): Promise<Buffer> {
 async function sendChatImage(to: string, file: string | Buffer): Promise<ChatMessage> {
   const me = social.state().user?.id;
   if (!me) throw new SocialError('unauthorized');
-  const { jpeg, size } = pictureFile(file);
+  const { jpeg, size } = await pictureFile(file);
   const own = chatKey();
   const [theirs, mine] = await Promise.all([keysOf(to), keysOf(me)]);
   if (!theirs.length) throw new SocialError('no_keys');
@@ -3101,23 +3102,40 @@ async function sendChatImage(to: string, file: string | Buffer): Promise<ChatMes
   return openMessage(res.message);
 }
 
-/** A picture (a file, or pasted bytes) ready to send: scaled to at most 1920 px and made a JPEG small enough for the server. */
-function pictureFile(file: string | Buffer): { jpeg: Buffer; size: { w: number; h: number } } {
+/** The admin's size and quality for pictures (/v1/features, server 0.9.80+), asked again after a few minutes. */
+let pictureLookAt = 0;
+let pictureLookNow: PictureLook = PICTURE_LOOK;
+async function currentPictureLook(): Promise<PictureLook> {
+  if (Date.now() - pictureLookAt < 5 * 60_000) return pictureLookNow;
+  try {
+    pictureLookNow = pictureLook(await social.call('GET', '/v1/features', undefined, false));
+  } catch {
+    // not reached: what it said last (or the defaults), and ask again with the next picture
+    return pictureLookNow;
+  }
+  pictureLookAt = Date.now();
+  return pictureLookNow;
+}
+
+/** A picture (a file, or pasted bytes) ready to send: scaled to the admin's size and made a JPEG small enough for the server. */
+async function pictureFile(file: string | Buffer): Promise<{ jpeg: Buffer; size: { w: number; h: number } }> {
   let img = typeof file === 'string' ? nativeImage.createFromPath(file) : nativeImage.createFromBuffer(file);
   if (img.isEmpty()) throw new SocialError('not_an_image');
+  const look = await currentPictureLook();
   const { width, height } = img.getSize();
-  const size = fitSize(width, height);
+  const size = fitSize(width, height, look.maxSide);
   if (size.w < width) img = img.resize({ width: size.w, height: size.h, quality: 'best' });
-  let jpeg = img.toJPEG(88);
-  if (jpeg.length > MAX_BYTES) jpeg = img.toJPEG(70);
-  if (jpeg.length > MAX_BYTES) throw new SocialError('too_large');
-  return { jpeg, size };
+  for (const q of qualitySteps(look.quality)) {
+    const jpeg = img.toJPEG(q);
+    if (jpeg.length <= MAX_BYTES) return { jpeg, size };
+  }
+  throw new SocialError('too_large');
 }
 
 /** The same to a group (or clan) chat: the picture's key and the caption encrypted for the members' launchers. */
 async function sendGroupImage(group: string, file: string | Buffer): Promise<GroupChatMessage> {
   if (!social.state().user?.id) throw new SocialError('unauthorized');
-  const { jpeg, size } = pictureFile(file);
+  const { jpeg, size } = await pictureFile(file);
   const sealed = sealImage(jpeg, 'image/jpeg', size.w, size.h);
   const { id } = await social.upload<{ id: string }>(`/v1/groups/${group}/images`, sealed.blob);
   // what an older launcher shows instead of the picture
@@ -3161,7 +3179,7 @@ handle('social:sendGroupImage', (groupId: string, pasted?: Uint8Array) => social
 /** A picture (a file, or pasted bytes) to a community's channel: scaled and made a JPEG here, the server leaves out any metadata left. */
 async function sendCommunityImage(community: string, channel: string, file: string | Buffer): Promise<unknown> {
   if (!social.state().user?.id) throw new SocialError('unauthorized');
-  const { jpeg } = pictureFile(file);
+  const { jpeg } = await pictureFile(file);
   const { id } = await social.upload<{ id: string }>(`/v1/communities/${community}/channels/${channel}/images`, jpeg);
   // the text older launchers show instead, in this player's language
   const res = await social.call<{ message: unknown }>('POST', `/v1/communities/${community}/channels/${channel}/messages`, { image: id, lang: getLang() });

@@ -36,6 +36,12 @@ export interface ImageLimits {
 }
 export const IMAGE_LIMITS: ImageLimits = { maxBytes: 4 * 1024 * 1024, perDay: 60, bytesPerDay: 100 * 1024 * 1024, days: 30, orphanMs: 3_600_000 };
 
+/**
+ * How launchers (0.9.80+) make a picture before they encrypt it: the longer side at most `maxSide`
+ * and this JPEG quality. The server never sees the picture, so it can only tell them (/v1/features).
+ */
+export const CHAT_PICTURE = { maxSide: 1920, quality: 90 };
+
 /** What a message carries: the picture and its key, encrypted for the devices (chatCrypto in the launcher). */
 export interface ChatImage { id: string; key: string; size: number }
 /** In place of `image` once the picture is gone but its message is not: when, and whether it ran out or who took it down. */

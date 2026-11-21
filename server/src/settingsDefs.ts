@@ -3,7 +3,7 @@ import { CLOUDFLARE_RANGES } from './proxies.ts';
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { REFERRAL_SETTING_DEFS } from './referrals.ts';
-import { IMAGE_LIMITS } from './chatImages.ts';
+import { CHAT_PICTURE, IMAGE_LIMITS } from './chatImages.ts';
 import { CHAT_KEY_SETTING_DEFS } from './chatKeys.ts';
 import { chatMediaSettingDefs } from './chatMediaLimits.ts';
 import { MAX_LOGO_BYTES } from './clanLogos.ts';
@@ -113,6 +113,8 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'chatImages.days', label: 'Przechowywanie zdjęć z czatu', labelEn: 'Chat pictures kept', description: 'Rozmowy prywatne: po tylu dniach zdjęcie znika z serwera (wiadomość zostaje). Grupy, klany i społeczności mają swoje w „Multimedia w czatach”.', type: 'duration', default: IMAGE_LIMITS.days, min: 1, max: 3650, unit: 'dni', risky: true },
     rate('chatImages.uploadsPerMinute', 'Wysyłanie zdjęć w czacie na minutę', 'Chat picture uploads per minute', 10, 'Na konto.'),
     rate('chatImages.downloadsPerMinute', 'Pobrania zdjęć z czatu na minutę', 'Chat picture downloads per minute', 120, 'Na konto.'),
+    { key: 'chatImages.maxSide', label: 'Rozdzielczość zdjęć w czacie', labelEn: 'Chat picture resolution', description: 'Dłuższy bok wysyłanego zdjęcia w pikselach; większe launcher zmniejsza przed wysłaniem (launcher 0.9.80+, starsze: 1920).', type: 'int', default: CHAT_PICTURE.maxSide, min: 640, max: 3840 },
+    { key: 'chatImages.quality', label: 'Jakość zdjęć w czacie', labelEn: 'Chat picture quality', description: 'Jakość JPEG wysyłanych zdjęć (launcher 0.9.80+, starsze: 88). Zdjęcie większe niż „Największe zdjęcie w czacie” launcher wysyła w niższej jakości.', type: 'int', default: CHAT_PICTURE.quality, min: 50, max: 100 },
   ]),
 
   ...group('cloud', [
