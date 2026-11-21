@@ -768,6 +768,8 @@ button.busy { pointer-events: none; }
 }
 .splash.done { opacity: 0; visibility: hidden; pointer-events: none; }
 .splash-logo { width: 112px; height: 112px; filter: drop-shadow(0 0 22px rgba(var(--accent-rgb), .35)); animation: logo-pulse 1.8s ease-in-out infinite; }
+/* the animated logo moves on its own: no breathing on top of it */
+.splash-logo[src="logo-slash.webp"] { animation: none; }
 .splash-name { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
 .splash-name span { background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 50%, var(--accent-dark) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .splash-bar { width: 180px; height: 4px; border-radius: 99px; background: rgba(var(--ink-rgb),  .06); overflow: hidden; }

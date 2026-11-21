@@ -40,6 +40,8 @@ interface SeasonDeps {
   setWindowIcon?: (dataUrl: string | null) => unknown;
   /** The usual logo: logo.png, or the one with a DEV or BETA tag. */
   plainLogo?: () => string;
+  /** The splash's usual logo: the animated one, or the still one with fewer animations or a tag. */
+  splashLogo?: () => string;
   /** 'dev' or 'beta': the tag drawn over the season's logo too (logo-<tag>-tag.png), '' for none. */
   logoTag?: () => string;
   /** Tells the game whether the look is allowed (the next game started gets it). */
@@ -219,7 +221,10 @@ export function initSeason(deps: SeasonDeps) {
     }
     // switched again while the picture was being made: the later call decides
     if (logoShown !== season) return;
-    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo, .season-logo')) img.src = url ?? deps.plainLogo?.() ?? 'logo.png';
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo, .season-logo')) {
+      const usual = (img.classList.contains('splash-logo') ? deps.splashLogo?.() : undefined) ?? deps.plainLogo?.() ?? 'logo.png';
+      img.src = url ?? usual;
+    }
     deps.setWindowIcon?.(url ?? null);
   }
 

@@ -110,6 +110,21 @@ let store: PublicStore;
 /** The usual logo of the side bar and the splash: with a DEV or BETA tag (season.ts goes back to it and puts the tag on its own). */
 let plainLogo = 'logo.png';
 let logoTag = '';
+/**
+ * The splash's usual logo: the animated one (the S cut again, scripts/make-loading-logo.py), unless the logo has
+ * a DEV or BETA tag or animations are kept to a minimum. It starts and ends as logo.png, so the swap is not seen.
+ */
+function splashLogo(): string {
+  const reduced = !!store?.settings?.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return plainLogo === 'logo.png' && !reduced ? 'logo-slash.webp' : plainLogo;
+}
+/** The splash's usual logo again (still or moving as the settings say), unless it shows the season's. */
+function refreshSplashLogo() {
+  const img = document.querySelector<HTMLImageElement>('.splash-logo');
+  const src = img?.getAttribute('src');
+  if (img && (src === 'logo.png' || src === 'logo-slash.webp' || src === plainLogo)) img.src = splashLogo();
+}
+refreshSplashLogo();
 let versions: VersionInfo[] = [];
 let editingId: string | undefined;
 let launching = false;
@@ -1358,7 +1373,7 @@ function renderSettings() {
     if (tag !== 'dev' && tag !== 'beta') return;
     logoTag = tag;
     plainLogo = `logo-${tag}.png`;
-    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) if (img.getAttribute('src') === 'logo.png') img.src = plainLogo;
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) if (img.getAttribute('src') === 'logo.png' || img.getAttribute('src') === 'logo-slash.webp') img.src = plainLogo;
     season.retag();
   }).catch(() => {});
 }
@@ -5680,6 +5695,7 @@ function motionReduced(): boolean {
 function applyMotion() {
   document.documentElement.classList.toggle('reduce-motion', motionReduced());
   if (skinViewer) skinViewer.autoRotate = !motionReduced();
+  refreshSplashLogo();
   wakeStars();
   season.apply();
 }
@@ -5690,6 +5706,7 @@ const season = initSeason({
   settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => (featuresKnown() ? featureOn('seasonal') : undefined), reduced: motionReduced,
   setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
   plainLogo: () => plainLogo,
+  splashLogo,
   logoTag: () => logoTag,
   setAllowed: (on) => api.setSeasonAllowed?.(on),
 });

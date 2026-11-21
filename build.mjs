@@ -27,6 +27,8 @@ cpSync('src/renderer/launcherNews.css', 'dist/renderer/launcherNews.css');
 cpSync('src/renderer/javaChoice.css', 'dist/renderer/javaChoice.css');
 cpSync('src/renderer/playerProfile.css', 'dist/renderer/playerProfile.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
+// the splash's animated logo (scripts/make-loading-logo.py)
+cpSync('build/icons/logo-slash.webp', 'dist/renderer/logo-slash.webp');
 // a launcher run from the code, or a beta, shows the logo with a DEV or BETA tag (scripts/icon/tag-icons.py)
 for (const tag of ['dev', 'beta']) {
   cpSync(`build/icons/${tag}-256x256.png`, `dist/renderer/logo-${tag}.png`);

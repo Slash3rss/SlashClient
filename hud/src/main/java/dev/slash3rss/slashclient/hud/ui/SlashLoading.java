@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * SlashClient's loading screen, drawn over the game's own while a server is joined (connecting,
  * logging in, the server's resource packs, loading terrain) and a world is entered or left
- * (preparing, the spawn area, saving): our background, the logo with a soft glow, a card with the
+ * (preparing, the spawn area, saving): our background, the animated logo with a soft glow, a card with the
  * server's or world's icon, name and address, the step the game is at with a progress bar (a
  * moving one while the game gives no percentage), the Cancel button where the game has one, and a
  * tip at the bottom. Only the look: the game's screen stays the screen, does everything it does
@@ -42,6 +42,12 @@ public final class SlashLoading {
 	private SlashLoading() {}
 
 	private static final Identifier LOGO = Identifier.fromNamespaceAndPath("slashclient-hud", "icon.png");
+	/**
+	 * The animated logo (scripts/make-loading-logo.py): its S comes together and is cut again, starting and
+	 * ending as the usual logo. Frames of 128 px, LOGO_COLS in a row, LOGO_FPS a second.
+	 */
+	private static final Identifier LOGO_SLASH = Identifier.fromNamespaceAndPath("slashclient-hud", "icon-slash.png");
+	private static final int LOGO_FRAMES = 80, LOGO_COLS = 10, LOGO_FPS = 25;
 	private static final long TIP_MS = 6000;
 
 	/** Test hooks: one fixed frame of the motion (the first tip, the bar's piece in one place) and a made-up progress or world. */
@@ -387,7 +393,15 @@ public final class SlashLoading {
 				int alpha = Math.round((10 - k) * (0.75f + 0.25f * pulse));
 				Ui.round(g, gx - s / 2, gy - s / 2, s, s, s / 2, alpha << 24 | glowRgb);
 			}
-			g.blit(RenderPipelines.GUI_TEXTURED, Season.logo(LOGO), (w - 32) / 2, y, 0, 0, 32, 32, 32, 32);
+			Identifier mark = Season.logo(LOGO);
+			if (mark == LOGO && !still) {
+				// the animated logo: the frame of this moment from the grid (the season's logos and fewer animations keep the still one)
+				int frame = (int) (anim * LOGO_FPS / 1000 % LOGO_FRAMES);
+				int rows = (LOGO_FRAMES + LOGO_COLS - 1) / LOGO_COLS;
+				g.blit(RenderPipelines.GUI_TEXTURED, LOGO_SLASH, (w - 32) / 2, y, frame % LOGO_COLS * 32, frame / LOGO_COLS * 32, 32, 32, LOGO_COLS * 32, rows * 32);
+			} else {
+				g.blit(RenderPipelines.GUI_TEXTURED, mark, (w - 32) / 2, y, 0, 0, 32, 32, 32, 32);
+			}
 			y += 40;
 		}
 		Ui.brand(g, (w - Ui.brandWidth(1.3f)) / 2, y, 1.3f);
