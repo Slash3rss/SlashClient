@@ -139,6 +139,15 @@ public final class Compat {
 		//#endif
 	}
 
+	/** The chat message with other content (and tick), the rest kept (from 26.1 it also keeps where it came from). */
+	public static net.minecraft.client.multiplayer.chat.GuiMessage chatMessage(net.minecraft.client.multiplayer.chat.GuiMessage m, int tick, net.minecraft.network.chat.Component content) {
+		//#if MC >= 26.1
+		return new net.minecraft.client.multiplayer.chat.GuiMessage(tick, content, m.signature(), m.source(), m.tag());
+		//#else
+		//$ return new net.minecraft.client.multiplayer.chat.GuiMessage(tick, content, m.signature(), m.tag());
+		//#endif
+	}
+
 	/** Lines the open chat tab shows (before 26.1 used by ChatFilterMixin; on all versions by chat stacking). */
 	public static java.util.function.Predicate<net.minecraft.client.multiplayer.chat.GuiMessage> chatFilter = m -> true;
 

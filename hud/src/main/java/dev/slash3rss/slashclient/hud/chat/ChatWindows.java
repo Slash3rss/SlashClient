@@ -49,6 +49,27 @@ public final class ChatWindows {
 	}
 
 	/**
+	 * The time stamps switched on or off: the windows' lines follow the chat's (`changed`, old to new);
+	 * a line the chat no longer has gets the time it came to the window.
+	 */
+	static void restamp(Map<Component, Component> changed, boolean on) {
+		for (ArrayDeque<Line> list : lines.values()) {
+			ArrayDeque<Line> next = new ArrayDeque<>();
+			for (Line line : list) {
+				Component text = changed.get(line.text());
+				if (text == null) {
+					Component bare = dev.slash3rss.slashclient.hud.Extras.unstamped(line.text());
+					if (on && bare == null) text = dev.slash3rss.slashclient.hud.Extras.stamped(line.text(), line.at() > 0 ? line.at() : System.currentTimeMillis());
+					else text = on || bare == null ? line.text() : bare;
+				}
+				next.addLast(new Line(text, line.at()));
+			}
+			list.clear();
+			list.addAll(next);
+		}
+	}
+
+	/**
 	 * Fills a window with the tab's lines from the chat's history (oldest first), as if it had been
 	 * out all along: a freshly pulled-out tab, or after a restart. They count as old, so in the game
 	 * they don't flash up; with the chat open they are there.

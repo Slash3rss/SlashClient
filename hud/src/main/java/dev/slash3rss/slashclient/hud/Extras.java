@@ -102,12 +102,39 @@ public final class Extras {
 
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
+	private static final int STAMP_COLOR = 0xAAAAAA;
+	private static final java.util.regex.Pattern STAMP = java.util.regex.Pattern.compile("\\[\\d{2}:\\d{2}] ");
+	/** Whether the chat's history has the time stamps on, so switching the setting puts them on (or off) the old lines too. */
+	private static boolean stampsShown;
+
 	public static Component timestamp(Component message) {
 		if (!cfg().chatTimestamps) return message;
-		return Component.literal("[" + LocalTime.now().format(TIME) + "] ").withStyle(Style.EMPTY.withColor(0xAAAAAA)).append(message);
+		return stamped(message, System.currentTimeMillis());
+	}
+
+	/** The message with the time it came in (wall clock, in millis) in front. */
+	public static Component stamped(Component message, long at) {
+		String time = LocalTime.ofInstant(java.time.Instant.ofEpochMilli(at), java.time.ZoneId.systemDefault()).format(TIME);
+		return Component.literal("[" + time + "] ").withStyle(Style.EMPTY.withColor(STAMP_COLOR)).append(message);
+	}
+
+	/** The message without our time stamp in front, or null when it has none. */
+	public static Component unstamped(Component shown) {
+		var color = shown.getStyle().getColor();
+		if (shown.getSiblings().isEmpty() || color == null || (color.getValue() & 0xFFFFFF) != STAMP_COLOR
+			|| !STAMP.matcher(shown.plainCopy().getString()).matches()) return null;
+		// the message itself, and the repeat count stacking put after it
+		if (shown.getSiblings().size() == 1) return shown.getSiblings().get(0);
+		net.minecraft.network.chat.MutableComponent bare = Component.empty();
+		for (Component part : shown.getSiblings()) bare.append(part);
+		return bare;
 	}
 
 	static void tick(Minecraft mc) {
+		if (cfg().chatTimestamps != stampsShown) {
+			stampsShown = cfg().chatTimestamps;
+			dev.slash3rss.slashclient.hud.chat.ChatExtras.restamp(Compat.chat(mc), stampsShown);
+		}
 		if (zoomKey != null && cfg().zoomToggle) {
 			while (zoomKey.consumeClick()) if (Compat.screen(mc) == null) toggled = !toggled;
 		} else toggled = false;

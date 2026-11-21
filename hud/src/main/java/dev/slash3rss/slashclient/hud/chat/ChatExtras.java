@@ -69,17 +69,49 @@ public final class ChatExtras {
 		return shown;
 	}
 
-	/** Wall-clock time of the chat's GUI tick each message came in at (chat lines keep only the tick). */
+	/**
+	 * Wall-clock time of the chat's GUI tick each message came in at (chat lines keep only the tick),
+	 * kept whether or not the time stamps are on, as many as the longest history holds.
+	 */
 	private static final Map<Integer, Long> ARRIVED = new LinkedHashMap<>() {
 		@Override
 		protected boolean removeEldestEntry(Map.Entry<Integer, Long> eldest) {
-			return size() > 1000;
+			return size() > 16000;
 		}
 	};
 
 	/** Called for every new chat line, before the chat stores it. */
 	public static void arrived() {
 		ARRIVED.putIfAbsent(Compat.guiTicks(Minecraft.getInstance()), System.currentTimeMillis());
+	}
+
+	/** When the message stamped with this GUI tick came in; one from before this was recorded is counted back from the ticks (20 a second). */
+	static long arrivedAt(int addedTime) {
+		Long at = ARRIVED.get(addedTime);
+		return at != null ? at : System.currentTimeMillis() - (Compat.guiTicks(Minecraft.getInstance()) - addedTime) * 50L;
+	}
+
+	/**
+	 * After the time stamps were switched on (or off): every message already in the chat and in the
+	 * pulled-out windows gets the time it came in (or loses it), not the time of the switch.
+	 */
+	public static void restamp(ChatComponent chat, boolean on) {
+		if (chat == null) return;
+		ChatComponentAccessor access = (ChatComponentAccessor) chat;
+		List<Object> all = access.slashclient$allMessages();
+		Map<Component, Component> changed = new java.util.IdentityHashMap<>();
+		for (int i = 0; i < all.size(); i++) {
+			GuiMessage m = (GuiMessage) all.get(i);
+			Component bare = dev.slash3rss.slashclient.hud.Extras.unstamped(m.content());
+			Component next = on ? (bare == null ? dev.slash3rss.slashclient.hud.Extras.stamped(m.content(), arrivedAt(m.addedTime())) : null) : bare;
+			if (next == null) continue;
+			changed.put(m.content(), next);
+			all.set(i, Compat.chatMessage(m, m.addedTime(), next));
+		}
+		// a repeat of the newest line still stacks onto it
+		if (lastShown != null && changed.containsKey(lastShown)) lastShown = changed.get(lastShown);
+		ChatWindows.restamp(changed, on);
+		if (!changed.isEmpty()) access.slashclient$refresh();
 	}
 
 	/** What the last right click on the chat put on the clipboard (the tests read it here: a system clipboard can lag). */
@@ -121,9 +153,7 @@ public final class ChatExtras {
 		};
 		String time = c == null ? "off" : c.chatCopyTime;
 		if (!time.equals("off")) {
-			Long at = p.at() != null ? p.at() : ARRIVED.get(p.addedTime());
-			// a message from before this was recorded: counted back from the GUI ticks (20 a second)
-			long millis = at != null ? at : System.currentTimeMillis() - (Compat.guiTicks(Minecraft.getInstance()) - p.addedTime()) * 50L;
+			long millis = p.at() != null ? p.at() : arrivedAt(p.addedTime());
 			LocalTime t = LocalTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
 			text = "[" + t.format(DateTimeFormatter.ofPattern(time.equals("hms") ? "HH:mm:ss" : "HH:mm")) + "] " + text;
 		}

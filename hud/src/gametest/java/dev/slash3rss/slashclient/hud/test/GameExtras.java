@@ -27,6 +27,33 @@ public class GameExtras implements FabricClientGameTest {
 			if (shown.split("Ta sama wiadomość", -1).length != 2 || !shown.contains("×3")) throw new AssertionError("Stacked lines left behind: " + shown);
 			context.takeScreenshot("extras-world");
 
+			// the chat times switched on: the lines already there get the time they came in, the stack stays
+			// and a repeat still stacks onto it; switched off, the times go again
+			context.runOnClient(mc -> TestHooks.oldChatLine("Stara wiadomość", 90));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+			context.waitTicks(5);
+			context.takeScreenshot("extras-chat-times-before");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.chatTimestamps = true);
+			context.waitTicks(3);
+			context.takeScreenshot("extras-chat-times-after");
+			context.setScreen(() -> null);
+			String timed = context.computeOnClient(mc -> TestHooks.chatLines());
+			String[] old = context.computeOnClient(mc -> TestHooks.stampsAgo(90));
+			if (!timed.contains(old[0] + "Stara wiadomość") && !timed.contains(old[1] + "Stara wiadomość")) throw new AssertionError("An old line did not get the time it came in: " + timed);
+			for (String line : timed.split(" \\| ")) if (!line.isBlank() && !line.matches("\\[\\d{2}:\\d{2}] .*")) throw new AssertionError("A line got no time: " + timed);
+			if (!timed.contains("] Ta sama wiadomość ×3")) throw new AssertionError("The stack was lost: " + timed);
+			world.getServer().runCommand("say Inna wiadomość");
+			context.waitTicks(10);
+			String repeated = context.computeOnClient(mc -> TestHooks.chatLines());
+			String newest = repeated.split(" \\| ")[0];
+			if (!newest.matches("\\[\\d{2}:\\d{2}] .*Inna wiadomość ×2") || repeated.split("Inna wiadomość", -1).length != 2) throw new AssertionError("A repeat did not stack onto a restamped line: " + repeated);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.chatTimestamps = false);
+			context.waitTicks(3);
+			String untimed = context.computeOnClient(mc -> TestHooks.chatLines());
+			if (untimed.matches("(?s).*\\[\\d{2}:\\d{2}] .*") || !untimed.contains("Ta sama wiadomość ×3") || !untimed.contains("Inna wiadomość ×2")) throw new AssertionError("The times did not go: " + untimed);
+			String drawn = context.computeOnClient(mc -> TestHooks.chatShownLines());
+			if (drawn.matches("(?s).*\\[\\d{2}:\\d{2}] .*")) throw new AssertionError("The drawn lines kept their times: " + drawn);
+
 			// open chat: a right click on the second line from the bottom copies it
 			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 			context.waitTicks(5);

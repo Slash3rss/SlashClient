@@ -969,6 +969,24 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** The oldest chat line as if it had come in `minutesAgo` minutes ago; its time stamp then has to say so. */
+	public static void oldChatLine(String text, int minutesAgo) {
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		var access = (dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat;
+		int tick = Compat.guiTicks(net.minecraft.client.Minecraft.getInstance()) - minutesAgo * 1200;
+		var all = access.slashclient$allMessages();
+		var like = (net.minecraft.client.multiplayer.chat.GuiMessage) all.get(all.size() - 1);
+		all.add(Compat.chatMessage(like, tick, net.minecraft.network.chat.Component.literal(text)));
+		access.slashclient$refresh();
+	}
+
+	/** The time stamp a line from `minutesAgo` minutes ago gets now, or a minute earlier (the clock may have just turned). */
+	public static String[] stampsAgo(int minutesAgo) {
+		var now = java.time.LocalTime.now().minusMinutes(minutesAgo);
+		var f = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+		return new String[] { "[" + now.format(f) + "] ", "[" + now.minusMinutes(1).format(f) + "] " };
+	}
+
 	/** The newest chat message's text and the first click event in it ("<text> -> <event>"), or "none". */
 	public static String newestChatClick() {
 		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
