@@ -32,7 +32,7 @@ export function setWorn(parts: SetItem[], worn: Record<string, string | undefine
 export function missingText(item: SetItem, sparks: (n: number) => string, rankName: (rank: string) => string): string {
   if (item.price && !item.owned) return t('{0}: w sklepie za {1}', item.name, sparks(item.price));
   if (item.rank) return t('{0}: tylko dla rangi {1}', item.name, rankName(item.rank));
-  if (item.supporter) return t('{0}: dla wspierających projekt (Ustawienia → Wesprzyj projekt)', item.name);
+  if (item.supporter) return t('{0}: dla wspierających projekt (Ustawienia → O programie → Wesprzyj projekt)', item.name);
   if (item.hint) return `${item.name}: ${getLang() === 'en' ? item.hintEn ?? item.hint : item.hint}`;
   return t('{0}: ekskluzywna, przyznaje ją admin', item.name);
 }

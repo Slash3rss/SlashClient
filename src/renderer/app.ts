@@ -1005,6 +1005,14 @@ initFeatures({ api, socialUrl: () => store?.settings.socialUrl ?? '', openUrl: (
 // the network is back: friends see the player again now, not after the next reconnect try (up to a minute)
 window.addEventListener('online', () => void api.socialReconnect?.().catch(() => undefined));
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
+
+/** Settings in sections ("Ogólne", "Wygląd", "Gra i Java"…): one shown at a time, the last one picked stays open. */
+function showSettingsSection(section: string) {
+  document.querySelectorAll<HTMLElement>('.settings-section').forEach((s) => s.classList.toggle('hidden', s.dataset.section !== section));
+  document.querySelectorAll<HTMLButtonElement>('#settings-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.section === section));
+}
+document.querySelectorAll<HTMLButtonElement>('#settings-tabs button').forEach((b) =>
+  b.addEventListener('click', () => showSettingsSection(b.dataset.section ?? 'general')));
 // "O programie / Informacje prawne": the terms and the privacy policy on the website
 createLegalCard($('#legal-card'), { socialUrl: () => store?.settings.socialUrl ?? '' });
 
@@ -5043,7 +5051,7 @@ async function renderSlashCapes(fresh = true) {
     const forSale = locked && !!item?.price && !item.owned;
     const why = forSale ? t('{0}: w sklepie za {1}', title, sparks(item!.price!))
       : item?.rank ? t('{0}: tylko dla rangi {1}', title, RANK_NAMES[item.rank] ?? item.rank)
-      : item?.supporter ? t('{0}: dla wspierających projekt (Ustawienia → Wesprzyj projekt)', title)
+      : item?.supporter ? t('{0}: dla wspierających projekt (Ustawienia → O programie → Wesprzyj projekt)', title)
       : item?.hint ? `${title}: ${getLang() === 'en' ? item.hintEn ?? item.hint : item.hint}`
       : t('{0}: ekskluzywna, przyznaje ją admin', title);
     const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' square'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, title: locked ? why : title }, content);
@@ -5879,7 +5887,10 @@ function finishTaskCard({ id, ok, message, profileId, missing }: TaskDone, stayM
 
 /** The update channel's choice: shown when the server has a beta channel, or while on the beta (to come back). */
 function showUpdateChannel() {
-  $('#update-channel-row').classList.toggle('hidden', !betaUpdatesOffered() && store.settings.updateChannel !== 'beta');
+  const hidden = !betaUpdatesOffered() && store.settings.updateChannel !== 'beta';
+  $('#update-channel-row').classList.toggle('hidden', hidden);
+  // the channel is the only field here saved with "Zapisz"
+  $('#update-channel-save').classList.toggle('hidden', hidden);
 }
 onFeatures(showUpdateChannel);
 

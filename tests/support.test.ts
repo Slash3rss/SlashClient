@@ -17,7 +17,7 @@ test('the support page is the server\'s own, only for web addresses', () => {
 test('the support card speaks English too', () => {
   setLang('en');
   assert.equal(t('Wesprzyj projekt'), 'Support the project');
-  assert.equal(t('{0}: dla wspierających projekt (Ustawienia → Wesprzyj projekt)', 'Mecenas'), 'Mecenas: for supporters of the project (Settings → Support the project)');
+  assert.equal(t('{0}: dla wspierających projekt (Ustawienia → O programie → Wesprzyj projekt)', 'Mecenas'), 'Mecenas: for supporters of the project (Settings → About → Support the project)');
   setLang('pl');
 });
 

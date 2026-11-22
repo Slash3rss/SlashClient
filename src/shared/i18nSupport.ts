@@ -6,7 +6,7 @@ export const SUPPORT_EN: Record<string, string> = {
   'Dziękujemy za wcześniejsze wsparcie!': 'Thank you for supporting us before!',
   'do {0}': 'until {0}',
   'bez terminu': 'with no end date',
-  '{0}: dla wspierających projekt (Ustawienia → Wesprzyj projekt)': '{0}: for supporters of the project (Settings → Support the project)',
+  '{0}: dla wspierających projekt (Ustawienia → O programie → Wesprzyj projekt)': '{0}: for supporters of the project (Settings → About → Support the project)',
   // the payment history and refund notes (renderer/paymentHistory.ts, support.ts)
   'Historia płatności': 'Payment history',
   'Płatności i zwroty na stronie': 'Payments and refunds on the website',
