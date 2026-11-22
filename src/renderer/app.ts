@@ -4162,8 +4162,9 @@ function openDiscover() {
     discovering = true;
     $('#discover-body').append(contentPane);
     contentPane.classList.remove('hidden');
-    // the profile's tile right under "instalowane do tego profilu", which it is about
-    contentPane.querySelector('.sub')?.after($('#discover-target'));
+    // "instalowane do tego profilu" goes under the page's title, next to the profile's tile it is about
+    const sub = contentPane.querySelector('.sub');
+    if (sub) $('.discover-title').append(sub);
   }
   // the same list serves a profile's own Mods tab: other results there mean searching again here
   openContentPane();
@@ -4182,7 +4183,8 @@ function closeDiscover() {
   if (!discovering) return;
   discovering = false;
   contentHome.insertBefore(contentPane, contentAfter);
-  $('#view-discover').append($('#discover-target'));
+  const sub = $('.discover-title').querySelector('.sub');
+  if (sub) contentPane.prepend(sub);
   contentPane.classList.toggle('hidden', profilePane !== 'content');
   if (profilePane === 'content') openContentPane();
 }

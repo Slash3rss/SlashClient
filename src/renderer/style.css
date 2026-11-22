@@ -1350,9 +1350,12 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .skin-info .capes-box .segmented button { height: 28px; padding: 0 10px; background: transparent; border: 0; box-shadow: none; color: var(--text-secondary); }
 .skin-info .capes-box .segmented button.active { background: var(--glass-bg-hover); color: var(--text-primary); }
 
-/* Odkrywaj: the target profile's tile under "instalowane do tego profilu" (hidden off the page) */
-#view-discover > .discover-target { display: none; }
-.discover-target { max-width: 360px; margin: -4px 0 14px; }
+/* Odkrywaj: the title and "instalowane do tego profilu" on the left, the target profile's tile on the right
+   (under the title when the window is narrow) */
+.discover-head { align-items: center; }
+.discover-title { min-width: 0; }
+.discover-title .sub { margin: 2px 0 0; }
+.discover-target { flex: 0 1 360px; min-width: 0; max-width: 100%; }
 .discover-target .picker-button { height: 56px; background: rgba(var(--accent-rgb), .1); border-color: rgba(var(--accent-rgb), .35); }
 .discover-target .picker-button:hover { background: rgba(var(--accent-rgb), .16); }
 .discover-target .picker img { width: 40px; height: 40px; }

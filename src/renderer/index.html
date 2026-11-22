@@ -161,10 +161,12 @@
     <!-- Odkrywaj: mods, resource packs, shaders and modpacks (Modrinth, CurseForge) for any profile;
          the browser itself is the one from a profile's "Mody i zasoby", moved here while this page is open -->
     <section class="view" id="view-discover">
-      <header class="view-head"><h2 class="gradient-title">Mody</h2></header>
-      <!-- the profile everything installs into: a tile like the ones in Profiles, moved under the browser's
-           "instalowane do tego profilu" while this page is open -->
-      <div class="discover-target" id="discover-target"><select id="discover-profile" hidden></select></div>
+      <!-- the title with the browser's "instalowane do tego profilu" (moved here while this page is open) on the
+           left, and the profile everything installs into on the right: a tile like the ones in Profiles -->
+      <header class="view-head discover-head">
+        <div class="discover-title"><h2 class="gradient-title">Mody</h2></div>
+        <div class="discover-target" id="discover-target"><select id="discover-profile" hidden></select></div>
+      </header>
       <div id="discover-body"></div>
     </section>
 
