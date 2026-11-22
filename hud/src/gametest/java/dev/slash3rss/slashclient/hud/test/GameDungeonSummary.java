@@ -9,7 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 /**
  * The summary of a dungeon trip: the boss bar "Dungeon poz. 2" up, items picked up from the ground (one a
- * server's own, paper with a model), cobblestone given by a command and cobblestone thrown away and picked up
+ * server's own, paper with a model, and the mystic ore, put first), cobblestone given by a command and cobblestone thrown away and picked up
  * again (neither is loot), and kills: a normal mob, an elite and a mini boss; the boss bar gone, the card with the summary, and the list of trips kept.
  */
 public class GameDungeonSummary implements FabricClientGameTest {
@@ -44,6 +44,9 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			// on the ground: the dungeon's
 			server.runCommand("execute at @p run summon item ~ ~ ~ {Item:{id:\"minecraft:diamond\",count:3}}");
 			server.runCommand("execute at @p run summon item ~ ~ ~ {Item:{id:\"minecraft:paper\",count:2,components:{\"minecraft:custom_model_data\":{floats:[5f]}}}}");
+			// the mystic ore (a head with the dungeon plugin's mark): fewer than the diamonds, yet first
+			server.runCommand("execute at @p run summon item ~ ~ ~ {Item:{id:\"minecraft:player_head\",count:1,components:{\"minecraft:custom_model_data\":{floats:[10306f]},"
+				+ "\"minecraft:custom_data\":{PublicBukkitValues:{\"kdungeons:mistyczna_ruda\":1}}}}}");
 			context.waitTicks(30);
 			// thrown away and picked up again: not loot
 			context.runOnClient(mc -> {
@@ -122,7 +125,7 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			server.runCommand("bossbar remove dungeon");
 			context.waitTicks(25);
 			String last = context.computeOnClient(mc -> DungeonRun.lastForTest());
-			if (!last.equals("poz. 3, loot 0, kills 4/1/2, xp 256, got diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
+			if (!last.equals("poz. 3, loot 0, kills 4/1/2, xp 256, got player_head* 1 diamond 3 paper* 2")) throw new AssertionError("The trip kept: " + last);
 			if (!context.computeOnClient(mc -> DungeonRun.showing())) throw new AssertionError("No summary card");
 			// 7 of the player's own; the miner's 2 846 to 3 590, then 9 to its level's end and 3 into the next
 			String xp = context.computeOnClient(mc -> DungeonRun.xpForTest());
@@ -130,7 +133,7 @@ public class GameDungeonSummary implements FabricClientGameTest {
 			if (!xp.equals("player 7, Górnik 2858 | levels [2, 3] [0, 1] Górnik[2, 3]")) throw new AssertionError("The trip's XP: " + xp);
 			// the list keeps the server's model on its items
 			String kept = context.computeOnClient(mc -> DungeonRun.keptLooksForTest());
-			if (!kept.equals("diamond paper*")) throw new AssertionError("The list's items: " + kept);
+			if (!kept.equals("player_head* diamond paper*")) throw new AssertionError("The list's items: " + kept);
 			context.takeScreenshot("dungeon-summary");
 
 			context.setScreen(() -> new DungeonHistoryScreen(null));

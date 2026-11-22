@@ -150,7 +150,8 @@ public final class DungeonRun {
 			if (s == null || e.getValue() <= 0) continue;
 			gains.add(new Gain(BuiltInRegistries.ITEM.getKey(s.getItem()).toString(), Ui.look(s), s.getHoverName().getString(), e.getValue(), encode(s)));
 		}
-		gains.sort((a, b) -> Integer.compare(b.count(), a.count()));
+		// the mystic ore, the dungeon's most wanted drop, first; the rest the most first
+		gains.sort((a, b) -> mystic(a) != mystic(b) ? (mystic(a) ? -1 : 1) : Integer.compare(b.count(), a.count()));
 		Summary s = new Summary(System.currentTimeMillis(), level, ms, rooms, cleared.size(), spawners, loot, ores, kills, List.copyOf(gains), elites, bosses, dungeonXp(),
 			playerXp, jobsGot(), up(levelFirst, levelNow), up(playerLevelFirst, playerLevelNow), jobLevelsUp());
 		List<Summary> list = new ArrayList<>(history());
@@ -287,6 +288,14 @@ public final class DungeonRun {
 	}
 
 	// ---------- what the player got ----------
+
+	private static final String MYSTIC_ORE = "kdungeons:mistyczna_ruda";
+
+	/** SkyUp's mystic ore (a head): by the dungeon plugin's mark on it, or by its name when the item could not be saved. */
+	static boolean mystic(Gain g) {
+		if (g.stack() != null) return g.stack().contains(MYSTIC_ORE);
+		return g.name() != null && g.name().strip().equalsIgnoreCase("Mistyczna ruda");
+	}
 
 	private static String kind(ItemStack s) {
 		return BuiltInRegistries.ITEM.getKey(s.getItem()) + Ui.look(s);
