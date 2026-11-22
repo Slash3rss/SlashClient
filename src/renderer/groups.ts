@@ -7,6 +7,7 @@ import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { groupSource } from './chatMediaSources';
 import { gifCard } from './gifs';
 import { gifFallback, parseGifText } from '../shared/gifMessage';
+import { showContextMenu, type MenuItem as ContextItem } from './contextMenu';
 
 /**
  * Group chats and clans in the Friends view. Groups are conversations with several friends
@@ -184,7 +185,61 @@ export function createGroups(deps: Deps) {
       el('div', { className: 'grow fr-names' }, el('b', { textContent: g.clan ? clan?.name ?? g.name : g.name }), el('small', { className: 'muted', textContent: sub })),
       g.unread ? el('span', { className: 'fr-unread', textContent: String(g.unread) }) : '');
     row.addEventListener('click', () => void select(g.id));
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      groupMenu(g, e.clientX, e.clientY);
+    });
     return row;
+  }
+
+  /** Right-click on a group or the clan in the list: what its chat's head offers, without opening it first. */
+  function groupMenu(g: Group, x: number, y: number) {
+    const items: (ContextItem | 'line')[] = [{ icon: 'fa-comments', label: t('Otwórz czat'), run: () => void select(g.id) }];
+    if (featureOn('chatImages')) items.push({ icon: 'fa-photo-film', label: t('Multimedia'), run: () => openMedia(g) });
+    const myClan = g.clan && clan?.chat === g.id ? clan : undefined;
+    if (myClan) {
+      items.push({ icon: myClan.role === 'owner' ? 'fa-gear' : 'fa-users', label: myClan.role === 'owner' ? t('Zarządzaj klanem') : t('Członkowie klanu'), run: () => openClan() });
+      items.push({ icon: 'fa-hashtag', label: t('Kopiuj tag'), run: () => void navigator.clipboard.writeText(myClan.tag).then(() => deps.toast(t('Skopiowano: {0}', `[${myClan.tag}]`))) });
+    } else if (!g.clan) {
+      items.push({ icon: 'fa-user-plus', label: t('Dodaj znajomych'), run: () => pickFriends(g) });
+      items.push({ icon: 'fa-pen', label: t('Zmień nazwę'), run: () => renameGroup(g) });
+    }
+    items.push('line');
+    if (g.unread) items.push({ icon: 'fa-check-double', label: t('Oznacz jako przeczytane'), run: () => markGroupRead(g) });
+    // the founder deletes the clan in its window (with everything it takes along); everyone else may leave from here
+    if (myClan && myClan.role !== 'owner') items.push({ icon: 'fa-right-from-bracket', label: t('Opuść klan'), run: () => void leaveClan(myClan), danger: true });
+    if (!g.clan) items.push({ icon: 'fa-right-from-bracket', label: t('Opuść grupę'), run: () => void leaveGroup(g), danger: true });
+    showContextMenu(x, y, items);
+  }
+
+  function markGroupRead(g: Group) {
+    g.unread = 0;
+    deps.changed();
+    void api.socialApi('POST', `/v1/groups/${g.id}/read`).catch(() => {});
+  }
+
+  async function leaveGroup(g: Group) {
+    if (!(await confirmDialog({ title: t('Opuścić grupę „{0}”?', g.name), body: [el('p', { className: 'muted', textContent: t('Nie zobaczysz już nowych wiadomości. Ktoś może Cię dodać ponownie.') })], ok: t('Opuść'), danger: true }))) return;
+    if (await act(() => api.socialApi('POST', `/v1/groups/${g.id}/leave`))) {
+      if (open === g.id) open = undefined;
+      chats.delete(g.id);
+      await refresh();
+    }
+  }
+
+  /** Leaves the clan, or deletes it when one is its founder (the clan window's button); true when done. */
+  async function leaveClan(c: Clan): Promise<boolean> {
+    const owner = c.role === 'owner';
+    const ok = await confirmDialog(owner
+      ? { title: t('Usunąć klan [{0}]?', c.tag), body: [el('p', { className: 'muted', textContent: t('Klan i jego czat znikną dla wszystkich członków.') })], ok: t('Usuń klan'), danger: true }
+      : { title: t('Opuścić klan [{0}]?', c.tag), body: [], ok: t('Opuść'), danger: true });
+    if (!ok) return false;
+    const res = await act(() => api.socialApi(owner ? 'DELETE' : 'POST', owner ? '/v1/clans/mine' : '/v1/clans/leave'));
+    if (!res) return false;
+    takeClan(res);
+    if (open === c.chat) open = undefined;
+    await refresh();
+    return true;
   }
 
   /** The clan (or the invites to one, or a button to found one) and the groups, for the friends list. */
@@ -405,14 +460,7 @@ export function createGroups(deps: Deps) {
       const rename = el('button', { type: 'button', className: 'icon-btn', title: t('Zmień nazwę') }, icon('fa-pen'));
       rename.addEventListener('click', () => renameGroup(g));
       const leave = el('button', { type: 'button', className: 'icon-btn danger', title: t('Opuść grupę') }, icon('fa-right-from-bracket'));
-      leave.addEventListener('click', async () => {
-        if (!(await confirmDialog({ title: t('Opuścić grupę „{0}”?', g.name), body: [el('p', { className: 'muted', textContent: t('Nie zobaczysz już nowych wiadomości. Ktoś może Cię dodać ponownie.') })], ok: t('Opuść'), danger: true }))) return;
-        if (await act(() => api.socialApi('POST', `/v1/groups/${g.id}/leave`))) {
-          open = undefined;
-          chats.delete(g.id);
-          await refresh();
-        }
-      });
+      leave.addEventListener('click', () => void leaveGroup(g));
       actions.push(add, rename, leave);
     }
     const others = g.members.filter((m) => m.id !== deps.me());
@@ -656,17 +704,7 @@ export function createGroups(deps: Deps) {
     }
     const leave = el('button', { type: 'button', className: 'danger' }, icon(c.role === 'owner' ? 'fa-trash' : 'fa-right-from-bracket'), c.role === 'owner' ? t(' Usuń klan') : t(' Opuść klan'));
     leave.addEventListener('click', async () => {
-      const owner = c.role === 'owner';
-      const ok = await confirmDialog(owner
-        ? { title: t('Usunąć klan [{0}]?', c.tag), body: [el('p', { className: 'muted', textContent: t('Klan i jego czat znikną dla wszystkich członków.') })], ok: t('Usuń klan'), danger: true }
-        : { title: t('Opuścić klan [{0}]?', c.tag), body: [], ok: t('Opuść'), danger: true });
-      if (!ok) return;
-      const res = await act(() => api.socialApi(owner ? 'DELETE' : 'POST', owner ? '/v1/clans/mine' : '/v1/clans/leave'));
-      if (!res) return;
-      takeClan(res);
-      closeWindow();
-      if (open === c.chat) open = undefined;
-      await refresh();
+      if (await leaveClan(c)) closeWindow();
     });
     body.push(el('div', { className: 'row fr-clan-leave' }, leave));
     const closeWindow = modal(`[${c.tag}] ${c.name}`, body, []);

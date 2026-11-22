@@ -10,6 +10,7 @@ import { openMediaPanel } from './chatMediaPanel';
 import { communitySource } from './chatMediaSources';
 import { gifCard } from './gifs';
 import { gifFallback, looksLikeGif, parseGifText } from '../shared/gifMessage';
+import { showContextMenu, type MenuItem as ContextItem } from './contextMenu';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -300,7 +301,50 @@ export function createCommunities(deps: Deps) {
       c.notify === 'none' ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Bez powiadomień') }) : '',
       badge);
     r.addEventListener('click', () => void select(c.id));
+    r.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      communityMenu(c, e.clientX, e.clientY);
+    });
     return r;
+  }
+
+  /** Right-click on a community in the list: what its chat's head offers, without opening it first. */
+  function communityMenu(c: Community, x: number, y: number) {
+    const set = async (body: unknown, path: string) => take(await act(() => api.socialApi('POST', `/v1/communities/${c.id}/${path}`, body)));
+    const mark = (on: boolean) => (on ? 'fa-circle-dot' : 'fa-circle');
+    const items: (ContextItem | 'line')[] = [{ icon: 'fa-comments', label: t('Otwórz czat'), run: () => void select(c.id) }];
+    const server = c.server;
+    if (server && deps.join) items.push({ icon: 'fa-play', label: t('Dołącz: {0}', server.address), run: () => deps.join!(server.address, server.version) });
+    items.push({ icon: 'fa-users', label: t('Członkowie'), run: () => membersWindow(c) });
+    if (communityMay(c.role, 'edit') || !!c.roles?.find((r) => r.id === c.customRole?.id)?.permissions.includes('invite')) items.push({ icon: 'fa-link', label: t('Linki zaproszeń'), run: () => extras.linksWindow(c) });
+    if (communityMay(c.role, 'edit') || communityCan(c, 'ban') || communityMay(c.role, 'delete') || ['log', 'manageChannels', 'manageRoles'].some((p) => communityCan(c, p))) items.push({ icon: 'fa-gear', label: t('Ustawienia społeczności'), run: () => settingsWindow(c) });
+    // the same three as the bell in the chat's head
+    items.push('line',
+      { icon: mark(c.notify === 'all'), label: t('Wszystkie wiadomości'), run: () => void set({ notify: 'all' }, 'notify') },
+      { icon: mark(c.notify === 'mentions'), label: t('Tylko wzmianki (@nick)'), run: () => void set({ notify: 'mentions' }, 'notify') },
+      { icon: mark(c.notify === 'none'), label: t('Bez powiadomień'), run: () => void set({ notify: 'none' }, 'notify') },
+      'line');
+    if (c.unread || c.mentions) items.push({ icon: 'fa-check-double', label: t('Oznacz jako przeczytane'), run: () => markAllRead(c) });
+    // the founder hands the community over (or deletes it) in its settings first
+    if (c.role !== 'owner') items.push({ icon: 'fa-right-from-bracket', label: t('Opuść społeczność'), run: () => void leave(c), danger: true });
+    showContextMenu(x, y, items);
+  }
+
+  /** Every channel with something new marked read, as opening each of them would. */
+  function markAllRead(c: Community) {
+    const unread = c.channels.filter((ch) => ch.unread || ch.mentions);
+    list = list.map((x) => (x.id === c.id ? { ...x, unread: 0, mentions: 0, channels: x.channels.map((y) => ({ ...y, unread: 0, mentions: 0 })) } : x));
+    deps.changed();
+    for (const ch of unread) void api.socialApi('POST', `/v1/communities/${c.id}/channels/${ch.id}/read`).catch(() => {});
+  }
+
+  async function leave(c: Community) {
+    if (!(await confirmDialog({ title: t('Opuścić „{0}”?', c.name), body: [el('p', { className: 'muted', textContent: c.visibility === 'private' ? t('To prywatna społeczność: wrócić można tylko na zaproszenie.') : t('Możesz wrócić później przez „Odkrywaj”.') })], ok: t('Opuść'), danger: true }))) return;
+    const res = await act(() => api.socialApi('POST', `/v1/communities/${c.id}/leave`));
+    if (res) {
+      if (open?.community === c.id) open = undefined;
+      take(res);
+    }
   }
 
   function sections(): Node[] {
@@ -869,14 +913,7 @@ export function createCommunities(deps: Deps) {
     if (openChannel && communityCan(c, 'slowMode')) later('fa-hourglass-half', openChannel.slowMode ? t('Tryb powolny: {0}', waitText(openChannel.slowMode)) : t('Tryb powolny'), () => slowModeMenu(c, openChannel, moreButton));
     if (communityMay(c.role, 'edit') || communityCan(c, 'ban') || communityMay(c.role, 'delete') || ['log', 'manageChannels', 'manageRoles'].some((p) => communityCan(c, p))) later('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
     if (c.role !== 'owner') {
-      later('fa-right-from-bracket', t('Opuść społeczność'), async () => {
-        if (!(await confirmDialog({ title: t('Opuścić „{0}”?', c.name), body: [el('p', { className: 'muted', textContent: c.visibility === 'private' ? t('To prywatna społeczność: wrócić można tylko na zaproszenie.') : t('Możesz wrócić później przez „Odkrywaj”.') })], ok: t('Opuść'), danger: true }))) return;
-        const res = await act(() => api.socialApi('POST', `/v1/communities/${c.id}/leave`));
-        if (res) {
-          open = undefined;
-          take(res);
-        }
-      }, 0, true);
+      later('fa-right-from-bracket', t('Opuść społeczność'), () => void leave(c), 0, true);
     }
     // what waits for the staff shows on "…" too
     const waiting = (communityCan(c, 'requests') ? c.pending ?? 0 : 0) + (communityCan(c, 'reports') ? c.reports ?? 0 : 0);

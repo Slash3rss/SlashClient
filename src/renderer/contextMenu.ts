@@ -57,15 +57,18 @@ export function showContextMenu(x: number, y: number, items: (MenuItem | 'line')
   });
 }
 
-document.addEventListener('mousedown', (e) => {
-  if (open && !open.contains(e.target as Node)) closeContextMenu();
-}, true);
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && open) {
-    e.stopPropagation();
-    closeContextMenu();
-  }
-}, true);
-window.addEventListener('blur', closeContextMenu);
-window.addEventListener('resize', closeContextMenu);
-document.addEventListener('scroll', closeContextMenu, true);
+// (the launcher's tests load the lists that use this menu without a page)
+if (typeof document !== 'undefined') {
+  document.addEventListener('mousedown', (e) => {
+    if (open && !open.contains(e.target as Node)) closeContextMenu();
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && open) {
+      e.stopPropagation();
+      closeContextMenu();
+    }
+  }, true);
+  window.addEventListener('blur', closeContextMenu);
+  window.addEventListener('resize', closeContextMenu);
+  document.addEventListener('scroll', closeContextMenu, true);
+}

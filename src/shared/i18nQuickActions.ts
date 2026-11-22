@@ -1,4 +1,4 @@
-/** English texts of the Windows jump list (jumpList.ts) and the profiles' right-click menu. */
+/** English texts of the Windows jump list (jumpList.ts) and the right-click menus (profiles, friends, groups, communities). */
 export const QUICK_ACTIONS_EN: Record<string, string> = {
   'Ostatnie profile': 'Recent profiles',
   'Ostatnie serwery': 'Recent servers',
@@ -32,4 +32,8 @@ export const QUICK_ACTIONS_EN: Record<string, string> = {
   'Znikniecie sobie nawzajem z list znajomych i ta osoba nie zaprosi Cię ponownie. Odblokować możesz na dole listy znajomych.':
     'You will disappear from each other\'s friends lists and this person will not be able to invite you again. You can unblock them at the bottom of the friends list.',
   'Zablokowano {0}.': '{0} blocked.',
+  // right-click on a group, the clan or a community in the friends list
+  'Otwórz czat': 'Open the chat',
+  'Kopiuj tag': 'Copy the tag',
+  'Opuść klan': 'Leave the clan',
 };
