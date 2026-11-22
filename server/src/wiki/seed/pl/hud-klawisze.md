@@ -9,6 +9,8 @@ Wszystkie klawisze SlashClient w jednym miejscu: **Prawy Shift → Ustawienia �
 
 To te same klawisze co w sterowaniu gry, więc zmiana w jednym miejscu widać od razu w drugim. Gdy ten sam klawisz ma też inna funkcja (gry albo innego moda), pod klawiszem pojawia się ostrzeżenie. Klawisze modułu ustawisz też na górze jego strony ustawień.
 
+W sterowaniu gry klawisze SlashClient są podzielone na grupy: **SlashClient** (ogólne), **Kamera**, **Nagrywanie**, **Wygląd i zabawa**, **Pomoce i ekwipunek** oraz **Serwery partnerskie**. Na 26.2 i nowszych SlashClient raz odpina klawisz gry **Ekran znajomych** (jeśli był domyślny), bo znajomych otwiera **O**; możesz go przypisać z powrotem w sterowaniu gry.
+
 ## Presety klawiszy
 
 Zapisz wszystkie obecne klawisze (gry, SlashClient i innych modów) pod nazwą – np. „PvP” i „Budowanie” – i wczytuj je jednym kliknięciem. **Prawy Shift → Ustawienia → Dodatki → Presety klawiszy**.
@@ -34,23 +36,23 @@ Presety są w osobnym pliku, więc kod udostępniania HUD ich nie przenosi. Klaw
 | Blokada rozglądania (przełącz) | brak |
 | Myszka przez VNC (przełącz, 26.3) | brak |
 | Waypointy | B |
-| Mapa na cały ekran (świat lub dungeon) | M |
+| Duża mapa (świat lub dungeon) | M |
 | Mapa dungeonu: przybliż / oddal | = / - |
-| Mapa dungeonu: widok szczegółowy / prosty | H (26.3), na starszych wersjach brak |
+| Mapa dungeonu: szczegóły / prosta | H (26.3), na starszych wersjach brak |
 | Zapisz klip | F8 |
 | Natychmiastowa powtórka | F6 |
 | Emotki | N |
 | Spray | brak |
 | Nakładka poziomu światła | F9 |
-| Odległość kamery (trzymaj + kółko w F5) | V |
+| Odległość kamery (F5 + kółko) | V |
 | Sortuj skrzynię / ekwipunek | R |
 | Zablokuj slot paska | K |
 | Trzymaj lewy / prawy przycisk (przełącz) | brak |
 | Autoclicker (włącz/wyłącz) | brak |
-| Szybki crafting: powtórz / wyłącz na chwilę | brak |
+| Szybki crafting: powtórz przepis / pauza (trzymaj) | brak |
 | Następny preset klawiszy | brak |
 | Minecraft Wiki / o tym przedmiocie | brak |
 | SkyUp: zrzut otwartego GUI (26.3) | F7 |
 | SkyUp: śledź zadanie pod myszką (26.3) | J |
-| SkyUp: zadanie wyżej / niżej w trackerze (26.3) | strzałka w górę / w dół |
+| SkyUp: zadanie pod myszką wyżej / niżej (26.3) | strzałka w górę / w dół |
 | SkyUp: wiki (26.3) | brak |

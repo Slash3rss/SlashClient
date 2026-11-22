@@ -134,8 +134,35 @@ public class SlashHud implements ClientModInitializer {
 		return MODULES;
 	}
 	private static Vec3 lastPos;
-	/** SlashClient's own group of keys (a category in 1.21.9+, a name before): the keys window lists it. */
-	public static Object keyCategory;
+	/** SlashClient's own groups of keys (categories in 1.21.9+, names before): the keys window lists them all. */
+	public static final java.util.List<Object> keyCategories = new java.util.ArrayList<>();
+
+	/** One of SlashClient's groups in the game's Controls ("SlashClient – Camera" and so on). */
+	//#if MC >= 1.21.9
+	private static KeyMapping.Category keyCategory(String path) {
+		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, path));
+	//#else
+	//$ private static String keyCategory(String path) {
+	//$ 	String category = "key.category.slashclient-hud." + path;
+	//#endif
+		keyCategories.add(category);
+		return category;
+	}
+
+	//#if MC >= 26.2
+	/** The game's Friends Screen key unbound once, only while still on its default (a key the player set stays). */
+	public static void unbindVanillaFriends(Minecraft mc) {
+		if (config.vanillaFriendsUnbound != null) return;
+		KeyMapping key = mc.options.keyFriends;
+		if (key.isDefault()) {
+			key.setKey(InputConstants.UNKNOWN);
+			KeyMapping.resetMapping();
+			mc.options.save();
+		}
+		config.vanillaFriendsUnbound = true;
+		config.save();
+	}
+	//#endif
 
 	@Override
 	public void onInitializeClient() {
@@ -144,71 +171,73 @@ public class SlashHud implements ClientModInitializer {
 		config = HudConfig.load();
 		Modules.cfg = config;
 
-		//#if MC >= 1.21.9
-		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
-		//#else
-		//$ String category = "key.category.slashclient-hud.main";
-		//#endif
-		keyCategory = category;
+		// the game's Controls list SlashClient's keys in a few groups instead of one long list ("main" keeps its id:
+		// the general keys stay where they were); a key's binding is saved by its name, so moving it loses nothing
+		var category = keyCategory("main");
+		var camera = keyCategory("camera");
+		var recording = keyCategory("recording");
+		var fun = keyCategory("fun");
+		var assist = keyCategory("assist");
+		var partners = keyCategory("partners");
 		KeyMapping edit = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.edit", InputConstants.KEY_RSHIFT, category));
 
-		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));
+		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, camera));
 		// no key by default: G and the like are taken by other mods too often
-		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
+		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), fun));
 		KeyMapping friends = friendsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.friends", InputConstants.KEY_O, category));
 		dev.slash3rss.slashclient.hud.social.Social.start();
 		// Left Alt holds freelook (only once it is switched on in the HUD window); B opens the waypoints
-		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, category));
+		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, camera));
 		// the view locked: no key by default (set in SlashClient's keys window)
-		dev.slash3rss.slashclient.hud.camera.LookLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lookLock", InputConstants.UNKNOWN.getValue(), category));
+		dev.slash3rss.slashclient.hud.camera.LookLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lookLock", InputConstants.UNKNOWN.getValue(), camera));
 		// the mouse over a remote desktop: no key by default either
-		dev.slash3rss.slashclient.hud.camera.VncMouse.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.vncMouse", InputConstants.UNKNOWN.getValue(), category));
+		dev.slash3rss.slashclient.hud.camera.VncMouse.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.vncMouse", InputConstants.UNKNOWN.getValue(), camera));
 		KeyMapping waypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.waypoints", InputConstants.KEY_B, category));
-		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
+		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, recording));
 		// the instant replay: F6 (F7–F9 are taken by SkyUp's dump, clips and the light overlay)
-		Replay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.replay", InputConstants.KEY_F6, category));
-		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
+		Replay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.replay", InputConstants.KEY_F6, recording));
+		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, fun));
 		// sprays: no key by default (set in SlashClient's keys window or the game's Controls)
-		Sprays.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.spray", InputConstants.UNKNOWN.getValue(), category));
+		Sprays.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.spray", InputConstants.UNKNOWN.getValue(), fun));
 		SprayRender.register();
 		// the light level overlay (F9) and the third person camera's distance (V + the wheel in F5)
-		LightOverlay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lightOverlay", InputConstants.KEY_F9, category));
+		LightOverlay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lightOverlay", InputConstants.KEY_F9, fun));
 		LightOverlay.register();
 		LootHighlight.register();
-		CameraDistance.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.cameraDistance", InputConstants.KEY_V, category));
+		CameraDistance.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.cameraDistance", InputConstants.KEY_V, camera));
 		// the dungeon map's zoom: = and - (free in the game)
-		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
-		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
-		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, category));
+		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, partners));
+		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, partners));
+		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, partners));
 		// H switches its view only where the partner servers' dungeons are (26.3); before, a key takes only one
 		// action, and H would steal it from whatever the player set on it
 		//#if MC >= 26.3
-		DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.KEY_H, category));
+		DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.KEY_H, partners));
 		//#else
-		//$ DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.UNKNOWN.getValue(), category));
+		//$ DungeonMap.styleKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonStyle", InputConstants.UNKNOWN.getValue(), partners));
 		//#endif
 		// minecraft.wiki: the window, and the article about the thing in hand (no keys by default)
 		dev.slash3rss.slashclient.hud.wiki.McWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWiki", InputConstants.UNKNOWN.getValue(), category));
 		dev.slash3rss.slashclient.hud.wiki.McWiki.lookupKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWikiLookup", InputConstants.UNKNOWN.getValue(), category));
 		//#if MC >= 26.3
 		// SkyUp's GUIs (the island tasks): F7 on an open one saves what it holds
-		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
+		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, partners));
 		// and on a task in its GUI, J (or the middle button) tracks it
-		SkyTasks.trackKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksTrack", InputConstants.KEY_J, category));
+		SkyTasks.trackKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksTrack", InputConstants.KEY_J, partners));
 		// and the arrows move a tracked one up or down the tracker
-		SkyTasks.upKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksUp", InputConstants.KEY_UP, category));
-		SkyTasks.downKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksDown", InputConstants.KEY_DOWN, category));
+		SkyTasks.upKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksUp", InputConstants.KEY_UP, partners));
+		SkyTasks.downKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksDown", InputConstants.KEY_DOWN, partners));
 		// SkyUp's wiki: no key by default (set in SlashClient's keys window or the game's Controls)
-		dev.slash3rss.slashclient.hud.skyup.SkyWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyWiki", InputConstants.UNKNOWN.getValue(), category));
+		dev.slash3rss.slashclient.hud.skyup.SkyWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyWiki", InputConstants.UNKNOWN.getValue(), partners));
 		//#endif
 		ChatTabs.register();
 		dev.slash3rss.slashclient.hud.ui.SlashServerScreen.registerSwitchBack();
-		Assist.register(category);
-		dev.slash3rss.slashclient.hud.inventory.QuickCraft.register(category);
+		Assist.register(assist);
+		dev.slash3rss.slashclient.hud.inventory.QuickCraft.register(assist);
 		// R over a chest or the inventory sorts it (InventorySort; the window's small button does too)
-		InventorySort.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.sort", InputConstants.KEY_R, category));
+		InventorySort.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.sort", InputConstants.KEY_R, assist));
 		// K locks the hotbar slot in hand (or the one under the mouse in an inventory)
-		SlotLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.slotLock", InputConstants.KEY_K, category));
+		SlotLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.slotLock", InputConstants.KEY_K, assist));
 		// the next saved set of keys (KeyPresets): no key by default
 		KeyPresets.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.keyPresetNext", InputConstants.UNKNOWN.getValue(), category));
 		// shulker boxes show what is inside in their tooltips
@@ -266,6 +295,11 @@ public class SlashHud implements ClientModInitializer {
 		// SkyUp's task progress counted in the last moments is not lost on leaving the server or closing the game
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> SkyTasks.flush());
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> SkyTasks.flush());
+		//#endif
+		//#if MC >= 26.2
+		// the game's own Friends Screen key is unbound once (only while still on its default): SlashClient's
+		// friends window has its own key, and the player would otherwise get two friends windows
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(SlashHud::unbindVanillaFriends);
 		//#endif
 		// the map seen kept on disk when the game closes (on leaving a world, by MapStore.tick in the menus)
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> dev.slash3rss.slashclient.hud.map.MapStore.flush());

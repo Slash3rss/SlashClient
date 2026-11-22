@@ -135,6 +135,20 @@ public class GameAids implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("aids-keybinds");
 			context.runOnClient(mc -> TestHooks.reportAudit());
+			// the game's Controls: SlashClient's keys in their groups, no name under a key's button, and the game's
+			// Friends Screen key unbound (SlashClient's friends are on O)
+			String friendsKey = context.computeOnClient(mc -> TestHooks.openGameControls(0));
+			if (!friendsKey.equals("skip")) {
+				if (!friendsKey.equals("key.keyboard.unknown")) throw new AssertionError("The game's Friends Screen key: " + friendsKey);
+				context.waitTicks(5);
+				context.runOnClient(mc -> TestHooks.openGameControls(0.72));
+				context.waitTicks(5);
+				context.takeScreenshot("aids-controls-groups");
+				context.runOnClient(mc -> TestHooks.openGameControls(1));
+				context.waitTicks(5);
+				context.takeScreenshot("aids-controls-groups-end");
+				context.setScreen(() -> null);
+			}
 			// a key preset saved, the key changed, the preset loaded (read back from its file)
 			String presets = context.computeOnClient(mc -> TestHooks.keyPresetsRoundTrip());
 			String[] p = presets.split("\\|");

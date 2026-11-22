@@ -2227,11 +2227,34 @@ public final class TestHooks {
 		return items.stream().anyMatch(s -> s.is(net.minecraft.world.item.Items.DIAMOND_SWORD)) + " " + items.size();
 	}
 
+	/**
+	 * The game's own Controls scrolled to SlashClient's groups (`part` of the way down): answers the game's Friends
+	 * Screen key (unbound once on 26.2+), or "skip" on versions whose list this does not scroll.
+	 */
+	public static String openGameControls(double part) {
+		//#if MC >= 26.3
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		// the test framework puts the game's options back to their defaults before a test: the one-time unbinding
+		// done at the game's start is repeated here as it would run for a player
+		if (part == 0) {
+			SlashHud.config.vanillaFriendsUnbound = null;
+			SlashHud.unbindVanillaFriends(mc);
+		}
+		if (!(dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof net.minecraft.client.gui.screens.options.controls.KeyBindsScreen))
+			mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, mc.options));
+		for (var child : dev.slash3rss.slashclient.hud.Compat.screen(mc).children())
+			if (child instanceof net.minecraft.client.gui.components.AbstractScrollArea list) list.setScrollAmount(list.maxScrollAmount() * part);
+		return mc.options.keyFriends.saveString();
+		//#else
+		//$ return "skip";
+		//#endif
+	}
+
 	/** The keys window, and how many SlashClient keys it lists. */
 	public static int openKeybinds() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		mc.setScreenAndShow(new KeybindsScreen(null));
-		return (int) java.util.Arrays.stream(mc.options.keyMappings).filter(k -> SlashHud.keyCategory.equals(k.getCategory())).count();
+		return (int) java.util.Arrays.stream(mc.options.keyMappings).filter(k -> SlashHud.keyCategories.contains(k.getCategory())).count();
 	}
 
 	/**

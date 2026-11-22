@@ -39,7 +39,7 @@ public class KeybindsScreen extends Screen {
 	}
 
 	private List<KeyMapping> ours() {
-		return Arrays.stream(minecraft.options.keyMappings).filter(k -> SlashHud.keyCategory.equals(k.getCategory())).toList();
+		return Arrays.stream(minecraft.options.keyMappings).filter(k -> SlashHud.keyCategories.contains(k.getCategory())).toList();
 	}
 
 	@Override

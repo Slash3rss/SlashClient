@@ -9,6 +9,8 @@ All of SlashClient's keys in one place: **Right Shift → Settings → Extras �
 
 They are the same keys as in the game's controls, so a change in one place shows at once in the other. When another function (the game's or another mod's) uses the same key, a warning shows under it. A module's keys can also be set at the top of its settings page.
 
+In the game's controls SlashClient's keys are split into groups: **SlashClient** (general), **Camera**, **Recording**, **Looks and fun**, **Helpers and inventory** and **Partner servers**. On 26.2 and newer SlashClient unbinds the game's **Friends Screen** key once (if it was on its default), since **O** opens your friends; you can bind it again in the game's controls.
+
 ## Key presets
 
 Save all your current keys (the game's, SlashClient's and other mods') under a name – "PvP" and "Building", say – and load them with one click. **Right Shift → Settings → Extras → Key presets**.
@@ -34,23 +36,23 @@ Presets live in a file of their own, so a HUD share code does not carry them. A 
 | Lock looking around (toggle) | none |
 | Mouse over VNC (toggle, 26.3) | none |
 | Waypoints | B |
-| Full-screen map (world or dungeon) | M |
+| Big map (world or dungeon) | M |
 | Dungeon map: zoom in / out | = / - |
-| Dungeon map: detailed / simple view | H (26.3), none on older versions |
+| Dungeon map: detailed / simple | H (26.3), none on older versions |
 | Save clip | F8 |
 | Instant replay | F6 |
 | Emotes | N |
 | Spray | none |
 | Light level overlay | F9 |
-| Camera distance (hold + wheel in F5) | V |
+| Camera distance (F5 + wheel) | V |
 | Sort chest / inventory | R |
 | Lock hotbar slot | K |
 | Hold left / right button (toggle) | none |
 | Autoclicker (on/off) | none |
-| One-click crafting: repeat / turn off for a moment | none |
+| Quick craft: repeat last recipe / pause (hold) | none |
 | Next key preset | none |
 | Minecraft Wiki / about this item | none |
-| SkyUp: dump the open GUI (26.3) | F7 |
+| SkyUp: dump open GUI (26.3) | F7 |
 | SkyUp: track the task under the mouse (26.3) | J |
-| SkyUp: task higher / lower in the tracker (26.3) | up / down arrow |
+| SkyUp: move hovered task up / down (26.3) | up / down arrow |
 | SkyUp: wiki (26.3) | none |

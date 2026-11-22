@@ -599,6 +599,8 @@ public final class HudConfig {
 	public int sortDelay = 0;
 	/** The delay's old default (50 ms) was moved to 0 once: sorting all at once like other mods. */
 	public Boolean sortDelayMoved;
+	/** The game's own Friends Screen key (26.2+) was unbound once: SlashClient's friends window is on O. */
+	public Boolean vanillaFriendsUnbound;
 	public boolean sortHotbar = false;
 	public boolean sortButton = true;
 	/** Arrows in a chest's window: all that fits from the inventory into the chest, or from the chest into the inventory (the hotbar too when asked). */
@@ -1250,6 +1252,7 @@ public final class HudConfig {
 		// the old default (50 ms between clicks), never changed by the player: now all at once
 		if (other.sortDelayMoved == null && sortDelay == 50) sortDelay = 0;
 		sortDelayMoved = true;
+		vanillaFriendsUnbound = other.vanillaFriendsUnbound;
 		sortHotbar = other.sortHotbar;
 		sortButton = other.sortButton;
 		chestMove = other.chestMove;
