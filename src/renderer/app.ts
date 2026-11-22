@@ -16,6 +16,7 @@ import { initJavaChoice } from './javaChoice';
 import { createAchievements } from './achievements';
 import { buyWithConfirm } from './sparkShop';
 import { renderSets, type CosmeticSet } from './cosmeticSets';
+import { safeColor } from './rankBadge';
 import { createReferrals } from './referrals';
 import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
@@ -4932,7 +4933,7 @@ function cosmeticPicture(slot: Slot, id: string): Node {
 }
 
 type CosmeticsMe = { cape?: string; loadout?: Partial<Record<Slot, string>>; minecraft?: { uuid: string; name: string; loadout: Partial<Record<Slot, string>> | null }[] };
-type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
+type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; rankColor?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
 /** What the cosmetics were last drawn from: picking another slot's tab draws from it at once, without asking the server. */
 let cosmeticsKept: { me?: CosmeticsMe; catalog: CatalogItem[]; walletBalance?: number; sets?: CosmeticSet[] } | undefined;
 /** The read under way, so a redraw that needs no new data waits for it instead of asking again. */
@@ -5046,7 +5047,12 @@ async function renderSlashCapes(fresh = true) {
     const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' square'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, title: locked ? why : title }, content);
     if (forSale) b.append(el('span', { className: 'cape-price' }, el('span', { className: 'spark-sign', textContent: '✦' }), ` ${item!.price!.toLocaleString(locale())}`));
     if (locked) b.append(el('i', { className: 'fa-solid fa-lock cape-lock' }));
-    else if (item?.rank) b.append(el('i', { className: `fa-solid fa-shield-halved cape-lock rank-${item.rank}` }));
+    else if (item?.rank) {
+      // in the rank's colour from the admin panel; an older server sends none, then the stylesheet's colour per rank
+      const mark = el('i', { className: `fa-solid fa-shield-halved cape-lock rank-${item.rank}` });
+      if (item.rankColor) mark.style.color = safeColor(item.rankColor);
+      b.append(mark);
+    }
     b.disabled = !signedIn || (locked && !forSale);
     b.addEventListener('click', async () => {
       if (forSale) {

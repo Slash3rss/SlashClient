@@ -1411,6 +1411,8 @@ export function createApp(cfg: Config) {
       const knowsShop = known({ id: '', slot: 'cape', name: '', since: SHOP_SINCE });
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge.includes('admin')) && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
+        // the rank's colour as the admin set it, for the rank mark on the launcher's tile (older launchers colour it themselves)
+        ...(i.rank && ranks.store.def(i.rank) ? { rankColor: ranks.store.def(i.rank)!.color } : {}),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge, me ? support.cosmeticsLevel(me) : 0),
         // supporters only, from this tier level (cosmetics.ts, or the admin panel's: supporterItems.ts)
         ...(supporterLevel(settings, i) ? { supporter: supporterLevel(settings, i) } : {}),

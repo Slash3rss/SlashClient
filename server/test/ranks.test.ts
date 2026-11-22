@@ -246,6 +246,12 @@ describe('ranks', () => {
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'none', name: 'X', color: '#ffffff' })).body.error, 'bad_rank_id');
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', name: 'VIP', color: 'red' })).body.error, 'bad_color');
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', color: '#ffffff' })).body.error, 'bad_rank_name');
+    // the rank capes' mark in the launcher takes the rank's colour as set here
+    const capeColor = async (id: string) => (await call('GET', '/v1/cosmetics', ida.token)).body.items.find((i: any) => i.id === id)?.rankColor;
+    assert.equal(await capeColor('staff_admin'), '#ef4444');
+    await call('POST', '/v1/admin/ranks/admin', boss.token, { color: '#dc2626' });
+    assert.equal(await capeColor('staff_admin'), '#dc2626');
+    await call('POST', '/v1/admin/ranks/admin', boss.token, { color: '#ef4444' });
     const made = await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', name: 'VIP', nameEn: 'VIP', color: '#14B8A6', priority: 95, description: 'Dla VIP-ów' });
     assert.equal(made.status, 200);
     assert.equal(made.body.color, '#14b8a6');
