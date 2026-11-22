@@ -2,6 +2,7 @@
 export const PROFILES_EN: Record<string, string> = {
   'Pokaż profil': 'Show profile',
   ' Mój profil': ' My profile',
+  'Pokaż mój profil': 'Show my profile',
   'Kopiuj link do profilu': 'Copy profile link',
   ' Prywatność profilu': ' Profile privacy',
   'Skopiowano link do profilu.': 'Profile link copied.',

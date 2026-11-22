@@ -870,13 +870,26 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         e.stopPropagation();
         statusMenu(face);
       });
-      dot.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), statusMenu(face)));
+      dot.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        // only the status choice opens, not the profile around the dot
+        e.stopPropagation();
+        statusMenu(face);
+      });
     }
-    meBox.replaceChildren(
-      el('div', { className: 'fr-me-row' }, face,
-        el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(me.badgeRank ?? undefined), ...clanTag(groups.myTag()), me.name),
-          state!.connected ? el('small', { className: 'muted', textContent: `@${me.handle}` }) : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
-        options, logout));
+    // the avatar and the nick open the player's own profile, in the same window a friend's opens in
+    const openOwn = () => {
+      if (document.body.classList.contains('feature-off-profiles')) return;
+      if (deps.showProfile) deps.showProfile(me.handle);
+      else void profileLink(deps, me.handle, 'open');
+    };
+    const ownProfile = el('div', { className: 'fr-me-open', title: t('Pokaż mój profil'), tabIndex: 0, role: 'button' }, face,
+      el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(me.badgeRank ?? undefined), ...clanTag(groups.myTag()), me.name),
+        state!.connected ? el('small', { className: 'muted', textContent: `@${me.handle}` }) : el('small', { className: 'fr-error', textContent: t('Łączenie…') })));
+    ownProfile.addEventListener('click', openOwn);
+    ownProfile.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openOwn()));
+    meBox.replaceChildren(el('div', { className: 'fr-me-row' }, ownProfile, options, logout));
     accountBody?.replaceChildren(
       el('div', { className: 'fr-account-section', textContent: t('Prywatność i powiadomienia') }),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),

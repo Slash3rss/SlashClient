@@ -1113,6 +1113,11 @@ a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32p
 .fr-side { display: flex; flex-direction: column; min-height: 0; padding: 14px; gap: 12px; }
 .fr-me { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--glass-border); }
 .fr-me-row { display: flex; align-items: center; gap: 10px; }
+.fr-me-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; margin: -4px; padding: 4px; border-radius: 12px; cursor: pointer; transition: background .12s ease; }
+.fr-me-open:hover, .fr-me-open:focus-visible { background: rgba(var(--ink-rgb), .07); outline: none; }
+.fr-me-open:hover .fr-names b { color: var(--accent); }
+body.feature-off-profiles .fr-me-open { cursor: default; background: none; }
+body.feature-off-profiles .fr-me-open .fr-names b { color: inherit; }
 .fr-me .icon-btn, .fr-row .icon-btn, .fr-chat-head .icon-btn { width: 32px; height: 32px; padding: 0; flex-shrink: 0; }
 .fr-status { flex: 1; }
 .fr-share { font-size: 12.5px; color: var(--text-secondary); }
@@ -1958,6 +1963,8 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 /* Settings: the cards fill the window's width, in as many columns as fit (each at least 480 px), each column packed from the top */
 .settings-grid { columns: 480px; column-gap: 16px; }
 .settings-grid > .card { max-width: none; margin: 0 0 16px; break-inside: avoid; }
+/* the sections' bar: wraps onto a second line on a narrow window instead of scrolling */
+.settings-tabs { flex-wrap: wrap; margin-bottom: 16px; width: fit-content; max-width: 100%; }
 .legal-card h3 i { color: var(--accent-light); }
 .legal-links { flex-wrap: wrap; gap: 8px; }
 .fr-signin .legal-note { display: block; margin-top: 14px; }
