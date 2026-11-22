@@ -1006,13 +1006,49 @@ initFeatures({ api, socialUrl: () => store?.settings.socialUrl ?? '', openUrl: (
 window.addEventListener('online', () => void api.socialReconnect?.().catch(() => undefined));
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
 
-/** Settings in sections ("Ogólne", "Wygląd", "Gra i Java"…): one shown at a time, the last one picked stays open. */
-function showSettingsSection(section: string) {
-  document.querySelectorAll<HTMLElement>('.settings-section').forEach((s) => s.classList.toggle('hidden', s.dataset.section !== section));
-  document.querySelectorAll<HTMLButtonElement>('#settings-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.section === section));
-}
-document.querySelectorAll<HTMLButtonElement>('#settings-tabs button').forEach((b) =>
-  b.addEventListener('click', () => showSettingsSection(b.dataset.section ?? 'general')));
+/**
+ * Settings in sections ("Ogólne", "Wygląd", "Gra i Java"…), all on one page: the bar on top scrolls to a
+ * section and lights up the one the player is looking at.
+ */
+const settingsTabs = [...document.querySelectorAll<HTMLButtonElement>('#settings-tabs button')];
+const markSettingsSection = (section: string) => settingsTabs.forEach((b) => b.classList.toggle('active', b.dataset.section === section));
+/** Until this time the bar keeps the section just clicked (the smooth scroll passes the others on its way). */
+let settingsScrollUntil = 0;
+settingsTabs.forEach((b) =>
+  b.addEventListener('click', () => {
+    const section = b.dataset.section ?? 'general';
+    markSettingsSection(section);
+    settingsScrollUntil = Date.now() + 800;
+    const card = document.querySelector<HTMLElement>(`.settings-grid > [data-section="${section}"]`);
+    // the card lands just under the bar, however many lines the bar takes in a narrow window
+    if (card) card.style.scrollMarginTop = `${$('#settings-tabs').offsetHeight + 20}px`;
+    card?.scrollIntoView({ behavior: store?.settings?.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }));
+$('#view-settings').addEventListener('scroll', () => {
+  if (Date.now() < settingsScrollUntil) return;
+  const view = $('#view-settings');
+  // the section whose card starts closest above the bar's bottom edge (cards stand in two columns)
+  const line = $('#settings-tabs').getBoundingClientRect().bottom + 40;
+  // (side by side at the same height: the one already lit stays, so a click on the right column's card holds)
+  const lit = document.querySelector<HTMLButtonElement>('#settings-tabs button.active')?.dataset.section;
+  let best: HTMLElement | undefined;
+  let bestTop = -Infinity;
+  for (const card of document.querySelectorAll<HTMLElement>('.settings-grid > [data-section]')) {
+    const top = card.getBoundingClientRect().top;
+    if (top > line) continue;
+    if (top > bestTop + 2 || (Math.abs(top - bestTop) <= 2 && card.dataset.section === lit)) {
+      best = card;
+      bestTop = Math.max(top, bestTop);
+    }
+  }
+  // scrolled to the very end: the last sections never reach the bar, so the one picked stays lit while it is
+  // on screen, and otherwise the last one lights up
+  const atEnd = view.scrollTop + view.clientHeight >= view.scrollHeight - 4;
+  const litCard = lit ? document.querySelector<HTMLElement>(`.settings-grid > [data-section="${lit}"]`) : null;
+  const litOnScreen = !!litCard && litCard.getBoundingClientRect().top < view.getBoundingClientRect().bottom;
+  if (atEnd) markSettingsSection(litOnScreen && lit ? lit : settingsTabs[settingsTabs.length - 1].dataset.section ?? '');
+  else markSettingsSection(best?.dataset.section ?? 'general');
+}, { passive: true });
 // "O programie / Informacje prawne": the terms and the privacy policy on the website
 createLegalCard($('#legal-card'), { socialUrl: () => store?.settings.socialUrl ?? '' });
 

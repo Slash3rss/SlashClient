@@ -1964,10 +1964,27 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 /* ---------- terms and privacy (legal.ts) ---------- */
 .legal-card { max-width: 680px; }
 /* Settings: the cards fill the window's width, in as many columns as fit (each at least 480 px), each column packed from the top */
-.settings-grid { columns: 480px; column-gap: 16px; }
-.settings-grid > .card { max-width: none; margin: 0 0 16px; break-inside: avoid; }
+/* the sections one under another, as wide as the page, so the bar above scrolls straight to each */
+.settings-grid { display: flex; flex-direction: column; gap: 16px; padding-bottom: 16px; }
+.settings-grid > .card { max-width: none; margin: 0; }
+/* lists and sliders keep a readable width in a wide card */
+.settings-grid select, .settings-grid input[type="range"] { max-width: 560px; }
 /* the sections' bar: wraps onto a second line on a narrow window instead of scrolling */
-.settings-tabs { flex-wrap: wrap; margin-bottom: 16px; width: fit-content; max-width: 100%; }
+/* no shared background: on two lines it would stretch past the last button, so each button is its own pill */
+.settings-tabs { flex-wrap: wrap; gap: 6px; margin-bottom: 16px; padding: 0; background: none; border: 0; position: sticky; top: 0; z-index: 5; isolation: isolate; }
+/* the cards scrolling by do not show between and above the pills: a frameless band that fades out downward */
+.settings-tabs::before { content: ''; position: absolute; inset: -10px -6px -14px -4px; z-index: -1; pointer-events: none;
+  background: rgba(var(--panel-rgb), .55); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.settings-tabs button { background: rgba(var(--panel-rgb), .85); backdrop-filter: blur(14px); border: 1px solid var(--glass-border); border-radius: 999px; }
+.settings-tabs button:hover { color: var(--text-primary); }
+.settings-tabs button.active { background: rgba(var(--accent-rgb), .22); border-color: rgba(var(--accent-rgb), .45); color: var(--text-primary); }
+/* a section picked in the bar lands just under it, not behind it */
+.settings-grid > [data-section] { scroll-margin-top: 64px; }
+/* a long data folder path breaks inside the card instead of running past its edge */
+#data-dir { overflow-wrap: anywhere; }
+/* "Kanał aktualizacji" above its list and the note under it, also in a wide card */
+#update-channel-row, #update-channel-row label { display: flex; flex-direction: column; gap: 6px; }
 .legal-card h3 i { color: var(--accent-light); }
 .legal-links { flex-wrap: wrap; gap: 8px; }
 .fr-signin .legal-note { display: block; margin-top: 14px; }

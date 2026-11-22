@@ -645,6 +645,7 @@
       <header class="view-head"><h2 class="gradient-title">Ustawienia</h2></header>
       <!-- one form for every section: "Zapisz" (and the unsaved-changes bar) saves the fields of all of them -->
       <form class="settings-form" id="settings-form">
+      <!-- every section on one page; the bar stays on top, scrolls to a section and lights up the one in view -->
       <div class="segmented settings-tabs" id="settings-tabs">
         <button type="button" class="active" data-section="general"><i class="fa-solid fa-sliders"></i>Ogólne</button>
         <button type="button" data-section="look"><i class="fa-solid fa-palette"></i>Wygląd</button>
@@ -655,8 +656,9 @@
         <button type="button" data-section="about"><i class="fa-solid fa-circle-info"></i>O programie</button>
       </div>
       <!-- the cards side by side on a wide window, one under another on a narrow one -->
-      <div class="settings-grid settings-section" data-section="general">
-        <div class="card glass-panel form">
+      <div class="settings-grid">
+        <div class="card glass-panel form" data-section="general">
+          <h3><i class="fa-solid fa-sliders"></i> Ogólne</h3>
           <label class="field">Język
             <select name="language" id="language-select"></select>
           </label>
@@ -678,18 +680,16 @@
           <p class="muted">Folder danych: <code id="data-dir"></code></p>
           <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
         </div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="look">
-        <div class="card glass-panel form">
+        <div class="card glass-panel form" data-section="look">
+          <h3><i class="fa-solid fa-palette"></i> Wygląd</h3>
           <div class="field theme-field">Motyw
             <button type="button" id="settings-theme"><i class="fa-solid fa-palette"></i> <span id="settings-theme-name"></span></button>
           </div>
           <label class="check feature-seasonal"><input type="checkbox" name="seasonalLook"> Wygląd sezonowy (Halloween, 11 listopada)</label>
           <label class="check"><input type="checkbox" name="reduceMotion"> Ogranicz animacje (dla słabszych komputerów)</label>
         </div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="game">
-        <div class="card glass-panel form">
+        <div class="card glass-panel form" data-section="game">
+          <h3><i class="fa-brands fa-java"></i> Gra i Java</h3>
           <label class="field"><span class="label">Pamięć RAM dla nowych profili <b id="default-memory-value"></b></span><input type="range" name="defaultMemoryMb" min="1024" max="16384" step="512"></label>
           <label class="check"><input type="checkbox" name="autoMemory"> <span>Ustawiaj zalecaną ilość <span class="hint">nowe profile i modpacki dostają tyle, ile zalecamy dla ich modów i Twojego komputera (albo ile zalecają autorzy modpacka)</span></span></label>
           <label class="field">Java dla profili
@@ -703,10 +703,9 @@
           </label>
           <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
         </div>
-        <div class="card glass-panel tools-card" id="tools-card"></div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="notifications">
-        <div class="card glass-panel form">
+        <div class="card glass-panel tools-card" id="tools-card" data-section="game"></div>
+        <div class="card glass-panel form" data-section="notifications">
+          <h3><i class="fa-solid fa-bell"></i> Powiadomienia i Discord</h3>
           <label class="check"><input type="checkbox" name="systemNotifications"> Powiadomienia systemowe, gdy launcher jest w tle</label>
           <label class="check"><input type="checkbox" name="notificationSound"> Dźwięk powiadomień systemowych</label>
           <label class="check"><input type="checkbox" name="taskbarBadge"> Liczba nieprzeczytanych na ikonie launchera</label>
@@ -714,9 +713,8 @@
           <label class="check"><input type="checkbox" name="discordJoinButton"> Przycisk „Dołącz do gry” na Discordzie (inni dołączą na Twój serwer)</label>
           <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
         </div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="version">
-        <div class="card glass-panel form">
+        <div class="card glass-panel form" data-section="version">
+          <h3><i class="fa-solid fa-code-branch"></i> Wersja launchera</h3>
           <div class="row update-row">
             <p class="muted">Wersja launchera: <code id="app-version"></code> <span id="update-state"></span></p>
             <button type="button" id="update-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
@@ -743,13 +741,9 @@
           <label class="check hidden" data-needs-changelog><input type="checkbox" id="whats-new-toggle"> Pokazuj „Co nowego” po aktualizacjach</label>
           <div class="row actions hidden" id="update-channel-save"><button class="primary" type="submit">Zapisz</button></div>
         </div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="disk">
-        <div class="card glass-panel disk-card" id="disk-card"></div>
-      </div>
-      <div class="settings-grid settings-section hidden" data-section="about">
-        <div class="card glass-panel support-card" id="support-card"></div>
-        <div class="card glass-panel legal-card" id="legal-card"></div>
+        <div class="card glass-panel disk-card" id="disk-card" data-section="disk"></div>
+        <div class="card glass-panel support-card" id="support-card" data-section="about"></div>
+        <div class="card glass-panel legal-card" id="legal-card" data-section="about"></div>
       </div>
       </form>
     </section>
