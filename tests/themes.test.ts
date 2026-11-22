@@ -22,6 +22,16 @@ describe('the launcher themes', () => {
     assert.match(css, /:root:not\(\[class\*="season-"\]\) \{ --accent: #10b981/);
     assert.match(css, /\.orb-3/);
   });
+  it('draws the windows and menus on every dark theme\'s own background, and keeps the light theme\'s white', () => {
+    for (const theme of [...THEMES.filter((t) => t.id !== 'blue'), customTheme('#ff0000')]) {
+      const css = themeCss(theme);
+      if (theme.light) assert.doesNotMatch(css, /--panel-rgb/, theme.id);
+      else assert.match(css, /--panel-rgb: \d+, \d+, \d+/, theme.id);
+    }
+    assert.match(themeCss(themeOf('red')), /--panel-rgb: 28, 17, 19/);
+    // the default (blue) keeps style.css's own, the same as its background
+    assert.match(readFileSync('src/renderer/style.css', 'utf8'), /--panel-rgb: 17, 22, 34;/);
+  });
   it('keeps white button text readable in every theme and any own colour (WCAG AA)', () => {
     for (const accent of [...THEMES.map((t) => t.accent), '#facc15', '#a3e635', '#ffffff', '#000000', '#22d3ee']) {
       assert.ok(contrast('#ffffff', buttonShade(accent)) >= 4.5, accent);

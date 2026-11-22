@@ -3,7 +3,7 @@
 .wz {
   position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: 36px 16px 16px;
   background: radial-gradient(1200px 700px at 15% -10%, rgba(var(--accent-dark-rgb), .22), transparent 60%),
-    radial-gradient(900px 600px at 110% 110%, rgba(124, 58, 237, .18), transparent 60%), rgba(10, 13, 20, .94);
+    radial-gradient(900px 600px at 110% 110%, rgba(124, 58, 237, .18), transparent 60%), rgba(var(--bg-rgb), .94);
   backdrop-filter: blur(10px); -webkit-app-region: no-drag; animation: wz-fade .35s ease both;
 }
 .wz.wz-leaving { animation: wz-fade-out .25s ease both; pointer-events: none; }
@@ -178,7 +178,7 @@
 .wz-open .season-web, .wz-open .season-bunting { z-index: 51; }
 .season-halloween .wz, .season-independence .wz {
   background: radial-gradient(1200px 700px at 15% -10%, rgba(var(--accent-dark-rgb), .22), transparent 60%),
-    radial-gradient(900px 600px at 110% 110%, rgba(124, 58, 237, .18), transparent 60%), rgba(10, 13, 20, .8);
+    radial-gradient(900px 600px at 110% 110%, rgba(124, 58, 237, .18), transparent 60%), rgba(var(--bg-rgb), .8);
 }
 /* the light theme (themes.ts): the first-run wizard on a pale page */
 :root.theme-light .wz {

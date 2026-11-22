@@ -124,7 +124,10 @@ export function themeCss(theme: Theme): string {
     `--accent-rgb: ${rgb(theme.accent)}`, `--accent-light-rgb: ${rgb(light)}`, `--accent-dark-rgb: ${rgb(dark)}`,
     `--accent-glow: rgba(${rgb(theme.accent)}, .4)`, `--accent-gradient: linear-gradient(135deg, ${buttonShade(theme.accent)}, ${dark})`,
     `--glass-border-focus: rgba(${rgb(theme.accent)}, .4)`,
-    ...(theme.bg ? [`--bg-primary: ${theme.bg}`] : []), ...(theme.bg2 ? [`--bg-secondary: ${theme.bg2}`] : []),
+    ...(theme.bg ? [`--bg-primary: ${theme.bg}`, `--bg-rgb: ${rgb(theme.bg)}`] : []), ...(theme.bg2 ? [`--bg-secondary: ${theme.bg2}`] : []),
+    // windows, menus and pop-ups are drawn on the theme's own dark (the light theme keeps its white ones),
+    // so an open window changes with the page instead of staying in the default blue-grey
+    ...(theme.bg2 && !theme.light ? [`--panel-rgb: ${rgb(theme.bg2)}`] : []),
   ];
   const orbs = theme.orbs.map((c, i) => `${root} .orb-${i + 1} { background: radial-gradient(circle, ${c} 0%, transparent 70%); }`);
   return `${root} { ${vars.join('; ')}; }\n${orbs.join('\n')}\n`;
