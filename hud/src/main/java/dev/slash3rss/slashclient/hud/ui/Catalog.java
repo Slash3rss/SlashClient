@@ -148,16 +148,32 @@ public final class Catalog {
 		List<Setting> settings = new ArrayList<>();
 		for (String name : names) if (keyMapping(name) != null) settings.add(new Key(name));
 		settings.addAll(e.settings());
-		return new Entry(e.id(), e.nameKey(), e.category(), e.icon(), e.get(), e.set(), settings, e.open());
+		return e.withSettings(settings);
 	}
 
 	/**
 	 * A card: `get`/`set` are null when the card has no on/off switch (it only opens something).
 	 * `icon` is one of the launcher's Font Awesome icons in textures/icon (m-<id in lower case>.png: resource names allow no capitals).
 	 */
-	public record Entry(String id, String nameKey, String category, String icon, Supplier<Boolean> get, Consumer<Boolean> set, List<Setting> settings, Runnable open) {
+	public record Entry(String id, String nameKey, String category, String icon, Supplier<Boolean> get, Consumer<Boolean> set, List<Setting> settings, Runnable open, boolean builtIn) {
+		public Entry(String id, String nameKey, String category, String icon, Supplier<Boolean> get, Consumer<Boolean> set, List<Setting> settings, Runnable open) {
+			this(id, nameKey, category, icon, get, set, settings, open, false);
+		}
+
 		public boolean hasSwitch() {
 			return get != null;
+		}
+
+		/**
+		 * The same card marked as one of the game's own parts (the scoreboard, the chat, …) or options: switched off,
+		 * the game itself would lose it, so "Turn all off" leaves it as it is.
+		 */
+		Entry asBuiltIn() {
+			return new Entry(id, nameKey, category, icon, get, set, settings, open, true);
+		}
+
+		Entry withSettings(List<Setting> settings) {
+			return new Entry(id, nameKey, category, icon, get, set, settings, open, builtIn);
 		}
 	}
 
@@ -727,13 +743,14 @@ public final class Catalog {
 		out.add(new Entry("loading", "slashclient-hud.set.loading", "extras", "m-menu", () -> cfg.customLoading, v -> cfg.customLoading = v, List.of(
 			new Toggle("slashclient-hud.set.loading.tips", () -> cfg.loadingTips, v -> cfg.loadingTips = v)), null));
 		var options = net.minecraft.client.Minecraft.getInstance().options;
+		// the game's own option (Controls → Sprint: Toggle), only shown here too
 		out.add(new Entry("toggleSprint", "slashclient-hud.extra.toggleSprint", "extras", "m-togglesprint", () -> options.toggleSprint().get(), v -> {
 			options.toggleSprint().set(v);
 			options.save();
 		}, List.of(new Toggle("slashclient-hud.extra.toggleSneak", () -> options.toggleCrouch().get(), v -> {
 			options.toggleCrouch().set(v);
 			options.save();
-		})), null));
+		})), null).asBuiltIn());
 		out.add(new Entry("time", "slashclient-hud.extra.time", "world", "m-time", () -> cfg.timeChanger, v -> cfg.timeChanger = v, List.of(
 			new Choice("slashclient-hud.extra.timeOfDay", new String[] { "1000", "6000", "12500", "18000" }, "slashclient-hud.extra.time.",
 				() -> String.valueOf(cfg.fixedTime), v -> cfg.fixedTime = Integer.parseInt(v))), null));
@@ -836,9 +853,9 @@ public final class Catalog {
 		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar"), titles = cfg.placement("titles");
 		out.add(new Entry("scoreboard", "slashclient-hud.game.scoreboard", "game", "m-scoreboard", () -> cfg.scoreboard && scoreboard.enabled, v -> cfg.scoreboard = scoreboard.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.scoreboardScale, v -> cfg.scoreboardScale = v),
-			new Toggle("slashclient-hud.game.numbers", () -> cfg.scoreboardNumbers, v -> cfg.scoreboardNumbers = v)), null));
+			new Toggle("slashclient-hud.game.numbers", () -> cfg.scoreboardNumbers, v -> cfg.scoreboardNumbers = v)), null).asBuiltIn());
 		out.add(new Entry("bossbar", "slashclient-hud.game.bossbar", "game", "m-bossbar", () -> cfg.bossBar && bossbar.enabled, v -> cfg.bossBar = bossbar.enabled = v, List.of(
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v)), null));
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v)), null).asBuiltIn());
 		out.add(new Entry("tablist", "slashclient-hud.game.tablist", "game", "m-tablist", () -> tablist.enabled, v -> tablist.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.tabScale, v -> cfg.tabScale = v),
 			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v),
@@ -846,20 +863,20 @@ public final class Catalog {
 			new Toggle("slashclient-hud.game.tabHideFooter", () -> cfg.tabHideFooter, v -> cfg.tabHideFooter = v),
 			new Slider("slashclient-hud.game.tabMaxPlayers", 10f, 80f, 5f, "%.0f", () -> (float) cfg.tabMaxPlayers, v -> cfg.tabMaxPlayers = Math.round(v)),
 			new Slider("slashclient-hud.game.tabRowOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabRowOpacity, v -> cfg.tabRowOpacity = Math.round(v)),
-			new Slider("slashclient-hud.game.tabPanelOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabPanelOpacity, v -> cfg.tabPanelOpacity = Math.round(v))), null));
+			new Slider("slashclient-hud.game.tabPanelOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabPanelOpacity, v -> cfg.tabPanelOpacity = Math.round(v))), null).asBuiltIn());
 		//#if MC >= 1.20.2
 		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v),
-			new Colors("slashclient-hud.actionbar.modColor", COLORS, () -> cfg.actionBarColor, v -> cfg.actionBarColor = v)), null));
+			new Colors("slashclient-hud.actionbar.modColor", COLORS, () -> cfg.actionBarColor, v -> cfg.actionBarColor = v)), null).asBuiltIn());
 		//#endif
 		// on = the setting and the editor's box both (the box's ✕ turns off the latter, so this turns both on again)
 		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles && titles.enabled, v -> cfg.titles = titles.enabled = v, List.of(
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null));
-		out.add(new Entry("toasts", "slashclient-hud.game.toasts", "game", "m-toasts", () -> cfg.placement("toasts").enabled, v -> cfg.placement("toasts").enabled = v, List.of(), null));
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null).asBuiltIn());
+		out.add(new Entry("toasts", "slashclient-hud.game.toasts", "game", "m-toasts", () -> cfg.placement("toasts").enabled, v -> cfg.placement("toasts").enabled = v, List.of(), null).asBuiltIn());
 		// the chat: the game's own background opacity and scale (above 1 with ours), the same as in its Chat Settings
 		out.add(new Entry("chat", "slashclient-hud.game.chat", "game", "chat", () -> cfg.placement("chat").enabled, v -> cfg.placement("chat").enabled = v, List.of(
 			new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", dev.slash3rss.slashclient.hud.chat.ChatLook::opacity, dev.slash3rss.slashclient.hud.chat.ChatLook::setOpacity),
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.chat.ChatLook::shownScale, dev.slash3rss.slashclient.hud.chat.ChatLook::setScale)), null));
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.chat.ChatLook::shownScale, dev.slash3rss.slashclient.hud.chat.ChatLook::setScale)), null).asBuiltIn());
 		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));
 		out.add(new Entry("chatMentions", "slashclient-hud.chat.mentions", "chat", "m-mentions", () -> cfg.chatMentions, v -> cfg.chatMentions = v, List.of(
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.chatMentionVolume, v -> cfg.chatMentionVolume = Math.round(v))), null));
@@ -991,7 +1008,7 @@ public final class Catalog {
 			if (soundChoice(s)) settings.add(new Action("slashclient-hud.sounds.ownFile", "slashclient-hud.sounds.pickFile",
 				() -> dev.slash3rss.slashclient.hud.SoundFiles.pick(((Choice) s).set())));
 		}
-		return new Entry(e.id(), e.nameKey(), e.category(), e.icon(), e.get(), e.set(), settings, e.open());
+		return e.withSettings(settings);
 	}
 
 	//#if MC >= 26.3

@@ -89,6 +89,19 @@ public class HudEditScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	/** Where each card was drawn last (x, y, w, h): for the in-game test that puts the mouse on one. */
 	public static final java.util.Map<String, int[]> CARDS = new java.util.HashMap<>();
+	/** The buttons of the row above the cards as drawn last ("sort", "allOff", "allOffYes", "allOffNo", "allOffUndo"): for the in-game test. */
+	public static final java.util.Map<String, int[]> LIST_BUTTONS = new java.util.HashMap<>();
+	/** "Turn all off" clicked and not yet answered: the row above the cards asks whether to. */
+	private boolean askAllOff;
+	/** How many cards "Turn all off" switched off just now (0 when it was not used): the row says so, with Undo. */
+	private int allOff;
+	/** The editor's steps right after "Turn all off": once another change is made, Undo would take back that one, so the row stops offering it. */
+	private String allOffSteps;
+	/**
+	 * The cards that were on when the list was put in order by "Enabled first": a card switched on or off
+	 * keeps its place under the mouse until the list is opened again.
+	 */
+	private java.util.Set<String> onWhenSorted;
 	/** Where each row of the open settings page was drawn last (x, y, w, h), and each slider (x, y, w): for the in-game test. */
 	static final java.util.Map<String, int[]> ROWS = new java.util.HashMap<>();
 	public static final java.util.Map<String, int[]> SLIDERS = new java.util.HashMap<>();
@@ -708,6 +721,9 @@ public class HudEditScreen extends Screen {
 		scroll = 0;
 		waitingKey = null;
 		status = Component.empty();
+		askAllOff = false;
+		allOff = 0;
+		onWhenSorted = null;
 		String keep = back ? listQuery : search == null ? "" : search.getValue();
 		rebuildWidgets();
 		if (search != null) search.setValue(keep);
@@ -813,16 +829,26 @@ public class HudEditScreen extends Screen {
 
 	private void undo() {
 		typedAt = 0;
-		if (history.undo()) afterHistory();
+		boolean dark = SlashHud.config.darkGui, blocks = SlashHud.config.blockWindows;
+		if (history.undo()) afterHistory(dark, blocks);
 	}
 
 	private void redo() {
 		typedAt = 0;
-		if (history.redo()) afterHistory();
+		boolean dark = SlashHud.config.darkGui, blocks = SlashHud.config.blockWindows;
+		if (history.redo()) afterHistory(dark, blocks);
 	}
 
-	/** The settings were put back: the cards, the open page and its fields show them, the place in the list stays. */
-	private void afterHistory() {
+	/**
+	 * The settings were put back: the cards, the open page and its fields show them, the place in the list stays.
+	 * The dark windows and the block windows are textures: switched back, they are loaded again as their cards do.
+	 */
+	private void afterHistory(boolean darkBefore, boolean blocksBefore) {
+		if (SlashHud.config.darkGui != darkBefore) DarkGui.reload();
+		if (SlashHud.config.blockWindows != blocksBefore && BlockWindows.available) BlockWindows.refresh();
+		askAllOff = false;
+		allOff = 0;
+		onWhenSorted = null;
 		dragging = null;
 		draggingSlider = null;
 		painting = null;
@@ -1060,7 +1086,99 @@ public class HudEditScreen extends Screen {
 			shown.add(e);
 		}
 		shown.sort(java.util.Comparator.comparing(e -> !favorite(e.id())));
+		// "Enabled first": the ones on above the rest, each part in the order above (the sort keeps it)
+		if ("enabled".equals(SlashHud.config.moduleSort)) {
+			if (onWhenSorted == null) {
+				onWhenSorted = new java.util.HashSet<>();
+				for (Catalog.Entry e : entries()) if (e.hasSwitch() && e.get().get()) onWhenSorted.add(e.id());
+			}
+			shown.sort(java.util.Comparator.comparing(e -> !onWhenSorted.contains(e.id())));
+		}
 		return shown;
+	}
+
+	/** What "Turn all off" switches off: the cards listed now that are on, but not the game's own parts and options. */
+	private List<Catalog.Entry> allOffTargets() {
+		return shownCards().stream().filter(e -> e.hasSwitch() && !e.builtIn() && e.get().get()).toList();
+	}
+
+	/** Every card of the list switched off, as one step: Undo (or Ctrl+Z) switches them all back on. */
+	private void turnAllOff() {
+		settleTyping();
+		history.commit();
+		List<Catalog.Entry> targets = allOffTargets();
+		for (Catalog.Entry e : targets) e.set().accept(false);
+		SlashHud.config.save();
+		history.commit();
+		askAllOff = false;
+		allOff = targets.size();
+		allOffSteps = history.sizes();
+		onWhenSorted = null;
+	}
+
+	/**
+	 * The row above the cards: the order they are in, and "Turn all off". Asked to turn all off, the row asks
+	 * whether to (saying how many and that the game's own parts stay); done, it says how many with Undo.
+	 * Returns its height.
+	 */
+	private int drawListRow(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w) {
+		LIST_BUTTONS.clear();
+		int bh = 16, ty = y + (bh - 8) / 2;
+		if (askAllOff) {
+			Component yes = Ui.tr("slashclient-hud.ui.allOffYes"), no = Ui.tr("gui.cancel");
+			int yw = Ui.buttonWidth(yes, "power", bh, 3), nw = Ui.buttonWidth(no, null, bh, 3);
+			int nx = x + w - nw, yx = nx - 4 - yw;
+			// too long for the row (a small window, a big GUI scale): it slides along and back, as buttons' labels do
+			Ui.sliding(g, "allOffAsk", Ui.tr("slashclient-hud.ui.allOffAsk", allOffTargets().size()), x, ty, yx - x - 8, Ui.TEXT);
+			Ui.button(g, "allOffYes", yx, y, yw, bh, "power", yes, true, mx, my);
+			listButton("allOffYes", yx, y, yw, bh, this::turnAllOff);
+			Ui.button(g, "allOffNo", nx, y, nw, bh, no, false, mx, my);
+			listButton("allOffNo", nx, y, nw, bh, () -> askAllOff = false);
+			return bh + 8;
+		}
+		boolean enabledFirst = "enabled".equals(SlashHud.config.moduleSort);
+		Component sort = Ui.tr("slashclient-hud.ui.sort", Ui.tr("slashclient-hud.ui.sort." + SlashHud.config.moduleSort));
+		int right;
+		if (allOff > 0 && !history.sizes().equals(allOffSteps)) allOff = 0;
+		if (allOff > 0) {
+			Component undo = Ui.tr("slashclient-hud.ui.allOffUndo");
+			int uw = Ui.buttonWidth(undo, "undo", bh, 3);
+			right = x + w - uw;
+			Component done = Ui.tr("slashclient-hud.ui.allOffDone", allOff);
+			Ui.button(g, "allOffUndo", right, y, uw, bh, "undo", undo, false, mx, my);
+			listButton("allOffUndo", right, y, uw, bh, this::undo);
+			int dw = Ui.width(done);
+			right -= 6 + dw;
+			Ui.draw(g, done, right, ty, Ui.GREEN);
+		} else {
+			Component off = Ui.tr("slashclient-hud.ui.allOff");
+			int ow = Ui.buttonWidth(off, "power", bh, 3);
+			right = x + w - ow;
+			if (allOffTargets().isEmpty()) {
+				// nothing on to switch off: greyed out, as undo is with nothing to undo
+				Ui.round(g, right, y, ow, bh, 4, 0x80161C2A);
+				Ui.roundOutline(g, right, y, ow, bh, 4, Ui.BORDER);
+				Ui.icon(g, "power", right + 8, y + 3, 10, 0x806B7280);
+				Ui.draw(g, off, right + 23, ty, 0x806B7280);
+			} else {
+				Ui.button(g, "allOff", right, y, ow, bh, "power", off, false, mx, my);
+				listButton("allOff", right, y, ow, bh, () -> askAllOff = true);
+			}
+		}
+		int sw = Math.min(Ui.buttonWidth(sort, "m-sort", bh, 3), right - x - 6);
+		Ui.button(g, "sort", x, y, sw, bh, "m-sort", sort, enabledFirst, mx, my);
+		listButton("sort", x, y, sw, bh, () -> {
+			SlashHud.config.moduleSort = enabledFirst ? "default" : "enabled";
+			SlashHud.config.save();
+			onWhenSorted = null;
+			scroll = 0;
+		});
+		return bh + 8;
+	}
+
+	private void listButton(String id, int x, int y, int w, int h, Runnable action) {
+		LIST_BUTTONS.put(id, new int[] { x, y, w, h });
+		hits.add(new Hit(x, y, w, h, action));
 	}
 
 	private static boolean favorite(String id) {
@@ -1074,6 +1192,11 @@ public class HudEditScreen extends Screen {
 		SlashHud.config.save();
 	}
 
+	/** For the in-game test: the ids of the cards as listed now. */
+	public String shownForTest() {
+		return String.join(",", shownCards().stream().map(Catalog.Entry::id).toList());
+	}
+
 	/** For the in-game test: this card starred (or not), and the ids of the cards as listed now. */
 	public String favoriteForTest(String id) {
 		toggleFavorite(id);
@@ -1081,6 +1204,9 @@ public class HudEditScreen extends Screen {
 	}
 
 	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
+		int row = drawListRow(g, mx, my, x, y, w);
+		y += row;
+		h -= row;
 		List<Catalog.Entry> shown = shownCards();
 		int gap = 6;
 		int cols = Math.max(1, (w + gap) / (104 + gap));

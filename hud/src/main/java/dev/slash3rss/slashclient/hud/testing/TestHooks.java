@@ -2832,6 +2832,39 @@ public final class TestHooks {
 	/** The modules that were on before the snapping test (only "fps" and "ping" are on during it). */
 	private static java.util.Map<String, Boolean> snapSaved;
 
+	/** The ids of the settings window's cards as listed now. */
+	public static String shownCards() {
+		return ((HudEditScreen) screen()).shownForTest();
+	}
+
+	/** The middle of a button of the row above the settings window's cards ("sort", "allOff", …); null if not drawn. */
+	public static double[] listButton(String id) {
+		int[] b = HudEditScreen.LIST_BUTTONS.get(id);
+		return b == null ? null : new double[] { b[0] + b[2] / 2.0, b[1] + b[3] / 2.0 };
+	}
+
+	/** Every card with a switch as "id=1" (on) or "id=0", and "!" before the game's own parts: "fps=1,!chat=1,…". */
+	public static String cardStates() {
+		java.util.List<String> out = new java.util.ArrayList<>();
+		for (var e : dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {}))
+			if (e.hasSwitch()) out.add((e.builtIn() ? "!" : "") + e.id() + "=" + (e.get().get() ? 1 : 0));
+		return String.join(",", out);
+	}
+
+	/** Every card switched as cardStates() said it was ("fps=1,!chat=1,…"), after a test switched them. */
+	public static void restoreCards(String states) {
+		java.util.Map<String, Boolean> want = new java.util.HashMap<>();
+		for (String part : states.split(",")) {
+			String[] kv = part.split("=");
+			want.put(kv[0].replace("!", ""), "1".equals(kv[1]));
+		}
+		for (var e : dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {})) {
+			Boolean on = want.get(e.id());
+			if (e.hasSwitch() && on != null && e.get().get() != on) e.set().accept(on);
+		}
+		SlashHud.config.save();
+	}
+
 	/** The settings list after a module's settings were opened and left: "search scroll" (kept: "k 30.0"). */
 	public static String listKept() {
 		return ((HudEditScreen) screen()).listKeptForTest();

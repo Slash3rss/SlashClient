@@ -150,6 +150,9 @@ public final class HudConfig {
 	public List<ChatTab> chatTabs = new ArrayList<>();
 	/** Cards starred in the settings window (their ids): shown first in every list they are in. */
 	public List<String> favoriteModules = new ArrayList<>();
+	/** How the settings window lists its cards: "default" (starred first) or "enabled" (the ones on first). */
+	public String moduleSort = "default";
+	public static final String[] MODULE_SORTS = { "default", "enabled" };
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
 	/** The font of the modules' text: the game's own, or the launcher's Outfit (ui/ModuleFont.FONTS). */
@@ -907,6 +910,7 @@ public final class HudConfig {
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		read.darkGuiShade = oneOf(read.darkGuiShade, dev.slash3rss.slashclient.hud.ui.DarkGui.SHADES);
 		read.moduleFont = oneOf(read.moduleFont, dev.slash3rss.slashclient.hud.ui.ModuleFont.FONTS);
+		read.moduleSort = oneOf(read.moduleSort, MODULE_SORTS);
 		read.autoClickWindows = read.autoClickWindows == null ? (read.autoClickContainers ? "slots" : "off") : oneOf(read.autoClickWindows, AUTO_CLICK_WINDOWS);
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
 		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
